@@ -58,6 +58,11 @@ ADungeonCharacter::ADungeonCharacter()
 	MaxWalkingSpeed = 400.0f;
 	MaxSprintingSpeed = 800.0f;
 	MaxRollingSpeed = 1200.0f;
+
+	// Create the attribute set, this replicates by default
+	AttributeSet = CreateDefaultSubobject<UDungeonAttributeSet>(TEXT("AttributeSet"));
+
+	bAbilitiesInitialized = false;
 }
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -106,7 +111,7 @@ void ADungeonCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	Server_Tick(DeltaTime);
+	//Server_Tick(DeltaTime);
 }
 
 // Called to bind functionality to input
@@ -141,21 +146,125 @@ UAbilitySystemComponent* ADungeonCharacter::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
-void ADungeonCharacter::Server_Tick_Implementation(float DeltaTime)
+void ADungeonCharacter::AddStartupGameplayAbilities()
 {
-	if (bIsSprinting)
+	check(AbilitySystemComponent);
+
+	if (Role == ROLE_Authority && !bAbilitiesInitialized)
 	{
-		if (!StatusComponent->SpendStamina(SprintStaminaCost * DeltaTime))
+		// Grant abilities, but only on the server	
+		for (TSubclassOf<UDungeonGameplayAbility>& StartupAbility : GameplayAbilities)
 		{
-			EndSprint();
+			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(StartupAbility, GetCharacterLevel(), INDEX_NONE, this));
 		}
+
+		// Now apply passives
+		for (TSubclassOf<UGameplayEffect>& GameplayEffect : PassiveGameplayEffects)
+		{
+			FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+			EffectContext.AddSourceObject(this);
+
+			FGameplayEffectSpecHandle NewHandle = AbilitySystemComponent->MakeOutgoingSpec(GameplayEffect, GetCharacterLevel(), EffectContext);
+			if (NewHandle.IsValid())
+			{
+				FActiveGameplayEffectHandle ActiveGEHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(*NewHandle.Data.Get(), AbilitySystemComponent);
+			}
+		}
+
+		bAbilitiesInitialized = true;
 	}
 }
 
-bool ADungeonCharacter::Server_Tick_Validate(float DeltaTime)
+void ADungeonCharacter::RemoveStartupGameplayAbilities()
 {
-	return true;
+	check(AbilitySystemComponent);
+
+	if (Role == ROLE_Authority && bAbilitiesInitialized)
+	{
+		// Remove any abilities added from a previous call
+		TArray<FGameplayAbilitySpecHandle> AbilitiesToRemove;
+		for (const FGameplayAbilitySpec& Spec : AbilitySystemComponent->GetActivatableAbilities())
+		{
+			if ((Spec.SourceObject == this) && GameplayAbilities.Contains(Spec.Ability->GetClass()))
+			{
+				AbilitiesToRemove.Add(Spec.Handle);
+			}
+		}
+
+		// Do in two passes so the removal happens after we have the full list
+		for (int32 i = 0; i < AbilitiesToRemove.Num(); i++)
+		{
+			AbilitySystemComponent->ClearAbility(AbilitiesToRemove[i]);
+		}
+
+		// Remove all of the passive gameplay effects that were applied by this character
+		FGameplayEffectQuery Query;
+		Query.EffectSource = this;
+		AbilitySystemComponent->RemoveActiveEffects(Query);
+
+		bAbilitiesInitialized = false;
+	}
 }
+
+float ADungeonCharacter::GetHealth() const
+{
+	return AttributeSet->GetHealth();
+}
+
+float ADungeonCharacter::GetMaxHealth() const
+{
+	return AttributeSet->GetMaxHealth();
+}
+
+float ADungeonCharacter::GetMana() const
+{
+	return AttributeSet->GetMana();
+}
+
+float ADungeonCharacter::GetMaxMana() const
+{
+	return AttributeSet->GetMaxMana();
+}
+
+float ADungeonCharacter::GetMoveSpeed() const
+{
+	return AttributeSet->GetMoveSpeed();
+}
+
+int32 ADungeonCharacter::GetCharacterLevel() const
+{
+	return CharacterLevel;
+}
+
+bool ADungeonCharacter::SetCharacterLevel(int32 NewLevel)
+{
+	if (CharacterLevel != NewLevel && NewLevel > 0)
+	{
+		// Our level changed so we need to refresh abilities
+		RemoveStartupGameplayAbilities();
+		CharacterLevel = NewLevel;
+		AddStartupGameplayAbilities();
+
+		return true;
+	}
+	return false;
+}
+
+//void ADungeonCharacter::Server_Tick_Implementation(float DeltaTime)
+//{
+//	if (bIsSprinting)
+//	{
+//		if (!StatusComponent->SpendStamina(SprintStaminaCost * DeltaTime))
+//		{
+//			EndSprint();
+//		}
+//	}
+//}
+//
+//bool ADungeonCharacter::Server_Tick_Validate(float DeltaTime)
+//{
+//	return true;
+//}
 
 void ADungeonCharacter::MoveForward(float Value)
 {
@@ -597,17 +706,107 @@ UAnimationProfile* ADungeonCharacter::GetAnimationProfile()
 //	}
 //}
 
-void ADungeonCharacter::OnHealthChanged(UStatusComponent* OwningStatusComponent, float Health, float HealthDelta, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser)
+//void ADungeonCharacter::OnHealthChanged(UStatusComponent* OwningStatusComponent, float Health, float HealthDelta, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser)
+//{
+//	if (Health <= 0.0f && StatusComponent->IsAlive())
+//	{
+//		GetMovementComponent()->StopMovementImmediately();
+//		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+//
+//		DetachFromControllerPendingDestroy();
+//		SetLifeSpan(10.0f);
+//
+//		Multicast_OnDeath();
+//	}
+//}
+
+bool ADungeonCharacter::ActivateAbilitiesWithTags(FGameplayTagContainer AbilityTags, bool bAllowRemoteActivation)
 {
-	if (Health <= 0.0f && StatusComponent->IsAlive())
+	if (AbilitySystemComponent)
 	{
-		GetMovementComponent()->StopMovementImmediately();
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		return AbilitySystemComponent->TryActivateAbilitiesByTag(AbilityTags, bAllowRemoteActivation);
+	}
 
-		DetachFromControllerPendingDestroy();
-		SetLifeSpan(10.0f);
+	return false;
+}
 
-		Multicast_OnDeath();
+void ADungeonCharacter::GetActiveAbilitiesWithTags(FGameplayTagContainer AbilityTags, TArray<UDungeonGameplayAbility*>& ActiveAbilities)
+{
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->GetActiveAbilitiesWithTags(AbilityTags, ActiveAbilities);
+	}
+}
+
+bool ADungeonCharacter::GetCooldownRemainingForTag(FGameplayTagContainer CooldownTags, float& TimeRemaining, float& CooldownDuration)
+{
+	if (AbilitySystemComponent && CooldownTags.Num() > 0)
+	{
+		TimeRemaining = 0.f;
+		CooldownDuration = 0.f;
+
+		FGameplayEffectQuery const Query = FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(CooldownTags);
+		TArray< TPair<float, float> > DurationAndTimeRemaining = AbilitySystemComponent->GetActiveEffectsTimeRemainingAndDuration(Query);
+		if (DurationAndTimeRemaining.Num() > 0)
+		{
+			int32 BestIdx = 0;
+			float LongestTime = DurationAndTimeRemaining[0].Key;
+			for (int32 Idx = 1; Idx < DurationAndTimeRemaining.Num(); ++Idx)
+			{
+				if (DurationAndTimeRemaining[Idx].Key > LongestTime)
+				{
+					LongestTime = DurationAndTimeRemaining[Idx].Key;
+					BestIdx = Idx;
+				}
+			}
+
+			TimeRemaining = DurationAndTimeRemaining[BestIdx].Key;
+			CooldownDuration = DurationAndTimeRemaining[BestIdx].Value;
+
+			return true;
+		}
+	}
+	return false;
+}
+
+void ADungeonCharacter::HandleDamage(float DamageAmount, const FHitResult& HitInfo, const struct FGameplayTagContainer& DamageTags, ADungeonCharacter* InstigatorPawn, AActor* DamageCauser)
+{
+	OnDamaged(DamageAmount, HitInfo, DamageTags, InstigatorPawn, DamageCauser);
+}
+
+void ADungeonCharacter::HandleHealthChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
+{
+	// We only call the BP callback if this is not the initial ability setup
+	if (bAbilitiesInitialized)
+	{
+		OnHealthChanged(DeltaValue, EventTags);
+	}
+}
+
+void ADungeonCharacter::HandleManaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
+{
+	if (bAbilitiesInitialized)
+	{
+		OnManaChanged(DeltaValue, EventTags);
+	}
+}
+
+void ADungeonCharacter::HandleStaminaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
+{
+	if (bAbilitiesInitialized)
+	{
+		OnStaminaChanged(DeltaValue, EventTags);
+	}
+}
+
+void ADungeonCharacter::HandleMoveSpeedChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
+{
+	// Update the character movement's walk speed
+	GetCharacterMovement()->MaxWalkSpeed = GetMoveSpeed();
+
+	if (bAbilitiesInitialized)
+	{
+		OnMoveSpeedChanged(DeltaValue, EventTags);
 	}
 }
 

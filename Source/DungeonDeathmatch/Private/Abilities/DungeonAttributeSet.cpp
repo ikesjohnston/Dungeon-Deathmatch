@@ -259,7 +259,7 @@ void UDungeonAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 		if (TargetCharacter)
 		{
 			// Call for all movespeed changes
-			//TargetCharacter->HandleMoveSpeedChanged(DeltaValue, SourceTags);
+			TargetCharacter->HandleMoveSpeedChanged(DeltaValue, SourceTags);
 		}
 	}
 }
