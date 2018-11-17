@@ -3,6 +3,7 @@
 #include "DungeonCharacterAnimInstance.h"
 #include "DungeonDeathmatch.h"
 #include <Kismet/KismetMathLibrary.h>
+#include "AnimationProfile.h"
 
 UDungeonCharacterAnimInstance::UDungeonCharacterAnimInstance(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)

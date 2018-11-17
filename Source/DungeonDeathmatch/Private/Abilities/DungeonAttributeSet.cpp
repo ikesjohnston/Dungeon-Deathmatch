@@ -1,4 +1,4 @@
-// Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "DungeonAttributeSet.h"
 #include "DungeonDeathmatch.h"
@@ -40,80 +40,6 @@ void UDungeonAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME(UDungeonAttributeSet, AttackPower);
 	DOREPLIFETIME(UDungeonAttributeSet, DefensePower);
 	DOREPLIFETIME(UDungeonAttributeSet, MoveSpeed);
-}
-
-void UDungeonAttributeSet::OnRep_Health()
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, Health);
-}
-
-void UDungeonAttributeSet::OnRep_MaxHealth()
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, MaxHealth);
-}
-
-void UDungeonAttributeSet::OnRep_HealthRegen()
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, HealthRegen);
-}
-
-void UDungeonAttributeSet::OnRep_Mana()
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, Mana);
-}
-
-void UDungeonAttributeSet::OnRep_MaxMana()
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, MaxMana);
-}
-
-void UDungeonAttributeSet::OnRep_ManaRegen()
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, ManaRegen);
-}
-
-void UDungeonAttributeSet::OnRep_Stamina()
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, Stamina);
-}
-
-void UDungeonAttributeSet::OnRep_MaxStamina()
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, MaxStamina);
-}
-
-void UDungeonAttributeSet::OnRep_StaminaRegen()
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, StaminaRegen);
-}
-
-void UDungeonAttributeSet::OnRep_AttackPower()
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, AttackPower);
-}
-
-void UDungeonAttributeSet::OnRep_DefensePower()
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, DefensePower);
-}
-
-void UDungeonAttributeSet::OnRep_MoveSpeed()
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, MoveSpeed);
-}
-
-void UDungeonAttributeSet::AdjustAttributeForMaxChange(FGameplayAttributeData& AffectedAttribute, const FGameplayAttributeData& MaxAttribute, float NewMaxValue, const FGameplayAttribute& AffectedAttributeProperty)
-{
-	UAbilitySystemComponent* AbilityComp = GetOwningAbilitySystemComponent();
-	const float CurrentMaxValue = MaxAttribute.GetCurrentValue();
-	if (!FMath::IsNearlyEqual(CurrentMaxValue, NewMaxValue) && AbilityComp)
-	{
-		// Change current value to maintain the current Val / Max percent
-		const float CurrentValue = AffectedAttribute.GetCurrentValue();
-		float NewDelta = (CurrentMaxValue > 0.f) ? (CurrentValue * NewMaxValue / CurrentMaxValue) - CurrentValue : NewMaxValue;
-
-		AbilityComp->ApplyModToAttributeUnsafe(AffectedAttributeProperty, EGameplayModOp::Additive, NewDelta);
-	}
 }
 
 void UDungeonAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -262,4 +188,78 @@ void UDungeonAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 			TargetCharacter->HandleMoveSpeedChanged(DeltaValue, SourceTags);
 		}
 	}
+}
+
+void UDungeonAttributeSet::AdjustAttributeForMaxChange(FGameplayAttributeData& AffectedAttribute, const FGameplayAttributeData& MaxAttribute, float NewMaxValue, const FGameplayAttribute& AffectedAttributeProperty)
+{
+	UAbilitySystemComponent* AbilityComp = GetOwningAbilitySystemComponent();
+	const float CurrentMaxValue = MaxAttribute.GetCurrentValue();
+	if (!FMath::IsNearlyEqual(CurrentMaxValue, NewMaxValue) && AbilityComp)
+	{
+		// Change current value to maintain the current Val / Max percent
+		const float CurrentValue = AffectedAttribute.GetCurrentValue();
+		float NewDelta = (CurrentMaxValue > 0.f) ? (CurrentValue * NewMaxValue / CurrentMaxValue) - CurrentValue : NewMaxValue;
+
+		AbilityComp->ApplyModToAttributeUnsafe(AffectedAttributeProperty, EGameplayModOp::Additive, NewDelta);
+	}
+}
+
+void UDungeonAttributeSet::OnRep_Health()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, Health);
+}
+
+void UDungeonAttributeSet::OnRep_MaxHealth()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, MaxHealth);
+}
+
+void UDungeonAttributeSet::OnRep_HealthRegen()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, HealthRegen);
+}
+
+void UDungeonAttributeSet::OnRep_Mana()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, Mana);
+}
+
+void UDungeonAttributeSet::OnRep_MaxMana()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, MaxMana);
+}
+
+void UDungeonAttributeSet::OnRep_ManaRegen()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, ManaRegen);
+}
+
+void UDungeonAttributeSet::OnRep_Stamina()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, Stamina);
+}
+
+void UDungeonAttributeSet::OnRep_MaxStamina()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, MaxStamina);
+}
+
+void UDungeonAttributeSet::OnRep_StaminaRegen()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, StaminaRegen);
+}
+
+void UDungeonAttributeSet::OnRep_AttackPower()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, AttackPower);
+}
+
+void UDungeonAttributeSet::OnRep_DefensePower()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, DefensePower);
+}
+
+void UDungeonAttributeSet::OnRep_MoveSpeed()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, MoveSpeed);
 }

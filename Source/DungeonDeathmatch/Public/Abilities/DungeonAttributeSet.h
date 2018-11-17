@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 /*
- * Much of this code is derived from Epic's Action RPG example project that utilized the
+ * Much of this code is derived from Epic's Action RPG example project that utilizes the
  * Gameplay Abilities system.
  */
 
@@ -18,19 +18,13 @@
 		GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName) \
 		GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
 
-/** This holds all of the attributes used by abilities, it instantiates a copy of this on every character */
+/** This class holds all of the attributes used by abilities. An instance of this should be instantiated on every character. */
 UCLASS()
 class DUNGEONDEATHMATCH_API UDungeonAttributeSet : public UAttributeSet
 {
 	GENERATED_BODY()
+
 public:
-
-	// Constructor and overrides
-	UDungeonAttributeSet();
-	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
-	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 	/** Current Health, when 0 we expect owner to die. Capped by MaxHealth */
 	UPROPERTY(BlueprintReadOnly, Category = "Health", ReplicatedUsing = OnRep_Health)
 	FGameplayAttributeData Health;
@@ -95,6 +89,13 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Mana", meta = (HideFromLevelInfos))
 	FGameplayAttributeData Damage;
 	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, Damage)
+
+public:
+	// Constructor and overrides
+	UDungeonAttributeSet();
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
+	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
 
 protected:
 	/** Helper function to proportionally adjust the value of an attribute when it's associated max attribute changes. (i.e. When MaxHealth increases, Health increases by an amount that maintains the same percentage as before) */

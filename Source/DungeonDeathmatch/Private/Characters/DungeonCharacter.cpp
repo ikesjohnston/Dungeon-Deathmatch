@@ -6,21 +6,19 @@
 #include <GameFramework/PawnMovementComponent.h>
 #include <UnrealNetwork.h>
 #include <Engine/World.h>
-#include "Weapon.h"
-#include "StatusComponent.h"
-#include <GameFramework/Character.h>
 #include <Components/CapsuleComponent.h>
 #include <Components/SkeletalMeshComponent.h>
 #include "DungeonPlayerController.h"
-#include "Functionable.h"
 #include "InventoryComponent.h"
 #include "EquipmentComponent.h"
-#include "Weapons/WeaponData.h"
 #include "DungeonAbilitySystemComponent.h"
+#include "DungeonAttributeSet.h"
+#include "DungeonGameplayAbility.h"
+#include <GameplayEffect.h>
 
-// Sets default values
 ADungeonCharacter::ADungeonCharacter()
 {
+	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
@@ -38,7 +36,7 @@ ADungeonCharacter::ADungeonCharacter()
 	FistColliderRight = CreateDefaultSubobject<USphereComponent>(TEXT("FistColliderRight"));
 	FistColliderRight->SetupAttachment(GetMesh(), "HandRight");
 
-	StatusComponent = CreateDefaultSubobject<UStatusComponent>(TEXT("StatusComponent"));
+	//StatusComponent = CreateDefaultSubobject<UStatusComponent>(TEXT("StatusComponent"));
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 	EquipmentComponent = CreateDefaultSubobject<UEquipmentComponent>(TEXT("Equipment"));
 
@@ -46,21 +44,20 @@ ADungeonCharacter::ADungeonCharacter()
 	AbilitySystemComponent = CreateDefaultSubobject<UDungeonAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 
+	// Create the attribute set, this replicates by default
+	AttributeSet = CreateDefaultSubobject<UDungeonAttributeSet>(TEXT("AttributeSet"));
+
 	// Movement
-	JumpStaminaCost = 10;
 	bIsCrouched = false;
 	bIsSprinting = false;
-	SprintStaminaCost = 10;
 	bIsRolling = false;
 	bCanRoll = true;
-	RollStaminaCost = 30;
+
+	// TODO: Make these attributes and initialize them on game startup with passive GAs
 	MaxCrouchedWalkingSpeed = 200.0f;
 	MaxWalkingSpeed = 400.0f;
 	MaxSprintingSpeed = 800.0f;
 	MaxRollingSpeed = 1200.0f;
-
-	// Create the attribute set, this replicates by default
-	AttributeSet = CreateDefaultSubobject<UDungeonAttributeSet>(TEXT("AttributeSet"));
 
 	bAbilitiesInitialized = false;
 }
@@ -106,14 +103,6 @@ void ADungeonCharacter::PossessedBy(AController* NewController)
 	AbilitySystemComponent->RefreshAbilityActorInfo();
 }
 
-// Called every frame
-void ADungeonCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-	//Server_Tick(DeltaTime);
-}
-
 // Called to bind functionality to input
 void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -144,6 +133,55 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 UAbilitySystemComponent* ADungeonCharacter::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
+}
+
+bool ADungeonCharacter::ActivateAbilitiesWithTags(FGameplayTagContainer AbilityTags, bool bAllowRemoteActivation)
+{
+	if (AbilitySystemComponent)
+	{
+		return AbilitySystemComponent->TryActivateAbilitiesByTag(AbilityTags, bAllowRemoteActivation);
+	}
+
+	return false;
+}
+
+void ADungeonCharacter::GetActiveAbilitiesWithTags(FGameplayTagContainer AbilityTags, TArray<UDungeonGameplayAbility*>& ActiveAbilities)
+{
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->GetActiveAbilitiesWithTags(AbilityTags, ActiveAbilities);
+	}
+}
+
+bool ADungeonCharacter::GetCooldownRemainingForTag(FGameplayTagContainer CooldownTags, float& TimeRemaining, float& CooldownDuration)
+{
+	if (AbilitySystemComponent && CooldownTags.Num() > 0)
+	{
+		TimeRemaining = 0.f;
+		CooldownDuration = 0.f;
+
+		FGameplayEffectQuery const Query = FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(CooldownTags);
+		TArray< TPair<float, float> > DurationAndTimeRemaining = AbilitySystemComponent->GetActiveEffectsTimeRemainingAndDuration(Query);
+		if (DurationAndTimeRemaining.Num() > 0)
+		{
+			int32 BestIdx = 0;
+			float LongestTime = DurationAndTimeRemaining[0].Key;
+			for (int32 Idx = 1; Idx < DurationAndTimeRemaining.Num(); ++Idx)
+			{
+				if (DurationAndTimeRemaining[Idx].Key > LongestTime)
+				{
+					LongestTime = DurationAndTimeRemaining[Idx].Key;
+					BestIdx = Idx;
+				}
+			}
+
+			TimeRemaining = DurationAndTimeRemaining[BestIdx].Key;
+			CooldownDuration = DurationAndTimeRemaining[BestIdx].Value;
+
+			return true;
+		}
+	}
+	return false;
 }
 
 void ADungeonCharacter::AddStartupGameplayAbilities()
@@ -226,6 +264,16 @@ float ADungeonCharacter::GetMaxMana() const
 	return AttributeSet->GetMaxMana();
 }
 
+float ADungeonCharacter::GetStamina() const
+{
+	return AttributeSet->GetStamina();
+}
+
+float ADungeonCharacter::GetMaxStamina() const
+{
+	return AttributeSet->GetMaxStamina();
+}
+
 float ADungeonCharacter::GetMoveSpeed() const
 {
 	return AttributeSet->GetMoveSpeed();
@@ -250,22 +298,6 @@ bool ADungeonCharacter::SetCharacterLevel(int32 NewLevel)
 	return false;
 }
 
-//void ADungeonCharacter::Server_Tick_Implementation(float DeltaTime)
-//{
-//	if (bIsSprinting)
-//	{
-//		if (!StatusComponent->SpendStamina(SprintStaminaCost * DeltaTime))
-//		{
-//			EndSprint();
-//		}
-//	}
-//}
-//
-//bool ADungeonCharacter::Server_Tick_Validate(float DeltaTime)
-//{
-//	return true;
-//}
-
 void ADungeonCharacter::MoveForward(float Value)
 {
 	AddMovementInput(GetActorForwardVector() * Value);
@@ -274,11 +306,6 @@ void ADungeonCharacter::MoveForward(float Value)
 void ADungeonCharacter::MoveRight(float Value)
 {
 	AddMovementInput(GetActorRightVector() * Value);
-}
-
-void ADungeonCharacter::Jump()
-{
-	Server_Jump();
 }
 
 void ADungeonCharacter::OnSprintPressed()
@@ -291,40 +318,27 @@ void ADungeonCharacter::OnSprintReleased()
 	AbilitySystemComponent->TryActivateAbilityByClass(StopSprintAbility);
 }
 
-void ADungeonCharacter::Server_Jump_Implementation()
-{
-	if (!bIsRolling && StatusComponent->SpendStamina(JumpStaminaCost))
-	{
-		Super::Jump();
-	}
-}
-
-bool ADungeonCharacter::Server_Jump_Validate()
-{
-	return true;
-}
-
 void ADungeonCharacter::BeginSprint()
 {
-	//Server_BeginSprint();
-	if (!bIsRolling)
-	{
-		bIsSprinting = true;
-		StatusComponent->SetCanRegenStamina(false);
-		UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-		if (MovementComp)
-		{
-			MovementComp->MaxWalkSpeed = MaxSprintingSpeed;
-			MovementComp->UnCrouch(true);
-			MovementComp->bWantsToCrouch = false;
-			bIsCrouching = false;
-		}
-	}
+	////Server_BeginSprint();
+	//if (!bIsRolling)
+	//{
+	//	bIsSprinting = true;
+	//	StatusComponent->SetCanRegenStamina(false);
+	//	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
+	//	if (MovementComp)
+	//	{
+	//		MovementComp->MaxWalkSpeed = MaxSprintingSpeed;
+	//		MovementComp->UnCrouch(true);
+	//		MovementComp->bWantsToCrouch = false;
+	//		bIsCrouching = false;
+	//	}
+	//}
 }
 
 void ADungeonCharacter::Server_BeginSprint_Implementation()
 {
-	if (!bIsRolling)
+	/*if (!bIsRolling)
 	{
 		bIsSprinting = true;
 		StatusComponent->SetCanRegenStamina(false);
@@ -336,7 +350,7 @@ void ADungeonCharacter::Server_BeginSprint_Implementation()
 			MovementComp->bWantsToCrouch = false;
 			bIsCrouching = false;
 		}
-	}
+	}*/
 }
 
 bool ADungeonCharacter::Server_BeginSprint_Validate()
@@ -348,7 +362,7 @@ void ADungeonCharacter::EndSprint()
 {
 	//Server_EndSprint();
 
-	if (bIsSprinting)
+	/*if (bIsSprinting)
 	{
 		bIsSprinting = false;
 		StatusComponent->SetCanRegenStamina(true);
@@ -363,12 +377,12 @@ void ADungeonCharacter::EndSprint()
 				bIsCrouching = false;
 			}
 		}
-	}
+	}*/
 }
 
 void ADungeonCharacter::Server_EndSprint_Implementation()
 {
-	if (bIsSprinting)
+	/*if (bIsSprinting)
 	{
 		bIsSprinting = false;
 		StatusComponent->SetCanRegenStamina(true);
@@ -383,10 +397,28 @@ void ADungeonCharacter::Server_EndSprint_Implementation()
 				bIsCrouching = false;
 			}
 		}
-	}
+	}*/
 }
 
 bool ADungeonCharacter::Server_EndSprint_Validate()
+{
+	return true;
+}
+
+void ADungeonCharacter::Jump()
+{
+	Server_Jump();
+}
+
+void ADungeonCharacter::Server_Jump_Implementation()
+{
+	/*if (!bIsRolling && StatusComponent->SpendStamina(JumpStaminaCost))
+	{
+		Super::Jump();
+	}*/
+}
+
+bool ADungeonCharacter::Server_Jump_Validate()
 {
 	return true;
 }
@@ -441,31 +473,31 @@ void ADungeonCharacter::BeginRoll()
 
 void ADungeonCharacter::Server_BeginRoll_Implementation()
 {
-	if (bCanRoll && StatusComponent->SpendStamina(RollStaminaCost))
-	{
-		UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-		if (MovementComp && !MovementComp->IsFalling())
-		{
-			bIsRolling = true;
-			bCanRoll = false;
-			Crouch();
-			MovementComp->bWantsToCrouch = true;
-			MovementComp->MaxWalkSpeedCrouched = MaxRollingSpeed;
+	//if (bCanRoll && StatusComponent->SpendStamina(RollStaminaCost))
+	//{
+	//	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
+	//	if (MovementComp && !MovementComp->IsFalling())
+	//	{
+	//		bIsRolling = true;
+	//		bCanRoll = false;
+	//		Crouch();
+	//		MovementComp->bWantsToCrouch = true;
+	//		MovementComp->MaxWalkSpeedCrouched = MaxRollingSpeed;
 
-			// Immediately roll at max speed in the player's current movement direction,
-			// or roll forward if the player is standing still.
-			FVector VelocityNormalized = MovementComp->Velocity;
-			VelocityNormalized.Normalize();
-			if (VelocityNormalized.Size() == 0)
-				VelocityNormalized = GetActorForwardVector();
-			MovementComp->Velocity = VelocityNormalized * MaxRollingSpeed;
-			MovementComp->BrakingDecelerationWalking = 0;
-			MovementComp->GroundFriction = 0;
+	//		// Immediately roll at max speed in the player's current movement direction,
+	//		// or roll forward if the player is standing still.
+	//		FVector VelocityNormalized = MovementComp->Velocity;
+	//		VelocityNormalized.Normalize();
+	//		if (VelocityNormalized.Size() == 0)
+	//			VelocityNormalized = GetActorForwardVector();
+	//		MovementComp->Velocity = VelocityNormalized * MaxRollingSpeed;
+	//		MovementComp->BrakingDecelerationWalking = 0;
+	//		MovementComp->GroundFriction = 0;
 
-			// Cancel any ongoing attacks, shouldn't be able to do damage during a roll
-			CancelAttack();
-		}
-	}
+	//		// Cancel any ongoing attacks, shouldn't be able to do damage during a roll
+	//		CancelAttack();
+	//	}
+	//}
 }
 
 bool ADungeonCharacter::Server_BeginRoll_Validate()
@@ -476,11 +508,6 @@ bool ADungeonCharacter::Server_BeginRoll_Validate()
 void ADungeonCharacter::EndRoll()
 {
 	Server_EndRoll();
-}
-
-void ADungeonCharacter::SetCanRoll(bool CanRoll)
-{
-	bCanRoll = CanRoll;
 }
 
 void ADungeonCharacter::Server_EndRoll_Implementation()
@@ -506,6 +533,11 @@ bool ADungeonCharacter::Server_EndRoll_Validate()
 	return true;
 }
 
+void ADungeonCharacter::SetCanRoll(bool CanRoll)
+{
+	bCanRoll = CanRoll;
+}
+
 void ADungeonCharacter::OnUsePressed()
 {
 	Server_Use();
@@ -518,7 +550,7 @@ void ADungeonCharacter::Use()
 
 void ADungeonCharacter::Server_Use_Implementation()
 {
-	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
+	/*ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
 	if (PlayerController)
 	{
 		IFunctionable* CurrentFocus = Cast<IFunctionable>(PlayerController->GetCurrentFocus());
@@ -526,7 +558,7 @@ void ADungeonCharacter::Server_Use_Implementation()
 		{
 			CurrentFocus->NativeOnStartPrimaryFunction(this);
 		}
-	}
+	}*/
 }
 
 bool ADungeonCharacter::Server_Use_Validate()
@@ -622,60 +654,60 @@ bool ADungeonCharacter::Server_CancelAttack_Validate()
 
 void ADungeonCharacter::Server_Attack_Implementation()
 {
-	if (CanAttack())
-	{
-		AWeapon* Weapon = Cast<AWeapon>(EquipmentComponent->GetEquipmentInSlot(EEquipmentSlot::MainHand));
-		if (Weapon)
-		{
-			UWeaponData* WeaponData = Weapon->GetWeaponData();
-			if (WeaponData)
-			{
-				//UAnimMontage* AttackMontage = WeaponData->GetAttackMontage()
-				/*float ComboOpeningTime = WeaponData->GetComboAttackOpeningTime();
-				GetWorldTimerManager().ClearTimer(ComboTimer);
-				GetWorldTimerManager().SetTimer(ComboTimer, this, &ADungeonCharacter::SetWeaponReady, ComboOpeningTime, false);
+	//if (CanAttack())
+	//{
+	//	AWeapon* Weapon = Cast<AWeapon>(EquipmentComponent->GetEquipmentInSlot(EEquipmentSlot::MainHand));
+	//	if (Weapon)
+	//	{
+	//		UWeaponData* WeaponData = Weapon->GetWeaponData();
+	//		if (WeaponData)
+	//		{
+	//			//UAnimMontage* AttackMontage = WeaponData->GetAttackMontage()
+	//			/*float ComboOpeningTime = WeaponData->GetComboAttackOpeningTime();
+	//			GetWorldTimerManager().ClearTimer(ComboTimer);
+	//			GetWorldTimerManager().SetTimer(ComboTimer, this, &ADungeonCharacter::SetWeaponReady, ComboOpeningTime, false);
 
-				switch (ComboState)
-				{
-				case EComboState::ComboReset:
-					ComboState = EComboState::Attack1;
-					GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("Performing attack one."));
-					break;
-				case EComboState::Attack1:
-					if (CombatState == ECombatState::AttackingComboReady)
-					{
-						ComboState = EComboState::Attack2;
-						GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("Performing attack two."));
-						CombatState = ECombatState::Attacking;
-					}
-					break;
-				case EComboState::Attack2:
-					if (CombatState == ECombatState::AttackingComboReady)
-					{
-						ComboState = EComboState::Attack3;
-						GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("Performing attack three."));
-						CombatState = ECombatState::Attacking;
-					}
-					break;
-				case EComboState::Attack3:
-					break;
-				default:
-					break;
-				}*/
-				
-				//CombatState = ECombatState::Attacking;
-			}
-		}
-		else if (AnimationProfile)
-		{
+	//			switch (ComboState)
+	//			{
+	//			case EComboState::ComboReset:
+	//				ComboState = EComboState::Attack1;
+	//				GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("Performing attack one."));
+	//				break;
+	//			case EComboState::Attack1:
+	//				if (CombatState == ECombatState::AttackingComboReady)
+	//				{
+	//					ComboState = EComboState::Attack2;
+	//					GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("Performing attack two."));
+	//					CombatState = ECombatState::Attacking;
+	//				}
+	//				break;
+	//			case EComboState::Attack2:
+	//				if (CombatState == ECombatState::AttackingComboReady)
+	//				{
+	//					ComboState = EComboState::Attack3;
+	//					GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("Performing attack three."));
+	//					CombatState = ECombatState::Attacking;
+	//				}
+	//				break;
+	//			case EComboState::Attack3:
+	//				break;
+	//			default:
+	//				break;
+	//			}*/
+	//			
+	//			//CombatState = ECombatState::Attacking;
+	//		}
+	//	}
+	//	else if (AnimationProfile)
+	//	{
 
-			UAnimMontage* AttackMontage = AnimationProfile->GetAttackOneMontage();
-			if (AttackMontage)
-			{
-				Multicast_PlayAnimMontage(AttackMontage);
-			}
-		}
-	}
+	//		UAnimMontage* AttackMontage = AnimationProfile->GetAttackOneMontage();
+	//		if (AttackMontage)
+	//		{
+	//			Multicast_PlayAnimMontage(AttackMontage);
+	//		}
+	//	}
+	//}
 }
 
 bool ADungeonCharacter::Server_Attack_Validate()
@@ -686,6 +718,20 @@ bool ADungeonCharacter::Server_Attack_Validate()
 UAnimationProfile* ADungeonCharacter::GetAnimationProfile()
 {
 	return AnimationProfile;
+}
+
+void ADungeonCharacter::Multicast_StopAllAnimMontages_Implementation()
+{
+	USkeletalMeshComponent* CharacterMeshComp = GetMesh();
+	if (CharacterMeshComp && CharacterMeshComp->AnimScriptInstance)
+	{
+		CharacterMeshComp->AnimScriptInstance->Montage_Stop(0.0f);
+	}
+}
+
+void ADungeonCharacter::Multicast_PlayAnimMontage_Implementation(class UAnimMontage* AnimMontage, float InPlayRate = 1.f, FName StartSectionName = NAME_None)
+{
+	PlayAnimMontage(AnimMontage);
 }
 
 //void ADungeonCharacter::SetComboReady()
@@ -705,69 +751,6 @@ UAnimationProfile* ADungeonCharacter::GetAnimationProfile()
 //		}
 //	}
 //}
-
-//void ADungeonCharacter::OnHealthChanged(UStatusComponent* OwningStatusComponent, float Health, float HealthDelta, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser)
-//{
-//	if (Health <= 0.0f && StatusComponent->IsAlive())
-//	{
-//		GetMovementComponent()->StopMovementImmediately();
-//		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-//
-//		DetachFromControllerPendingDestroy();
-//		SetLifeSpan(10.0f);
-//
-//		Multicast_OnDeath();
-//	}
-//}
-
-bool ADungeonCharacter::ActivateAbilitiesWithTags(FGameplayTagContainer AbilityTags, bool bAllowRemoteActivation)
-{
-	if (AbilitySystemComponent)
-	{
-		return AbilitySystemComponent->TryActivateAbilitiesByTag(AbilityTags, bAllowRemoteActivation);
-	}
-
-	return false;
-}
-
-void ADungeonCharacter::GetActiveAbilitiesWithTags(FGameplayTagContainer AbilityTags, TArray<UDungeonGameplayAbility*>& ActiveAbilities)
-{
-	if (AbilitySystemComponent)
-	{
-		AbilitySystemComponent->GetActiveAbilitiesWithTags(AbilityTags, ActiveAbilities);
-	}
-}
-
-bool ADungeonCharacter::GetCooldownRemainingForTag(FGameplayTagContainer CooldownTags, float& TimeRemaining, float& CooldownDuration)
-{
-	if (AbilitySystemComponent && CooldownTags.Num() > 0)
-	{
-		TimeRemaining = 0.f;
-		CooldownDuration = 0.f;
-
-		FGameplayEffectQuery const Query = FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(CooldownTags);
-		TArray< TPair<float, float> > DurationAndTimeRemaining = AbilitySystemComponent->GetActiveEffectsTimeRemainingAndDuration(Query);
-		if (DurationAndTimeRemaining.Num() > 0)
-		{
-			int32 BestIdx = 0;
-			float LongestTime = DurationAndTimeRemaining[0].Key;
-			for (int32 Idx = 1; Idx < DurationAndTimeRemaining.Num(); ++Idx)
-			{
-				if (DurationAndTimeRemaining[Idx].Key > LongestTime)
-				{
-					LongestTime = DurationAndTimeRemaining[Idx].Key;
-					BestIdx = Idx;
-				}
-			}
-
-			TimeRemaining = DurationAndTimeRemaining[BestIdx].Key;
-			CooldownDuration = DurationAndTimeRemaining[BestIdx].Value;
-
-			return true;
-		}
-	}
-	return false;
-}
 
 void ADungeonCharacter::HandleDamage(float DamageAmount, const FHitResult& HitInfo, const struct FGameplayTagContainer& DamageTags, ADungeonCharacter* InstigatorPawn, AActor* DamageCauser)
 {
@@ -808,20 +791,6 @@ void ADungeonCharacter::HandleMoveSpeedChanged(float DeltaValue, const struct FG
 	{
 		OnMoveSpeedChanged(DeltaValue, EventTags);
 	}
-}
-
-void ADungeonCharacter::Multicast_StopAllAnimMontages_Implementation()
-{
-	USkeletalMeshComponent* CharacterMeshComp = GetMesh();
-	if (CharacterMeshComp && CharacterMeshComp->AnimScriptInstance)
-	{
-		CharacterMeshComp->AnimScriptInstance->Montage_Stop(0.0f);
-	}
-}
-
-void ADungeonCharacter::Multicast_PlayAnimMontage_Implementation(class UAnimMontage* AnimMontage, float InPlayRate = 1.f, FName StartSectionName = NAME_None)
-{
-	PlayAnimMontage(AnimMontage);
 }
 
 void ADungeonCharacter::Multicast_OnDeath_Implementation()
