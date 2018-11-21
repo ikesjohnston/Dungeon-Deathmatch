@@ -16,7 +16,7 @@ UDungeonAttributeSet::UDungeonAttributeSet()
 	, ManaRegen(5.0f)
 	, Stamina(100.0f)
 	, MaxStamina(100.0f)
-	, StaminaRegen(25.0f)
+	, StaminaRegen(10.0f)
 	, AttackPower(10.0f)
 	, DefensePower(10.0f)
 	, MoveSpeed(100.0f)
@@ -177,7 +177,7 @@ void UDungeonAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 		if (TargetCharacter)
 		{
 			// Call for all stamina changes
-			//TargetCharacter->HandleStaminaChanged(DeltaValue, SourceTags);
+			TargetCharacter->HandleStaminaChanged(DeltaValue, SourceTags);
 		}
 	}
 	else if (Data.EvaluatedData.Attribute == GetMoveSpeedAttribute())

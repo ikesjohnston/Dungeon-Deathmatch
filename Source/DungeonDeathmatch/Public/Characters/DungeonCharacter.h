@@ -186,6 +186,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual float GetMaxStamina() const;
 
+	/** Returns current stamina regen rate*/
+	UFUNCTION(BlueprintCallable, Category = "Attributes")
+	virtual float GetStaminaRegen() const;
+
 	/** Returns current movement speed */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual float GetMoveSpeed() const;

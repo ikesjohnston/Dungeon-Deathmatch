@@ -36,7 +36,6 @@ ADungeonCharacter::ADungeonCharacter()
 	FistColliderRight = CreateDefaultSubobject<USphereComponent>(TEXT("FistColliderRight"));
 	FistColliderRight->SetupAttachment(GetMesh(), "HandRight");
 
-	//StatusComponent = CreateDefaultSubobject<UStatusComponent>(TEXT("StatusComponent"));
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 	EquipmentComponent = CreateDefaultSubobject<UEquipmentComponent>(TEXT("Equipment"));
 
@@ -94,6 +93,7 @@ void ADungeonCharacter::BeginPlay()
 			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(StopSprintAbility.GetDefaultObject()), 1, 0));
 		}
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+		AddStartupGameplayAbilities();
 	}
 }
 
@@ -272,6 +272,11 @@ float ADungeonCharacter::GetStamina() const
 float ADungeonCharacter::GetMaxStamina() const
 {
 	return AttributeSet->GetMaxStamina();
+}
+
+float ADungeonCharacter::GetStaminaRegen() const
+{
+	return AttributeSet->GetStaminaRegen();
 }
 
 float ADungeonCharacter::GetMoveSpeed() const
