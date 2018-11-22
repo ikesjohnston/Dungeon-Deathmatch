@@ -72,6 +72,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Abilities")
 	TArray<TSubclassOf<UDungeonGameplayAbility>> GameplayAbilities;
 
+	/** Abilities to grant to this character on creation for melee combos.
+	 *  These will be activated based on the current combo state.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Abilities")
+	TArray<TSubclassOf<UDungeonGameplayAbility>> UnarmedComboAbilities;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Abilities")
+	uint8 CurrentComboState;
+
 	/** Passive gameplay effects applied on creation */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TArray<TSubclassOf<UGameplayEffect>> PassiveGameplayEffects;
@@ -95,6 +104,10 @@ protected:
 	/** Internal rolling flag for determining movement state transitions */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Movement")
 	bool bIsRolling;
+
+	/** Internal attacking flag for determining combo state transitions */
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
+	bool bIsAttackInProgress;
 
 	/** Internal rolling flag for determining movement state transitions */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Movement")
@@ -122,6 +135,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UDungeonGameplayAbility> StopSprintAbility;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	FGameplayTag UnarmedAttackEventTag;
+
 private:
 	/** Needed for removing and restoring deceleration during rolls */
 	float DefaultWalkingDeceleration;
@@ -145,6 +161,14 @@ public:
 
 	// Implement IAbilitySystemInterface
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	/**
+	 * Adds an ability to the characters ability list
+	 *
+	 * @param Ability The gameplay ability to give to the character
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Abilities")
+	void GiveAbility(TSubclassOf<UGameplayAbility> Ability);
 
 	/**
 	* Attempts to activate all abilities that match the specified tags
@@ -220,7 +244,20 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_UnsheatheWeapon();
 
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
+	void Server_SetAttackInProgress(bool attackInProgress);
+
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
+	void Server_IncreaseCombo();
+
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
+	void Server_ResetCombo();
+
 	UAnimationProfile* GetAnimationProfile();
+
+	USphereComponent* GetLeftFistCollider();
+
+	USphereComponent* GetRightFistCollider();
 
 protected:
 	/** Apply the startup gameplay abilities and effects */
@@ -349,28 +386,29 @@ protected:
 	UFUNCTION(BlueprintPure, Category = "Combat")
 	bool CanAttack();
 
-	UFUNCTION(BlueprintCallable, Category = "Combat")
-	void Attack();
-
-	UFUNCTION(Server, Reliable, WithValidation)
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
 	void Server_Attack();
 
-	UFUNCTION(BlueprintCallable, Category = "Combat")
-	void CancelAttack();
-
-	UFUNCTION(Server, Reliable, WithValidation)
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
 	void Server_CancelAttack();
 
-	/** Plays an animation montage on the server and every client 
-	 *
-	 * @param AnimMontage The montage to play
-	 * @param InPlayRate The play rate of the montage, defaults to 1
-	 * @param StateSectionName The section of the montage to start play at, defaults to the beginning
-	 */
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlayAnimMontage(class UAnimMontage* AnimMontage, float InPlayRate = 1.f, FName StartSectionName = NAME_None);
-
-	/** Stops an animation montage on the server and every client */
+	/** Stops all animation montages on the server and every client */
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_StopAllAnimMontages();
+
+	/** Processes overlap events for the character's left fist during a melee attack. Will only be processed on the server.*/
+	UFUNCTION()
+	void OnFistColliderLeftBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
+
+	/** Processes overlap events for the character's right fist during a melee attack. Will only be processed on the server.*/
+	UFUNCTION()
+	void OnFistColliderRightBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
+
+	/**
+	 * Sends an Damage.Melee.Unarmed Gameplay Event to an Actor hit by this character's unarmed attack. Will only be processed on the server.
+	 *
+	 * @param HitActor The Actor hit by this character's unarmed attack.
+	 */
+	UFUNCTION()
+	void SendUnarmedHitEvent(AActor* HitActor);
 };

@@ -86,7 +86,7 @@ public:
 	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, MoveSpeed)
 
 	/** Damage is a 'temporary' attribute used by the DamageExecution to calculate final damage, which then turns into -Health */
-	UPROPERTY(BlueprintReadOnly, Category = "Mana", meta = (HideFromLevelInfos))
+	UPROPERTY(BlueprintReadOnly, Category = "Damage", meta = (HideFromLevelInfos))
 	FGameplayAttributeData Damage;
 	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, Damage)
 

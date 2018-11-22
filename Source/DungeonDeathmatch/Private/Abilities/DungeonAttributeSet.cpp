@@ -139,10 +139,10 @@ void UDungeonAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 			if (TargetCharacter)
 			{
 				// This is proper damage
-				//TargetCharacter->HandleDamage(LocalDamageDone, HitResult, SourceTags, SourceCharacter, SourceActor);
+				TargetCharacter->HandleDamage(LocalDamageDone, HitResult, SourceTags, SourceCharacter, SourceActor);
 
 				// Call for all health changes
-				//TargetCharacter->HandleHealthChanged(-LocalDamageDone, SourceTags);
+				TargetCharacter->HandleHealthChanged(-LocalDamageDone, SourceTags);
 			}
 		}
 	}

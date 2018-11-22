@@ -15,6 +15,7 @@
 #include "DungeonAttributeSet.h"
 #include "DungeonGameplayAbility.h"
 #include <GameplayEffect.h>
+#include <AbilitySystemBlueprintLibrary.h>
 
 ADungeonCharacter::ADungeonCharacter()
 {
@@ -30,11 +31,17 @@ ADungeonCharacter::ADungeonCharacter()
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm);
 
+	// Set up fist colliders and overlap events for unarmed combat. 
+	// Collision should be off by default, it will get toggled on and off during animations.
 	FistColliderLeft = CreateDefaultSubobject<USphereComponent>(TEXT("FistColliderLeft"));
 	FistColliderLeft->SetupAttachment(GetMesh(), "HandLeft");
+	FistColliderLeft->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	FistColliderLeft->OnComponentBeginOverlap.AddDynamic(this, &ADungeonCharacter::OnFistColliderLeftBeginOverlap);
 
 	FistColliderRight = CreateDefaultSubobject<USphereComponent>(TEXT("FistColliderRight"));
 	FistColliderRight->SetupAttachment(GetMesh(), "HandRight");
+	FistColliderRight->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	FistColliderRight->OnComponentBeginOverlap.AddDynamic(this, &ADungeonCharacter::OnFistColliderRightBeginOverlap);
 
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 	EquipmentComponent = CreateDefaultSubobject<UEquipmentComponent>(TEXT("Equipment"));
@@ -59,6 +66,8 @@ ADungeonCharacter::ADungeonCharacter()
 	MaxRollingSpeed = 1200.0f;
 
 	bAbilitiesInitialized = false;
+
+	CurrentComboState = -1;
 }
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -68,6 +77,7 @@ void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(ADungeonCharacter, bIsCrouching);
 	DOREPLIFETIME(ADungeonCharacter, bIsSprinting);
 	DOREPLIFETIME(ADungeonCharacter, bIsRolling);
+	DOREPLIFETIME(ADungeonCharacter, bIsAttackInProgress);
 	DOREPLIFETIME(ADungeonCharacter, bCanRoll);
 }
 
@@ -117,14 +127,14 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &ADungeonCharacter::OnSprintReleased);
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ADungeonCharacter::ToggleCrouch);
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
-	//PlayerInputComponent->BindAction("Roll", IE_Pressed, this, &ADungeonCharacter::BeginRoll);
+	PlayerInputComponent->BindAction("Roll", IE_Pressed, this, &ADungeonCharacter::BeginRoll);
 
 	// Combat Inputs
-	PlayerInputComponent->BindAction("Sheathe", IE_Pressed, this, &ADungeonCharacter::OnSheathePressed);
+	//PlayerInputComponent->BindAction("Sheathe", IE_Pressed, this, &ADungeonCharacter::OnSheathePressed);
 	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &ADungeonCharacter::OnAttackPressed);
 
 	// Action Inputs
-	PlayerInputComponent->BindAction("Use", IE_Pressed, this, &ADungeonCharacter::OnUsePressed);
+	//PlayerInputComponent->BindAction("Use", IE_Pressed, this, &ADungeonCharacter::OnUsePressed);
 
 	//AbilitySystemComponent->BindAbilityActivationToInputComponent(PlayerInputComponent, FGameplayAbilityInputBinds("ConfirmInput", "CancelInput", "AbilityInput"));
 
@@ -133,6 +143,18 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 UAbilitySystemComponent* ADungeonCharacter::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
+}
+
+void ADungeonCharacter::GiveAbility(TSubclassOf<UGameplayAbility> Ability)
+{
+	if (Role == ROLE_Authority)
+	{
+		if (AbilitySystemComponent && Ability)
+		{
+			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Ability, 1));
+		}
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+	}
 }
 
 bool ADungeonCharacter::ActivateAbilitiesWithTags(FGameplayTagContainer AbilityTags, bool bAllowRemoteActivation)
@@ -194,6 +216,14 @@ void ADungeonCharacter::AddStartupGameplayAbilities()
 		for (TSubclassOf<UDungeonGameplayAbility>& StartupAbility : GameplayAbilities)
 		{
 			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(StartupAbility, GetCharacterLevel(), INDEX_NONE, this));
+		}
+		if (UnarmedComboAbilities.Num() > 0)
+		{
+			CurrentComboState = 0;
+			for (TSubclassOf<UDungeonGameplayAbility>& ComboAbility : UnarmedComboAbilities)
+			{
+				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(ComboAbility, GetCharacterLevel(), INDEX_NONE, this));
+			}
 		}
 
 		// Now apply passives
@@ -619,100 +649,63 @@ bool ADungeonCharacter::Server_UnsheatheWeapon_Validate()
 	return true;
 }
 
+void ADungeonCharacter::OnFistColliderLeftBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
+{
+	if (Role == ROLE_Authority)
+	{
+		if (OtherActor == this)
+		{
+			return;
+		}
+		SendUnarmedHitEvent(OtherActor);
+	}
+}
+
+void ADungeonCharacter::OnFistColliderRightBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
+{
+	if (Role == ROLE_Authority)
+	{
+		if (OtherActor == this)
+		{
+			return;
+		}
+		SendUnarmedHitEvent(OtherActor);
+	}
+}
+
+void ADungeonCharacter::SendUnarmedHitEvent(AActor* HitActor)
+{
+	if (Role == ROLE_Authority)
+	{
+		FGameplayEventData HitEventData = FGameplayEventData();
+		HitEventData.EventTag = UnarmedAttackEventTag;
+		HitEventData.Instigator = this;
+		HitEventData.Target = HitActor;
+
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, UnarmedAttackEventTag, HitEventData);
+	}
+}
+
 void ADungeonCharacter::OnAttackPressed()
 {
-	//if (CombatState == ECombatState::WeaponReady)// || CombatState == ECombatState::AttackingComboReady)
-		Attack();
+	Server_Attack();
 }
 
 bool ADungeonCharacter::CanAttack()
 {
-	if (bIsRolling)
+	if (bIsRolling || bIsAttackInProgress)
 		return false;
 
 	return true;
 }
 
-void ADungeonCharacter::Attack()
-{
-	Server_Attack();
-}
-
-void ADungeonCharacter::CancelAttack()
-{
-	Server_CancelAttack();
-}
-
-void ADungeonCharacter::Server_CancelAttack_Implementation()
-{
-	/*Multicast_StopAllAnimMontages();
-	if (CombatState == ECombatState::Attacking)
-	{
-		CombatState = ECombatState::WeaponReady;
-	}*/
-}
-
-bool ADungeonCharacter::Server_CancelAttack_Validate()
-{
-	return true;
-}
-
 void ADungeonCharacter::Server_Attack_Implementation()
 {
-	//if (CanAttack())
-	//{
-	//	AWeapon* Weapon = Cast<AWeapon>(EquipmentComponent->GetEquipmentInSlot(EEquipmentSlot::MainHand));
-	//	if (Weapon)
-	//	{
-	//		UWeaponData* WeaponData = Weapon->GetWeaponData();
-	//		if (WeaponData)
-	//		{
-	//			//UAnimMontage* AttackMontage = WeaponData->GetAttackMontage()
-	//			/*float ComboOpeningTime = WeaponData->GetComboAttackOpeningTime();
-	//			GetWorldTimerManager().ClearTimer(ComboTimer);
-	//			GetWorldTimerManager().SetTimer(ComboTimer, this, &ADungeonCharacter::SetWeaponReady, ComboOpeningTime, false);
-
-	//			switch (ComboState)
-	//			{
-	//			case EComboState::ComboReset:
-	//				ComboState = EComboState::Attack1;
-	//				GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("Performing attack one."));
-	//				break;
-	//			case EComboState::Attack1:
-	//				if (CombatState == ECombatState::AttackingComboReady)
-	//				{
-	//					ComboState = EComboState::Attack2;
-	//					GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("Performing attack two."));
-	//					CombatState = ECombatState::Attacking;
-	//				}
-	//				break;
-	//			case EComboState::Attack2:
-	//				if (CombatState == ECombatState::AttackingComboReady)
-	//				{
-	//					ComboState = EComboState::Attack3;
-	//					GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("Performing attack three."));
-	//					CombatState = ECombatState::Attacking;
-	//				}
-	//				break;
-	//			case EComboState::Attack3:
-	//				break;
-	//			default:
-	//				break;
-	//			}*/
-	//			
-	//			//CombatState = ECombatState::Attacking;
-	//		}
-	//	}
-	//	else if (AnimationProfile)
-	//	{
-
-	//		UAnimMontage* AttackMontage = AnimationProfile->GetAttackOneMontage();
-	//		if (AttackMontage)
-	//		{
-	//			Multicast_PlayAnimMontage(AttackMontage);
-	//		}
-	//	}
-	//}
+	if (CanAttack())
+	{
+		TSubclassOf<UDungeonGameplayAbility> ComboAbility = UnarmedComboAbilities[CurrentComboState];
+		AbilitySystemComponent->TryActivateAbilityByClass(ComboAbility);
+	}
 }
 
 bool ADungeonCharacter::Server_Attack_Validate()
@@ -720,9 +713,64 @@ bool ADungeonCharacter::Server_Attack_Validate()
 	return true;
 }
 
+void ADungeonCharacter::Server_SetAttackInProgress_Implementation(bool attackInProgress)
+{
+	bIsAttackInProgress = attackInProgress;
+}
+
+bool ADungeonCharacter::Server_SetAttackInProgress_Validate(bool attackInProgress)
+{
+	return true;
+}
+
+
+void ADungeonCharacter::Server_ResetCombo_Implementation()
+{
+	CurrentComboState = 0;
+}
+
+bool ADungeonCharacter::Server_ResetCombo_Validate()
+{
+	return true;
+}
+
+void ADungeonCharacter::Server_IncreaseCombo_Implementation()
+{
+	CurrentComboState++;
+	if (CurrentComboState > (UnarmedComboAbilities.Num() - 1))
+	{
+		CurrentComboState = 0;
+	}
+}
+
+bool ADungeonCharacter::Server_IncreaseCombo_Validate()
+{
+	return true;
+}
+
+void ADungeonCharacter::Server_CancelAttack_Implementation()
+{
+	Multicast_StopAllAnimMontages();
+}
+
+bool ADungeonCharacter::Server_CancelAttack_Validate()
+{
+	return true;
+}
+
 UAnimationProfile* ADungeonCharacter::GetAnimationProfile()
 {
 	return AnimationProfile;
+}
+
+USphereComponent* ADungeonCharacter::GetLeftFistCollider()
+{
+	return FistColliderLeft;
+}
+
+USphereComponent* ADungeonCharacter::GetRightFistCollider()
+{
+	return FistColliderRight;
 }
 
 void ADungeonCharacter::Multicast_StopAllAnimMontages_Implementation()
@@ -734,29 +782,6 @@ void ADungeonCharacter::Multicast_StopAllAnimMontages_Implementation()
 	}
 }
 
-void ADungeonCharacter::Multicast_PlayAnimMontage_Implementation(class UAnimMontage* AnimMontage, float InPlayRate = 1.f, FName StartSectionName = NAME_None)
-{
-	PlayAnimMontage(AnimMontage);
-}
-
-//void ADungeonCharacter::SetComboReady()
-//{
-//	GetWorldTimerManager().ClearTimer(ComboTimer);
-//	AWeapon* Weapon = Cast<AWeapon>(EquipmentComponent->GetEquipmentInSlot(EEquipmentSlot::MainHand));
-//	if (Weapon)
-//	{
-//		UWeaponData* WeaponData = Weapon->GetWeaponData();
-//		if (WeaponData)
-//		{
-//			float ComboOpeningTime = WeaponData->GetComboAttackOpeningTime();
-//
-//			CombatState = ECombatState::AttackingComboReady;
-//			GetWorldTimerManager().SetTimer(ComboTimer, this, &ADungeonCharacter::SetWeaponReady, ComboOpeningTime, false);
-//			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green, TEXT("Ready to continue combo..."));
-//		}
-//	}
-//}
-
 void ADungeonCharacter::HandleDamage(float DamageAmount, const FHitResult& HitInfo, const struct FGameplayTagContainer& DamageTags, ADungeonCharacter* InstigatorPawn, AActor* DamageCauser)
 {
 	OnDamaged(DamageAmount, HitInfo, DamageTags, InstigatorPawn, DamageCauser);
@@ -764,7 +789,11 @@ void ADungeonCharacter::HandleDamage(float DamageAmount, const FHitResult& HitIn
 
 void ADungeonCharacter::HandleHealthChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
 {
-	// We only call the BP callback if this is not the initial ability setup
+	if (Role == ROLE_Authority && GetHealth() <= 0)
+	{
+		Multicast_OnDeath();
+	}
+
 	if (bAbilitiesInitialized)
 	{
 		OnHealthChanged(DeltaValue, EventTags);
@@ -800,7 +829,22 @@ void ADungeonCharacter::HandleMoveSpeedChanged(float DeltaValue, const struct FG
 
 void ADungeonCharacter::Multicast_OnDeath_Implementation()
 {
+	// Stop player input
 	DetachFromControllerPendingDestroy();
 	OnDeath();
-	//GetMesh()->SetSimulatePhysics(true);
+
+	// Ragdoll the character's mesh
+	USkeletalMeshComponent* Mesh = GetMesh();
+	Mesh->SetCollisionObjectType(ECC_PhysicsBody);
+	Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	Mesh->SetAllBodiesSimulatePhysics(true);
+	Mesh->SetSimulatePhysics(true);
+	Mesh->WakeAllRigidBodies();
+
+	// TODO: Add a force to the mesh based on the location and type of hit that killed the character
+
+	// Disable capsule collision so we can walk over ragdoll
+	UCapsuleComponent* Capsule = GetCapsuleComponent();
+	Capsule->SetEnableGravity(false);
+	Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
