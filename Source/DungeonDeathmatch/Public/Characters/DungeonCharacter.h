@@ -18,6 +18,7 @@ class UDungeonGameplayAbility;
 class UInventoryComponent;
 class UEquipmentComponent;
 class USphereComponent;
+class UWidgetComponent;
 class UGameplayEffect;
 
 /**
@@ -76,10 +77,7 @@ protected:
 	 *  These will be activated based on the current combo state.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Abilities")
-	TArray<TSubclassOf<UDungeonGameplayAbility>> UnarmedComboAbilities;
-
-	UPROPERTY(BlueprintReadWrite, Category = "Abilities")
-	uint8 CurrentComboState;
+	TArray<TSubclassOf<UDungeonGameplayAbility>> UnarmedMeleeComboAbilities;
 
 	/** Passive gameplay effects applied on creation */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
@@ -92,6 +90,10 @@ protected:
 	/** Volume for detecting unarmed attack hits with right fist */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
 	USphereComponent* FistColliderRight;
+
+	/** 3D Widget for displaying enemy health */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	UWidgetComponent* HealthPlateWidget;
 
 	/** Internal crouch flag for determining movement state transitions */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Movement")
@@ -136,7 +138,25 @@ protected:
 	TSubclassOf<UDungeonGameplayAbility> StopSprintAbility;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
-	FGameplayTag UnarmedAttackEventTag;
+	TSubclassOf<UDungeonGameplayAbility> JumpAbility;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UDungeonGameplayAbility> CrouchAbility;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UDungeonGameplayAbility> RollAbility;
+
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	FGameplayTag UnarmedMeleeHitEventTag;
+
+	/** Represents the index of the ability to use next in the MeleeCombatAbilities array for the current active weapon */
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
+	uint8 CurrentMeleeComboState;
+
+	/** Flag to determine if character can begin a new melee combo attack */
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
+	bool bIsMeleeComboReady;
 
 private:
 	/** Needed for removing and restoring deceleration during rolls */
@@ -144,6 +164,9 @@ private:
 
 	/** Needed for removing and restoring ground friction during rolls */
 	float DefaultGroundFriction;
+
+	/** Timer used to end a combo a defined amount of time after an attack ends */
+	FTimerHandle MeleeComboEndTimer;
 
 public:
 	// Sets default values for this character's properties
@@ -244,14 +267,35 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_UnsheatheWeapon();
 
+	/** 
+	 * Sets flag to allow or disallow the character to perform their next melee combo attack.
+	 * Only runs on the server.
+	 * @param ComboReady Can perform next attack?
+	 */
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
-	void Server_SetAttackInProgress(bool attackInProgress);
+	void Server_SetMeleeComboReady(bool ComboReady);
 
+	/**
+	 * Inreases the melee combo state to determine the next attack ability to use.
+	 * Only runs on the server.
+	 */
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
-	void Server_IncreaseCombo();
+	void Server_IncreaseMeleeComboState();
 
+	/**
+	 * Starts an internal timer that will disallow the character from performing the next combo attack once expired.
+	 * Only runs on the server.
+	 */
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
-	void Server_ResetCombo();
+	void Server_BeginMeleeComboEndTimer(float TimeToComboEnd);
+
+	/**
+	 * Sets the melee combo state back to zero. This should happen after a full combo has been performed, or after
+	 * the MeleeComboEndTimer expires.
+	 * Only runs on the server.
+	 */
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
+	void Server_ResetMeleeComboState();
 
 	UAnimationProfile* GetAnimationProfile();
 
@@ -410,5 +454,5 @@ protected:
 	 * @param HitActor The Actor hit by this character's unarmed attack.
 	 */
 	UFUNCTION()
-	void SendUnarmedHitEvent(AActor* HitActor);
+	void SendUnarmedMeleeHitEvent(AActor* HitActor);
 };

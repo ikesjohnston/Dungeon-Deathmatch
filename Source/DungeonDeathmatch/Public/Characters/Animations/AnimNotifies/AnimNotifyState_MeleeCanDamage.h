@@ -14,21 +14,21 @@ class DUNGEONDEATHMATCH_API UAnimNotifyState_MeleeCanDamage : public UAnimNotify
 {
 	GENERATED_BODY()
 	
-public: 
-
+protected:
 	/**
-	 * Is this event for an unarmed attack? These will be processed differently from 
+	 * Is this event for an unarmed attack? These will be processed differently from
 	 * normal melee weapons.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AnimNotify")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AnimNotify")
 	bool bIsUnarmedAttack;
 
 	/**
 	 * Is this event for a main handed weapon attack?
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AnimNotify")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AnimNotify")
 	bool bIsMainHandAttack;
 
+public: 
 	UAnimNotifyState_MeleeCanDamage(const FObjectInitializer& ObjectInitializer);
 
 	virtual void NotifyBegin(class USkeletalMeshComponent* MeshComp, class UAnimSequenceBase* Animation, float TotalDuration) override;

@@ -16,6 +16,15 @@
 #include "DungeonGameplayAbility.h"
 #include <GameplayEffect.h>
 #include <AbilitySystemBlueprintLibrary.h>
+#include <Engine/Engine.h>
+#include <WidgetComponent.h>
+
+static int32 LogCombos = 0;
+FAutoConsoleVariableRef CVARLogCombos(
+	TEXT("Dungeon.LogCombos"),
+	LogCombos,
+	TEXT("Log melee combo states"),
+	ECVF_Cheat);
 
 ADungeonCharacter::ADungeonCharacter()
 {
@@ -46,6 +55,13 @@ ADungeonCharacter::ADungeonCharacter()
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 	EquipmentComponent = CreateDefaultSubobject<UEquipmentComponent>(TEXT("Equipment"));
 
+	// Initialize Health Plate widget.
+	HealthPlateWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("Health Plate Widget"));
+	HealthPlateWidget->SetupAttachment(GetCapsuleComponent());
+	HealthPlateWidget->SetWidgetSpace(EWidgetSpace::Screen);
+	HealthPlateWidget->bOwnerNoSee = true;
+	HealthPlateWidget->bOnlyOwnerSee = false;
+
 	// Create ability system component, and set it to be explicitly replicated
 	AbilitySystemComponent = CreateDefaultSubobject<UDungeonAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
@@ -67,7 +83,8 @@ ADungeonCharacter::ADungeonCharacter()
 
 	bAbilitiesInitialized = false;
 
-	CurrentComboState = -1;
+	bIsMeleeComboReady = true;
+	CurrentMeleeComboState = -1;
 }
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -79,6 +96,9 @@ void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(ADungeonCharacter, bIsRolling);
 	DOREPLIFETIME(ADungeonCharacter, bIsAttackInProgress);
 	DOREPLIFETIME(ADungeonCharacter, bCanRoll);
+
+	DOREPLIFETIME(ADungeonCharacter, CurrentMeleeComboState);
+	DOREPLIFETIME(ADungeonCharacter, bIsMeleeComboReady);
 }
 
 // Called when the game starts or when spawned
@@ -101,9 +121,18 @@ void ADungeonCharacter::BeginPlay()
 		{
 			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(StartSprintAbility.GetDefaultObject()), 1, 0));
 			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(StopSprintAbility.GetDefaultObject()), 1, 0));
+			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(JumpAbility.GetDefaultObject()), 1, 0));
+			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(CrouchAbility.GetDefaultObject()), 1, 0));
+			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(RollAbility.GetDefaultObject()), 1, 0));
 		}
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 		AddStartupGameplayAbilities();
+	}
+
+	// Only show health plates on enemy characters
+	if (IsLocallyControlled())
+	{
+		HealthPlateWidget->SetVisibility(false);
 	}
 }
 
@@ -217,10 +246,10 @@ void ADungeonCharacter::AddStartupGameplayAbilities()
 		{
 			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(StartupAbility, GetCharacterLevel(), INDEX_NONE, this));
 		}
-		if (UnarmedComboAbilities.Num() > 0)
+		if (UnarmedMeleeComboAbilities.Num() > 0)
 		{
-			CurrentComboState = 0;
-			for (TSubclassOf<UDungeonGameplayAbility>& ComboAbility : UnarmedComboAbilities)
+			CurrentMeleeComboState = 0;
+			for (TSubclassOf<UDungeonGameplayAbility>& ComboAbility : UnarmedMeleeComboAbilities)
 			{
 				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(ComboAbility, GetCharacterLevel(), INDEX_NONE, this));
 			}
@@ -657,7 +686,7 @@ void ADungeonCharacter::OnFistColliderLeftBeginOverlap(UPrimitiveComponent* Over
 		{
 			return;
 		}
-		SendUnarmedHitEvent(OtherActor);
+		SendUnarmedMeleeHitEvent(OtherActor);
 	}
 }
 
@@ -669,20 +698,20 @@ void ADungeonCharacter::OnFistColliderRightBeginOverlap(UPrimitiveComponent* Ove
 		{
 			return;
 		}
-		SendUnarmedHitEvent(OtherActor);
+		SendUnarmedMeleeHitEvent(OtherActor);
 	}
 }
 
-void ADungeonCharacter::SendUnarmedHitEvent(AActor* HitActor)
+void ADungeonCharacter::SendUnarmedMeleeHitEvent(AActor* HitActor)
 {
 	if (Role == ROLE_Authority)
 	{
 		FGameplayEventData HitEventData = FGameplayEventData();
-		HitEventData.EventTag = UnarmedAttackEventTag;
+		HitEventData.EventTag = UnarmedMeleeHitEventTag;
 		HitEventData.Instigator = this;
 		HitEventData.Target = HitActor;
 
-		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, UnarmedAttackEventTag, HitEventData);
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, UnarmedMeleeHitEventTag, HitEventData);
 	}
 }
 
@@ -693,7 +722,7 @@ void ADungeonCharacter::OnAttackPressed()
 
 bool ADungeonCharacter::CanAttack()
 {
-	if (bIsRolling || bIsAttackInProgress)
+	if (bIsRolling || !bIsMeleeComboReady)
 		return false;
 
 	return true;
@@ -703,8 +732,9 @@ void ADungeonCharacter::Server_Attack_Implementation()
 {
 	if (CanAttack())
 	{
-		TSubclassOf<UDungeonGameplayAbility> ComboAbility = UnarmedComboAbilities[CurrentComboState];
+		TSubclassOf<UDungeonGameplayAbility> ComboAbility = UnarmedMeleeComboAbilities[CurrentMeleeComboState];
 		AbilitySystemComponent->TryActivateAbilityByClass(ComboAbility);
+		bIsMeleeComboReady = false;
 	}
 }
 
@@ -713,37 +743,63 @@ bool ADungeonCharacter::Server_Attack_Validate()
 	return true;
 }
 
-void ADungeonCharacter::Server_SetAttackInProgress_Implementation(bool attackInProgress)
+void ADungeonCharacter::Server_IncreaseMeleeComboState_Implementation()
 {
-	bIsAttackInProgress = attackInProgress;
-}
-
-bool ADungeonCharacter::Server_SetAttackInProgress_Validate(bool attackInProgress)
-{
-	return true;
-}
-
-
-void ADungeonCharacter::Server_ResetCombo_Implementation()
-{
-	CurrentComboState = 0;
-}
-
-bool ADungeonCharacter::Server_ResetCombo_Validate()
-{
-	return true;
-}
-
-void ADungeonCharacter::Server_IncreaseCombo_Implementation()
-{
-	CurrentComboState++;
-	if (CurrentComboState > (UnarmedComboAbilities.Num() - 1))
+	CurrentMeleeComboState++;
+	Server_SetMeleeComboReady(true);
+	if (LogCombos)
 	{
-		CurrentComboState = 0;
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::Server_IncreaseCombo - Melee combo count increased to %d for %s"), CurrentMeleeComboState, *GetName());
+	}
+	if (CurrentMeleeComboState > (UnarmedMeleeComboAbilities.Num() - 1))
+	{
+		if (LogCombos)
+		{
+			UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::Server_IncreaseCombo - Max melee combo count reached for %s"), *GetName());
+		}
+		Server_ResetMeleeComboState();
 	}
 }
 
-bool ADungeonCharacter::Server_IncreaseCombo_Validate()
+bool ADungeonCharacter::Server_IncreaseMeleeComboState_Validate()
+{
+	return true;
+}
+
+void ADungeonCharacter::Server_SetMeleeComboReady_Implementation(bool ComboReady)
+{
+	bIsMeleeComboReady = ComboReady;
+}
+
+bool ADungeonCharacter::Server_SetMeleeComboReady_Validate(bool ComboReady)
+{
+	return true;
+}
+
+void ADungeonCharacter::Server_BeginMeleeComboEndTimer_Implementation(float TimeToComboEnd)
+{
+	if (LogCombos)
+	{
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::Server_BeginMeleeComboEndTimer - Starting melee combo end timer with %f seconds for %s"), TimeToComboEnd, *GetName());
+	}
+	GetWorldTimerManager().SetTimer(MeleeComboEndTimer, this, &ADungeonCharacter::Server_ResetMeleeComboState, TimeToComboEnd, false);
+}
+
+bool ADungeonCharacter::Server_BeginMeleeComboEndTimer_Validate(float TimeToComboEnd)
+{
+	return true;
+}
+
+void ADungeonCharacter::Server_ResetMeleeComboState_Implementation()
+{
+	CurrentMeleeComboState = 0;
+	if (LogCombos)
+	{
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::Server_ResetCombo - Combo count reset for %s"), *GetName());
+	}
+}
+
+bool ADungeonCharacter::Server_ResetMeleeComboState_Validate()
 {
 	return true;
 }
@@ -847,4 +903,8 @@ void ADungeonCharacter::Multicast_OnDeath_Implementation()
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
 	Capsule->SetEnableGravity(false);
 	Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// Disable health plates on dead characters
+	HealthPlateWidget->Deactivate();
+	HealthPlateWidget->SetVisibility(false);
 }

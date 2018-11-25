@@ -155,7 +155,7 @@ void UDungeonAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 		if (TargetCharacter)
 		{
 			// Call for all health changes
-			//TargetCharacter->HandleHealthChanged(DeltaValue, SourceTags);
+			TargetCharacter->HandleHealthChanged(DeltaValue, SourceTags);
 		}
 	}
 	else if (Data.EvaluatedData.Attribute == GetManaAttribute())
@@ -166,7 +166,7 @@ void UDungeonAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 		if (TargetCharacter)
 		{
 			// Call for all mana changes
-			//TargetCharacter->HandleManaChanged(DeltaValue, SourceTags);
+			TargetCharacter->HandleManaChanged(DeltaValue, SourceTags);
 		}
 	}
 	else if (Data.EvaluatedData.Attribute == GetStaminaAttribute())
