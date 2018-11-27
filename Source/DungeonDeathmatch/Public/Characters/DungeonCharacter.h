@@ -95,38 +95,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	UWidgetComponent* HealthPlateWidget;
 
-	/** Internal crouch flag for determining movement state transitions */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Movement")
-	bool bIsCrouching;
-
-	/** Internal sprinting flag for determining movement state transitions */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Movement")
-	bool bIsSprinting;
-
-	/** Internal rolling flag for determining movement state transitions */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Movement")
-	bool bIsRolling;
-
-	/** Internal attacking flag for determining combo state transitions */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
-	bool bIsAttackInProgress;
-
-	/** Internal rolling flag for determining movement state transitions */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Movement")
-	bool bCanRoll;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Movement")
-	float MaxWalkingSpeed;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Movement")
-	float MaxSprintingSpeed;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Movement")
-	float MaxCrouchedWalkingSpeed;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Movement")
-	float MaxRollingSpeed;
-
 	/** Defines all animation montages a player uses in a given situation. This should be updated based on equipment.*/
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
 	UAnimationProfile* AnimationProfile;
@@ -249,12 +217,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual bool SetCharacterLevel(int32 NewLevel);
 
-	UFUNCTION(BlueprintCallable, Category = "Movement")
-	void EndRoll();
-
-	UFUNCTION(BlueprintCallable, Category = "Movement")
-	void SetCanRoll(bool CanRoll);
-
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void SheatheWeapon();
 
@@ -372,14 +334,11 @@ protected:
 	virtual void HandleStaminaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
 	virtual void HandleMoveSpeedChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
 
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_Jump();
-
 	void MoveForward(float Value);
 
 	void MoveRight(float Value);
 
-	virtual void Jump() override;
+	virtual void OnJumpPressed();
 
 	UFUNCTION()
 	void OnSprintPressed();
@@ -387,32 +346,11 @@ protected:
 	UFUNCTION()
 	void OnSprintReleased();
 
-	UFUNCTION(BlueprintCallable, Category = "Movement")
-	void BeginSprint();
+	UFUNCTION()
+	void OnCrouchPressed();
 
-	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_BeginSprint();
-
-	UFUNCTION(BlueprintCallable, Category = "Movement")
-	void EndSprint();
-
-	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_EndSprint();
-
-	UFUNCTION(BlueprintCallable, Category = "Movement")
-	void ToggleCrouch();
-
-	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_ToggleCrouch();
-
-	UFUNCTION(BlueprintCallable, Category = "Movement")
-	void BeginRoll();
-
-	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_BeginRoll();
-
-	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_EndRoll();
+	UFUNCTION()
+	void OnRollPressed();
 
 	UFUNCTION()
 	void OnUsePressed();

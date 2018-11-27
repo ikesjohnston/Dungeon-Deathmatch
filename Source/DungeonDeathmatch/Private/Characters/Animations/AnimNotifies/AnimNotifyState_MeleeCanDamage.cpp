@@ -3,6 +3,7 @@
 #include "AnimNotifyState_MeleeCanDamage.h"
 #include "DungeonCharacter.h"
 #include <Components/SkeletalMeshComponent.h>
+#include <Components/SphereComponent.h>
 
 UAnimNotifyState_MeleeCanDamage::UAnimNotifyState_MeleeCanDamage(const FObjectInitializer& ObjectInitializer)
 {

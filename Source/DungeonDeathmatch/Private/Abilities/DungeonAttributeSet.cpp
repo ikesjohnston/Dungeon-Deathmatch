@@ -180,12 +180,18 @@ void UDungeonAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 			TargetCharacter->HandleStaminaChanged(DeltaValue, SourceTags);
 		}
 	}
+	else if (Data.EvaluatedData.Attribute == GetStaminaRegenAttribute())
+	{
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::PostGameplayEffectExecute - StaminaRegen set to %f"), GetStaminaRegen());
+	}
 	else if (Data.EvaluatedData.Attribute == GetMoveSpeedAttribute())
 	{
 		if (TargetCharacter)
 		{
 			// Call for all movespeed changes
 			TargetCharacter->HandleMoveSpeedChanged(DeltaValue, SourceTags);
+
+			UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::PostGameplayEffectExecute - MoveSpeed set to %f"), GetMoveSpeed());
 		}
 	}
 }

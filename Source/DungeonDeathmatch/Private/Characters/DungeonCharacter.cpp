@@ -69,18 +69,6 @@ ADungeonCharacter::ADungeonCharacter()
 	// Create the attribute set, this replicates by default
 	AttributeSet = CreateDefaultSubobject<UDungeonAttributeSet>(TEXT("AttributeSet"));
 
-	// Movement
-	bIsCrouched = false;
-	bIsSprinting = false;
-	bIsRolling = false;
-	bCanRoll = true;
-
-	// TODO: Make these attributes and initialize them on game startup with passive GAs
-	MaxCrouchedWalkingSpeed = 200.0f;
-	MaxWalkingSpeed = 400.0f;
-	MaxSprintingSpeed = 800.0f;
-	MaxRollingSpeed = 1200.0f;
-
 	bAbilitiesInitialized = false;
 
 	bIsMeleeComboReady = true;
@@ -90,12 +78,6 @@ ADungeonCharacter::ADungeonCharacter()
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(ADungeonCharacter, bIsCrouching);
-	DOREPLIFETIME(ADungeonCharacter, bIsSprinting);
-	DOREPLIFETIME(ADungeonCharacter, bIsRolling);
-	DOREPLIFETIME(ADungeonCharacter, bIsAttackInProgress);
-	DOREPLIFETIME(ADungeonCharacter, bCanRoll);
 
 	DOREPLIFETIME(ADungeonCharacter, CurrentMeleeComboState);
 	DOREPLIFETIME(ADungeonCharacter, bIsMeleeComboReady);
@@ -109,8 +91,6 @@ void ADungeonCharacter::BeginPlay()
 	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
 	if (MovementComp)
 	{
-		MovementComp->MaxWalkSpeed = MaxWalkingSpeed;
-		MovementComp->MaxWalkSpeedCrouched = MaxCrouchedWalkingSpeed;
 		DefaultWalkingDeceleration = MovementComp->BrakingDecelerationWalking;
 		DefaultGroundFriction = MovementComp->GroundFriction;
 	}
@@ -119,11 +99,26 @@ void ADungeonCharacter::BeginPlay()
 	{
 		if (HasAuthority())
 		{
-			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(StartSprintAbility.GetDefaultObject()), 1, 0));
-			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(StopSprintAbility.GetDefaultObject()), 1, 0));
-			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(JumpAbility.GetDefaultObject()), 1, 0));
-			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(CrouchAbility.GetDefaultObject()), 1, 0));
-			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(RollAbility.GetDefaultObject()), 1, 0));
+			if (StartSprintAbility)
+			{
+				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(StartSprintAbility.GetDefaultObject()), 1, 0));
+			}
+			if (StopSprintAbility)
+			{
+				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(StopSprintAbility.GetDefaultObject()), 1, 0));
+			}
+			if (JumpAbility)
+			{
+				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(JumpAbility.GetDefaultObject()), 1, 0));
+			}
+			if (CrouchAbility)
+			{
+				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(CrouchAbility.GetDefaultObject()), 1, 0));
+			}
+			if (RollAbility)
+			{
+				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(RollAbility.GetDefaultObject()), 1, 0));
+			}
 		}
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 		AddStartupGameplayAbilities();
@@ -154,9 +149,9 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAxis("Turn", this, &ADungeonCharacter::AddControllerYawInput);
 	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &ADungeonCharacter::OnSprintPressed);
 	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &ADungeonCharacter::OnSprintReleased);
-	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ADungeonCharacter::ToggleCrouch);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
-	PlayerInputComponent->BindAction("Roll", IE_Pressed, this, &ADungeonCharacter::BeginRoll);
+	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ADungeonCharacter::OnCrouchPressed);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ADungeonCharacter::OnJumpPressed);
+	PlayerInputComponent->BindAction("Roll", IE_Pressed, this, &ADungeonCharacter::OnRollPressed);
 
 	// Combat Inputs
 	//PlayerInputComponent->BindAction("Sheathe", IE_Pressed, this, &ADungeonCharacter::OnSheathePressed);
@@ -374,232 +369,42 @@ void ADungeonCharacter::MoveRight(float Value)
 
 void ADungeonCharacter::OnSprintPressed()
 {
-	AbilitySystemComponent->TryActivateAbilityByClass(StartSprintAbility);
+	if (StartSprintAbility)
+	{
+		AbilitySystemComponent->TryActivateAbilityByClass(StartSprintAbility);
+	}
 }
 
 void ADungeonCharacter::OnSprintReleased()
 {
-	AbilitySystemComponent->TryActivateAbilityByClass(StopSprintAbility);
-}
-
-void ADungeonCharacter::BeginSprint()
-{
-	////Server_BeginSprint();
-	//if (!bIsRolling)
-	//{
-	//	bIsSprinting = true;
-	//	StatusComponent->SetCanRegenStamina(false);
-	//	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-	//	if (MovementComp)
-	//	{
-	//		MovementComp->MaxWalkSpeed = MaxSprintingSpeed;
-	//		MovementComp->UnCrouch(true);
-	//		MovementComp->bWantsToCrouch = false;
-	//		bIsCrouching = false;
-	//	}
-	//}
-}
-
-void ADungeonCharacter::Server_BeginSprint_Implementation()
-{
-	/*if (!bIsRolling)
+	if (StopSprintAbility)
 	{
-		bIsSprinting = true;
-		StatusComponent->SetCanRegenStamina(false);
-		UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-		if (MovementComp)
-		{
-			MovementComp->MaxWalkSpeed = MaxSprintingSpeed;
-			MovementComp->UnCrouch(true);
-			MovementComp->bWantsToCrouch = false;
-			bIsCrouching = false;
-		}
-	}*/
-}
-
-bool ADungeonCharacter::Server_BeginSprint_Validate()
-{
-	return true;
-}
-
-void ADungeonCharacter::EndSprint()
-{
-	//Server_EndSprint();
-
-	/*if (bIsSprinting)
-	{
-		bIsSprinting = false;
-		StatusComponent->SetCanRegenStamina(true);
-		UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-		if (MovementComp)
-		{
-			MovementComp->MaxWalkSpeed = MaxWalkingSpeed;
-			if (!bIsCrouched && !bIsRolling)
-			{
-				MovementComp->UnCrouch(true);
-				MovementComp->bWantsToCrouch = false;
-				bIsCrouching = false;
-			}
-		}
-	}*/
-}
-
-void ADungeonCharacter::Server_EndSprint_Implementation()
-{
-	/*if (bIsSprinting)
-	{
-		bIsSprinting = false;
-		StatusComponent->SetCanRegenStamina(true);
-		UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-		if (MovementComp)
-		{
-			MovementComp->MaxWalkSpeed = MaxWalkingSpeed;
-			if (!bIsCrouched && !bIsRolling)
-			{
-				MovementComp->UnCrouch(true);
-				MovementComp->bWantsToCrouch = false;
-				bIsCrouching = false;
-			}
-		}
-	}*/
-}
-
-bool ADungeonCharacter::Server_EndSprint_Validate()
-{
-	return true;
-}
-
-void ADungeonCharacter::Jump()
-{
-	Server_Jump();
-}
-
-void ADungeonCharacter::Server_Jump_Implementation()
-{
-	/*if (!bIsRolling && StatusComponent->SpendStamina(JumpStaminaCost))
-	{
-		Super::Jump();
-	}*/
-}
-
-bool ADungeonCharacter::Server_Jump_Validate()
-{
-	return true;
-}
-
-void ADungeonCharacter::ToggleCrouch()
-{
-	Server_ToggleCrouch();
-}
-
-void ADungeonCharacter::Server_ToggleCrouch_Implementation()
-{
-	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-	if (MovementComp)
-	{
-		if (!bIsCrouching)
-		{
-			Crouch();
-			bIsCrouching = true;
-			MovementComp->bWantsToCrouch = true;
-		}
-		else if (bIsCrouching && bIsRolling)
-		{
-			bIsCrouching = false;
-		}
-		else if (bIsCrouching && !bIsRolling)
-		{
-			UnCrouch();
-			MovementComp->bWantsToCrouch = false;
-			bIsCrouching = false;
-		}
-
-		if (bIsSprinting)
-		{
-			MovementComp->MaxWalkSpeed = MaxSprintingSpeed;
-		}
-		else
-		{
-			MovementComp->MaxWalkSpeed = MaxWalkingSpeed;
-		}
+		AbilitySystemComponent->TryActivateAbilityByClass(StopSprintAbility);
 	}
 }
 
-bool ADungeonCharacter::Server_ToggleCrouch_Validate()
+void ADungeonCharacter::OnJumpPressed()
 {
-	return true;
-}
-
-void ADungeonCharacter::BeginRoll()
-{
-	Server_BeginRoll();
-}
-
-void ADungeonCharacter::Server_BeginRoll_Implementation()
-{
-	//if (bCanRoll && StatusComponent->SpendStamina(RollStaminaCost))
-	//{
-	//	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-	//	if (MovementComp && !MovementComp->IsFalling())
-	//	{
-	//		bIsRolling = true;
-	//		bCanRoll = false;
-	//		Crouch();
-	//		MovementComp->bWantsToCrouch = true;
-	//		MovementComp->MaxWalkSpeedCrouched = MaxRollingSpeed;
-
-	//		// Immediately roll at max speed in the player's current movement direction,
-	//		// or roll forward if the player is standing still.
-	//		FVector VelocityNormalized = MovementComp->Velocity;
-	//		VelocityNormalized.Normalize();
-	//		if (VelocityNormalized.Size() == 0)
-	//			VelocityNormalized = GetActorForwardVector();
-	//		MovementComp->Velocity = VelocityNormalized * MaxRollingSpeed;
-	//		MovementComp->BrakingDecelerationWalking = 0;
-	//		MovementComp->GroundFriction = 0;
-
-	//		// Cancel any ongoing attacks, shouldn't be able to do damage during a roll
-	//		CancelAttack();
-	//	}
-	//}
-}
-
-bool ADungeonCharacter::Server_BeginRoll_Validate()
-{
-	return true;
-}
-
-void ADungeonCharacter::EndRoll()
-{
-	Server_EndRoll();
-}
-
-void ADungeonCharacter::Server_EndRoll_Implementation()
-{
-	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-	if (MovementComp)
+	if (JumpAbility)
 	{
-		bIsRolling = false;
-		bCanRoll = true;
-		MovementComp->BrakingDecelerationWalking = DefaultWalkingDeceleration;
-		MovementComp->GroundFriction = DefaultGroundFriction;
-		MovementComp->MaxWalkSpeedCrouched = MaxCrouchedWalkingSpeed;
-		if (!bIsCrouching)
-		{
-			UnCrouch();
-			MovementComp->bWantsToCrouch = false;
-		}
+		AbilitySystemComponent->TryActivateAbilityByClass(JumpAbility);
 	}
 }
 
-bool ADungeonCharacter::Server_EndRoll_Validate()
+void ADungeonCharacter::OnCrouchPressed()
 {
-	return true;
+	if (CrouchAbility)
+	{
+		AbilitySystemComponent->TryActivateAbilityByClass(CrouchAbility);
+	}
 }
 
-void ADungeonCharacter::SetCanRoll(bool CanRoll)
+void ADungeonCharacter::OnRollPressed()
 {
-	bCanRoll = CanRoll;
+	if (RollAbility)
+	{
+		AbilitySystemComponent->TryActivateAbilityByClass(RollAbility);
+	}
 }
 
 void ADungeonCharacter::OnUsePressed()
@@ -722,7 +527,7 @@ void ADungeonCharacter::OnAttackPressed()
 
 bool ADungeonCharacter::CanAttack()
 {
-	if (bIsRolling || !bIsMeleeComboReady)
+	if (!bIsMeleeComboReady)
 		return false;
 
 	return true;
@@ -733,8 +538,10 @@ void ADungeonCharacter::Server_Attack_Implementation()
 	if (CanAttack())
 	{
 		TSubclassOf<UDungeonGameplayAbility> ComboAbility = UnarmedMeleeComboAbilities[CurrentMeleeComboState];
-		AbilitySystemComponent->TryActivateAbilityByClass(ComboAbility);
-		bIsMeleeComboReady = false;
+		if (AbilitySystemComponent->TryActivateAbilityByClass(ComboAbility))
+		{
+			bIsMeleeComboReady = false;
+		};
 	}
 }
 
