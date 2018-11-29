@@ -3,7 +3,7 @@
 #include "EquipmentComponent.h"
 #include "Item.h"
 #include "Weapon.h"
-#include "Equippable.h"
+#include "EquipmentInterface.h"
 #include "DungeonCharacter.h"
 #include "UnrealNetwork.h"
 
@@ -54,7 +54,7 @@ void UEquipmentComponent::Multicast_OnEquipItem_Implementation(AItem* Item)
 
 void UEquipmentComponent::Server_EquipItem_Implementation(AItem* Item)
 {
-	if (Cast<IEquippable>(Item))
+	if (Cast<IEquipmentInterface>(Item))
 	{
 		if (!HasItemEquipped(Item))
 		{
@@ -64,7 +64,7 @@ void UEquipmentComponent::Server_EquipItem_Implementation(AItem* Item)
 			ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetOwner());
 			if (Character)
 			{
-				Item->Server_OnEquip(Character);
+//				Item->Server_OnEquip(Character);
 			}
 		}
 	}
@@ -77,7 +77,7 @@ bool UEquipmentComponent::Server_EquipItem_Validate(AItem* Item)
 
 void UEquipmentComponent::Server_UnequipItem_Implementation(AItem* Item)
 {
-	if (Cast<IEquippable>(Item))
+	if (Cast<IEquipmentInterface>(Item))
 	{
 		if (!HasItemEquipped(Item))
 		{

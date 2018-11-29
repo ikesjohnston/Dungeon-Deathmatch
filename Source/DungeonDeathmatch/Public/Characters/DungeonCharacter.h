@@ -18,8 +18,10 @@ class UDungeonGameplayAbility;
 class UInventoryComponent;
 class UEquipmentComponent;
 class USphereComponent;
+class UBoxComponent;
 class UWidgetComponent;
 class UGameplayEffect;
+class AInteractable;
 
 /**
  * Enum that maps gameplay abilities to the action mappings defined in project settings. The enum index corresponds to the
@@ -50,6 +52,9 @@ protected:
 	/** The component used to handle gameplay ability system interactions */
 	UPROPERTY()
 	UDungeonAbilitySystemComponent* AbilitySystemComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UBoxComponent* InteractionVolume;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UInventoryComponent* InventoryComponent;
@@ -126,6 +131,14 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
 	bool bIsMeleeComboReady;
 
+	/** The distance to ray cast forward from the camera for interactables */
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
+	float InteractionCastLenth;
+
+	/** The radius of the multi sphere sweep for interactables */
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
+	float InteractionSweepRadius;
+
 private:
 	/** Needed for removing and restoring deceleration during rolls */
 	float DefaultWalkingDeceleration;
@@ -135,6 +148,12 @@ private:
 
 	/** Timer used to end a combo a defined amount of time after an attack ends */
 	FTimerHandle MeleeComboEndTimer;
+
+	/** The interactable currently being focused by the player*/
+	AInteractable* FocusedInteractable;
+
+	/** A list of all interactables within range of the player*/
+	TArray<AInteractable*> InteractablesInRange;
 
 public:
 	// Sets default values for this character's properties
@@ -149,6 +168,9 @@ protected:
 public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
 
 	// Implement IAbilitySystemInterface
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
@@ -374,9 +396,13 @@ protected:
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
 	void Server_CancelAttack();
 
-	/** Stops all animation montages on the server and every client */
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_StopAllAnimMontages();
+	/** Processes begin overlap events for the interaction volume. Will only be processed on the server.*/
+	UFUNCTION()
+	void OnInteractionVolumeBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
+
+	/** Processes end overlap events for the interaction volume. Will only be processed on the server.*/
+	UFUNCTION()
+	void OnInteractionVolumeEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	/** Processes overlap events for the character's left fist during a melee attack. Will only be processed on the server.*/
 	UFUNCTION()

@@ -42,7 +42,7 @@ void UInventoryComponent::Server_AddItem_Implementation(AItem* Item)
 		ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetOwner());
 		if (Character)
 		{
-			Item->Server_OnPickup(Character);
+//			Item->Server_OnPickup(Character);
 		}
 	}
 }

@@ -81,7 +81,7 @@ void ADungeonPlayerController::CheckCurrentFocus()
 
 		// Perform ray trace
 		PlayerFocusHitResult.Reset();
-		GetWorld()->LineTraceSingleByChannel(PlayerFocusHitResult, TraceStart, TraceEnd, TRACE_PLAYER_ACTIVATION, TraceParams);
+//		GetWorld()->LineTraceSingleByChannel(PlayerFocusHitResult, TraceStart, TraceEnd, TRACE_PLAYER_ACTIVATION, TraceParams);
 
 		// Draw Debug line
 		/*if (PlayerFocusHitResult.GetActor())

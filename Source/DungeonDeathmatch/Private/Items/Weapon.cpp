@@ -9,7 +9,7 @@ AWeapon::AWeapon()
 	PrimaryActorTick.bCanEverTick = false;
 
 	DamagingVolume = CreateDefaultSubobject<UCapsuleComponent>(TEXT("Damaging Volume"));
-	DamagingVolume->SetupAttachment(Mesh);
+	DamagingVolume->SetupAttachment(MeshComponent);
 }
 
 AWeapon::~AWeapon()
@@ -39,13 +39,13 @@ EWeaponState AWeapon::GetWeaponState()
 	return WeaponState;
 }
 
-void AWeapon::Equip(ADungeonCharacter* Character)
+void AWeapon::NativeOnEquip(ADungeonCharacter* EquippingCharacter)
 {
-
+	OnEquip(EquippingCharacter);
 }
 
-void AWeapon::OnEquip(ADungeonCharacter* Character)
+void AWeapon::NativeOnUnequip(ADungeonCharacter* UnequippingCharacter)
 {
-
+	OnUnequip(UnequippingCharacter);
 }
 

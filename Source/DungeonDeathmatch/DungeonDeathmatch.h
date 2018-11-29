@@ -5,4 +5,4 @@
 #include "Engine.h"
 #include "Net/UnrealNetwork.h"
 
-#define TRACE_PLAYER_ACTIVATION ECC_GameTraceChannel1
+#define TRACE_INTERACTABLE ECC_GameTraceChannel1

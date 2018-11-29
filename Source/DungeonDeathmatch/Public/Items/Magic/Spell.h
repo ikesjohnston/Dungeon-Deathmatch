@@ -12,7 +12,7 @@ UENUM(BlueprintType)
 enum class ESpellCastType : uint8
 {
 	Instant		UMETA(DisplayName = "Instant"),
-	Timed		UMETA(DisplayName = "Timed"),
+	Timed		UMETA(DisplayName = "Timed Cast"),
 	Channeled	UMETA(DeisplayName = "Channeled")
 };
 
@@ -55,37 +55,7 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	virtual void NativeOnStartPrimaryFunction(ADungeonCharacter* FunctioningCharacter) override;
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnBeginPrimaryCast();
-
-	UFUNCTION(BlueprintNativeEvent)
-	void BeginPrimaryCast();
-
-	virtual void NativeOnEndPrimaryFunction(ADungeonCharacter* FunctioningCharacter) override;
-	
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnEndPrimaryCast();
-
-	UFUNCTION(BlueprintNativeEvent)
-	void EndPrimaryCast();
-
-	virtual void NativeOnStartSecondaryFunction(ADungeonCharacter* FunctioningCharacter) override;
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnBeginSecondaryCast();
-
-	UFUNCTION(BlueprintNativeEvent)
-	void BeginSecondaryCast();
-
-	virtual void NativeOnEndSecondaryFunction(ADungeonCharacter* FunctioningCharacter) override;
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnEndSecondaryCast();
-
-	UFUNCTION(BlueprintNativeEvent)
-	void EndSecondaryCast();
+	virtual void NativeOnInteract(ADungeonCharacter* InteractingCharacter) override;
 
 protected:
 	// Called when the game starts or when spawned

@@ -4,31 +4,31 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Functionable.h"
+#include "Interactable.h"
 #include "Item.generated.h"
 
 class ADungeonCharacter;
 
 UCLASS()
-class DUNGEONDEATHMATCH_API AItem : public AActor, public IFunctionable
+class DUNGEONDEATHMATCH_API AItem : public AInteractable
 {
 	GENERATED_BODY()
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
-	UStaticMeshComponent* Mesh;
+	FText ItemName;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
-	FString ItemName;
-
+	/** How many pounds does this item weigh? */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
 	float Weight;
 
+	/** How much gold is this item worth? */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
 	float Value;
 
+	/** Icon texture for this item to represent it in the UI */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
-	UTexture2D* ItemImage;
+	UTexture2D* Icon;
 
 public:	
 	// Sets default values for this actor's properties
@@ -43,15 +43,17 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	virtual void NativeOnStartPrimaryFunction(ADungeonCharacter* FunctioningCharacter) override;
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	FText GetItemName();
 
-	virtual void NativeOnFocusStart() override;
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	float GetWeight();
 
-	virtual void NativeOnFocusEnd() override;
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	float GetValue();
 
-	UStaticMeshComponent* GetMeshComponent();
-	
-	virtual void Server_OnPickup(ADungeonCharacter* Character);
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	UTexture2D* GetIcon();
 
-	virtual void Server_OnEquip(ADungeonCharacter* Character);
+	virtual void NativeOnInteract(ADungeonCharacter* InteractingCharacter) override;
 };

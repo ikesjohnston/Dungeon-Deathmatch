@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Items/Item.h"
-#include "Equippable.h"
+#include "EquipmentInterface.h"
 #include "Weapon.generated.h"
 
 class UCapsuleComponent;
@@ -13,7 +13,7 @@ class UWeaponData;
 /*
  * Weapon Class Enum
  * Used to determine what equipment slot a weapon should go into
- * when equipping an item. Also used for tooltips.
+ * when equipping an item, as well as what character animations should be used.
  */
 UENUM(BlueprintType)
 enum class EWeaponClass : uint8
@@ -42,12 +42,12 @@ enum class EWeaponState : uint8
 
 /*
  * Weapon Class
- * The base class for all weapons in the game. Stores damage stats and
+ * The base class for all weapons in the game. Stores damaging effects and
  * generates hit events for melee weapons when they are set in an attacking
  * state.
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API AWeapon : public AItem, public IEquippable
+class DUNGEONDEATHMATCH_API AWeapon : public AItem, public IEquipmentInterface
 {
 	GENERATED_BODY()
 	
@@ -90,10 +90,10 @@ public:
 
 	EWeaponState GetWeaponState();
 
-private:
-	virtual void Equip(ADungeonCharacter* Character) override;
+protected:
 
+	virtual void NativeOnEquip(ADungeonCharacter* EquippingCharacter) override;
 
-	virtual void OnEquip(ADungeonCharacter* Character) override;
+	virtual void NativeOnUnequip(ADungeonCharacter* UnequippingCharacter) override;
 
 };

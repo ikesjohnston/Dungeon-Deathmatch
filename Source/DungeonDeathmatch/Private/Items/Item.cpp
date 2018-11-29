@@ -14,9 +14,8 @@ AItem::AItem()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
-
-	bReplicates = true;
+	Weight = 1.0f;
+	Value = 1.0f;
 }
 
 AItem::~AItem()
@@ -38,57 +37,33 @@ void AItem::Tick(float DeltaTime)
 
 }
 
-void AItem::NativeOnStartPrimaryFunction(ADungeonCharacter* FunctioningCharacter)
+FText AItem::GetItemName()
 {
-	UInventoryComponent* CharacterInventory = Cast<UInventoryComponent>(FunctioningCharacter->GetComponentByClass(UInventoryComponent::StaticClass()));
+	return ItemName;
+}
+
+float AItem::GetWeight()
+{
+	return Weight;
+}
+
+float AItem::GetValue()
+{
+	return Value;
+}
+
+UTexture2D* AItem::GetIcon()
+{
+	return Icon;
+}
+
+void AItem::NativeOnInteract(ADungeonCharacter* InteractingCharacter)
+{
+	Super::NativeOnInteract(InteractingCharacter);
+
+	/*UInventoryComponent* CharacterInventory = Cast<UInventoryComponent>(InteractingCharacter->GetComponentByClass(UInventoryComponent::StaticClass()));
 	if(CharacterInventory)
 	{
 		CharacterInventory->Server_AddItem(this);
-	}
-}
-
-void AItem::NativeOnFocusStart()
-{
-	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
-	for (int i = 0; i < MeshComponents.Num(); i++)
-	{
-		UMeshComponent* MeshComp = Cast<UMeshComponent>(MeshComponents[i]);
-		if (MeshComp)
-		{
-			MeshComp->SetRenderCustomDepth(true);
-		}
-	}
-}
-
-void AItem::NativeOnFocusEnd()
-{
-	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
-	for (int i = 0; i < MeshComponents.Num(); i++)
-	{
-		UMeshComponent* MeshComp = Cast<UMeshComponent>(MeshComponents[i]);
-		if (MeshComp)
-		{
-			MeshComp->SetRenderCustomDepth(false);
-		}
-	}
-}
-
-UStaticMeshComponent* AItem::GetMeshComponent()
-{
-	return Mesh;
-}
-
-void AItem::Server_OnPickup(ADungeonCharacter* Character)
-{
-	// Testing code, to be removed
-	UEquipmentComponent* CharacterEquipment = Cast<UEquipmentComponent>(Character->GetComponentByClass(UEquipmentComponent::StaticClass()));
-	if (CharacterEquipment)
-	{
-		CharacterEquipment->Server_EquipItem(this);
-	}
-}
-
-void AItem::Server_OnEquip(ADungeonCharacter* Character)
-{
-
+	}*/
 }
