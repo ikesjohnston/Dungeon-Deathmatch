@@ -42,11 +42,10 @@ public:
 
 	virtual void NativeOnInteract(ADungeonCharacter* InteractingCharacter) override;
 
-	virtual void NativeOnEnterInteractionVolume() override;
 
-	virtual void NativeOnExitInteractionVolume() override;
+	virtual void OnFocused() override;
 
-	virtual void NativeOnFocused() override;
 
-	virtual void NativeOnUnfocused() override;
+	virtual void OnUnfocused() override;
+
 };

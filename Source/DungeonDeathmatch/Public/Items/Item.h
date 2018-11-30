@@ -56,4 +56,5 @@ public:
 	UTexture2D* GetIcon();
 
 	virtual void NativeOnInteract(ADungeonCharacter* InteractingCharacter) override;
+
 };

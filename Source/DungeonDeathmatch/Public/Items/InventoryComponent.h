@@ -27,7 +27,7 @@ protected:
 
 public:	
 	UFUNCTION(BlueprintPure, Category = "Inventory")
-	TArray<AItem*>& GetInventory();
+	TArray<AItem*> GetInventory();
 
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Inventory")
 	void Server_AddItem(AItem* Item);

@@ -34,8 +34,3 @@ void ASpell::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 }
-
-void ASpell::NativeOnInteract(ADungeonCharacter* InteractingCharacter)
-{	
-
-}

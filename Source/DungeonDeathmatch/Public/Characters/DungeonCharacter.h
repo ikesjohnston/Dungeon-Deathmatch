@@ -18,7 +18,6 @@ class UDungeonGameplayAbility;
 class UInventoryComponent;
 class UEquipmentComponent;
 class USphereComponent;
-class UBoxComponent;
 class UWidgetComponent;
 class UGameplayEffect;
 class AInteractable;
@@ -52,9 +51,6 @@ protected:
 	/** The component used to handle gameplay ability system interactions */
 	UPROPERTY()
 	UDungeonAbilitySystemComponent* AbilitySystemComponent;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
-	UBoxComponent* InteractionVolume;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UInventoryComponent* InventoryComponent;
@@ -100,26 +96,31 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	UWidgetComponent* HealthPlateWidget;
 
-	/** Defines all animation montages a player uses in a given situation. This should be updated based on equipment.*/
+	/** Defines all animation montages a player uses in a given situation. This should be updated based on equipment */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
 	UAnimationProfile* AnimationProfile;
 
+	/** The GameplayAbility to use when pressing the sprint key */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UDungeonGameplayAbility> StartSprintAbility;
 
+	/** The GameplayAbility to use when sprinting must stop, either from releasing the sprint key or external factors */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UDungeonGameplayAbility> StopSprintAbility;
 
+	/** The GameplayAbility to use when pressing the jump key */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UDungeonGameplayAbility> JumpAbility;
 
+	/** The GameplayAbility to use when pressing the crouch key */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UDungeonGameplayAbility> CrouchAbility;
 
+	/** The GameplayAbility to use when pressing the roll key */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UDungeonGameplayAbility> RollAbility;
 
-
+	/** The GameplayTag used to send custom melee hit events to hit actors */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	FGameplayTag UnarmedMeleeHitEventTag;
 
@@ -131,14 +132,6 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
 	bool bIsMeleeComboReady;
 
-	/** The distance to ray cast forward from the camera for interactables */
-	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
-	float InteractionCastLenth;
-
-	/** The radius of the multi sphere sweep for interactables */
-	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
-	float InteractionSweepRadius;
-
 private:
 	/** Needed for removing and restoring deceleration during rolls */
 	float DefaultWalkingDeceleration;
@@ -148,12 +141,6 @@ private:
 
 	/** Timer used to end a combo a defined amount of time after an attack ends */
 	FTimerHandle MeleeComboEndTimer;
-
-	/** The interactable currently being focused by the player*/
-	AInteractable* FocusedInteractable;
-
-	/** A list of all interactables within range of the player*/
-	TArray<AInteractable*> InteractablesInRange;
 
 public:
 	// Sets default values for this character's properties
@@ -169,9 +156,6 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
 	// Implement IAbilitySystemInterface
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
@@ -182,22 +166,6 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Abilities")
 	void GiveAbility(TSubclassOf<UGameplayAbility> Ability);
-
-	/**
-	* Attempts to activate all abilities that match the specified tags
-	* Returns true if it thinks it activated, but it may return false positives due to failure later in activation.
-	* If bAllowRemoteActivation is true, it will remotely activate local/server abilities, if false it will only try to locally activate the ability
-	*/
-	UFUNCTION(BlueprintCallable, Category = "Abilities")
-	bool ActivateAbilitiesWithTags(FGameplayTagContainer AbilityTags, bool bAllowRemoteActivation = true);
-
-	/** Returns a list of active abilities matching the specified tags. This only returns if the ability is currently running */
-	UFUNCTION(BlueprintCallable, Category = "Abilities")
-	void GetActiveAbilitiesWithTags(FGameplayTagContainer AbilityTags, TArray<UDungeonGameplayAbility*>& ActiveAbilities);
-
-	/** Returns total time and remaining time for cooldown tags. Returns false if no active cooldowns found */
-	UFUNCTION(BlueprintCallable, Category = "Abilities")
-	bool GetCooldownRemainingForTag(FGameplayTagContainer CooldownTags, float& TimeRemaining, float& CooldownDuration);
 
 	/** Returns current health, will be 0 if dead */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
@@ -239,18 +207,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual bool SetCharacterLevel(int32 NewLevel);
 
-	UFUNCTION(BlueprintCallable, Category = "Combat")
-	void SheatheWeapon();
-
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_SheatheWeapon();
-
-	UFUNCTION(BlueprintCallable, Category = "Combat")
-	void UnsheatheWeapon();
-
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_UnsheatheWeapon();
-
 	/** 
 	 * Sets flag to allow or disallow the character to perform their next melee combo attack.
 	 * Only runs on the server.
@@ -288,14 +244,14 @@ public:
 	USphereComponent* GetRightFistCollider();
 
 protected:
-	/** Apply the startup gameplay abilities and effects */
+	/** Apply initial acitve and passive gameplay abilities to player. */
 	void AddStartupGameplayAbilities();
 
-	/** Attempts to remove any startup gameplay abilities */
+	/** Attempts to remove any initial acitve and passive gameplay abilities from player. */
 	void RemoveStartupGameplayAbilities();
 
 	/**
-	 * Called when character takes damage, which may have killed them
+	 * BP Event called when character takes damage.
 	 *
 	 * @param DamageAmount Amount of damage that was done, not clamped based on current health
 	 * @param HitInfo The hit info that generated this damage
@@ -303,49 +259,50 @@ protected:
 	 * @param InstigatorCharacter The character that initiated this damage
 	 * @param DamageCauser The actual actor that did the damage, might be a weapon or projectile
 	 */
-	UFUNCTION(BlueprintImplementableEvent)
+	UFUNCTION(BlueprintImplementableEvent, Category = "Attributes")
 	void OnDamaged(float DamageAmount, const FHitResult& HitInfo, const struct FGameplayTagContainer& DamageTags, ADungeonCharacter* InstigatorCharacter, AActor* DamageCauser);
 
 	/**
-	 * Called when health is changed, either from healing or from being damaged
-	 * For damage this is called in addition to OnDamaged/OnKilled
+	 * BP Event called when health is changed.
 	 *
-	 * @param DeltaValue Change in health value, positive for heal, negative for cost. If 0 the delta is unknown
-	 * @param EventTags The gameplay tags of the event that changed mana
+	 * @param DeltaValue Change in health value
+	 * @param EventTags The gameplay tags of the event that changed health
 	 */
-	UFUNCTION(BlueprintImplementableEvent)
+	UFUNCTION(BlueprintImplementableEvent, Category = "Attributes")
 	void OnHealthChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
 
 	/**
-	 * Called when mana is changed, either from healing or from being used as a cost
+	 * BP Event called when mana is changed.
 	 *
-	 * @param DeltaValue Change in mana value, positive for heal, negative for cost. If 0 the delta is unknown
+	 * @param DeltaValue Change in mana value
 	 * @param EventTags The gameplay tags of the event that changed mana
 	 */
-	UFUNCTION(BlueprintImplementableEvent)
+	UFUNCTION(BlueprintImplementableEvent, Category = "Attributes")
 	void OnManaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
 
 	/**
-	 * Called when stamina is changed, either from healing or from being used as a cost
+	 * BP Event called when stamina is changed.
 	 *
-	 * @param DeltaValue Change in stamina value, positive for heal, negative for cost. If 0 the delta is unknown
+	 * @param DeltaValue Change in stamina value
 	 * @param EventTags The gameplay tags of the event that changed stamina
 	 */
-	UFUNCTION(BlueprintImplementableEvent)
+	UFUNCTION(BlueprintImplementableEvent, Category = "Attributes")
 	void OnStaminaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
 
 	/**
-	 * Called when movement speed is changed
+	 * BP Event called when move speed is changed
 	 *
 	 * @param DeltaValue Change in move speed
-	 * @param EventTags The gameplay tags of the event that changed mana
+	 * @param EventTags The gameplay tags of the event that changed move speed
 	 */
-	UFUNCTION(BlueprintImplementableEvent)
+	UFUNCTION(BlueprintImplementableEvent, Category = "Attributes")
 	void OnMoveSpeedChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
 
+	/** BP Event called when the player is killed */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Attributes")
 	void OnDeath();
 
+	/** Multicast function used to play effects all players need to see or hear on player death */
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnDeath();
 
@@ -375,16 +332,24 @@ protected:
 	void OnRollPressed();
 
 	UFUNCTION()
-	void OnUsePressed();
-
-	UFUNCTION(BlueprintCallable, Category = "Interaction")
-	void Use();
+	void OnInteractPressed();
 
 	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_Use();
+	void Server_Interact();
 
+	UFUNCTION()
+	void OnInventoryKeyPressed();
+
+	UFUNCTION()
 	void OnSheathePressed();
 
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_SheatheWeapon();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_UnsheatheWeapon();
+
+	UFUNCTION()
 	void OnAttackPressed();
 
 	UFUNCTION(BlueprintPure, Category = "Combat")
@@ -396,14 +361,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
 	void Server_CancelAttack();
 
-	/** Processes begin overlap events for the interaction volume. Will only be processed on the server.*/
-	UFUNCTION()
-	void OnInteractionVolumeBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
-
-	/** Processes end overlap events for the interaction volume. Will only be processed on the server.*/
-	UFUNCTION()
-	void OnInteractionVolumeEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-
 	/** Processes overlap events for the character's left fist during a melee attack. Will only be processed on the server.*/
 	UFUNCTION()
 	void OnFistColliderLeftBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
@@ -413,7 +370,7 @@ protected:
 	void OnFistColliderRightBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 
 	/**
-	 * Sends an Damage.Melee.Unarmed Gameplay Event to an Actor hit by this character's unarmed attack. Will only be processed on the server.
+	 * Sends a melee hit Gameplay Event to an Actor hit by this character's unarmed attack. Will only be processed on the server.
 	 *
 	 * @param HitActor The Actor hit by this character's unarmed attack.
 	 */

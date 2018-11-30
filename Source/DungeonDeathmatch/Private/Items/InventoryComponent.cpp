@@ -24,7 +24,7 @@ void UInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	DOREPLIFETIME(UInventoryComponent, Inventory);
 }
 
-TArray<AItem*>& UInventoryComponent::GetInventory()
+TArray<AItem*> UInventoryComponent::GetInventory()
 {
 	return Inventory;
 }

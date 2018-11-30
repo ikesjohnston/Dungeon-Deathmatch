@@ -40,17 +40,7 @@ void AInteractable::NativeOnInteract(ADungeonCharacter* InteractingCharacter)
 
 }
 
-void AInteractable::NativeOnEnterInteractionVolume()
-{
-
-}
-
-void AInteractable::NativeOnExitInteractionVolume()
-{
-
-}
-
-void AInteractable::NativeOnFocused()
+void AInteractable::OnFocused()
 {
 	// Add glowing outline to mesh(es). Set by the post processing object in the level. This should only happen on the client.
 	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
@@ -64,7 +54,7 @@ void AInteractable::NativeOnFocused()
 	}
 }
 
-void AInteractable::NativeOnUnfocused()
+void AInteractable::OnUnfocused()
 {
 	// Remove glowing outline from mesh(es). Set by the post processing object in the level. This should only happen on the client.
 	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());

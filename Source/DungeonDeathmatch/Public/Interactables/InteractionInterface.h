@@ -6,7 +6,7 @@
 class ADungeonCharacter;
 
 /**
- * Interface class that all interactable objects, such as doors, chests, and items, should implement. 
+ * Interface class that all interactable objects, such as doors, chests, and items, should implement.
  */
 UINTERFACE(MinimalAPI)
 class UInteractionInterface : public UInterface
@@ -19,19 +19,13 @@ class IInteractionInterface
 	GENERATED_IINTERFACE_BODY()
 
 public:
-
 	virtual void NativeOnInteract(ADungeonCharacter* InteractingCharacter);
 
-	virtual void NativeOnEnterInteractionVolume();
+	virtual void OnFocused();
 
-	virtual void NativeOnExitInteractionVolume();
-
-	virtual void NativeOnFocused();
-
-	virtual void NativeOnUnfocused();
+	virtual void OnUnfocused();
 
 protected:
-
 	UFUNCTION(BlueprintImplementableEvent, Category = "Interaction")
 	void OnInteract(ADungeonCharacter* InteractingCharacter);
 };

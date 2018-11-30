@@ -60,10 +60,5 @@ UTexture2D* AItem::GetIcon()
 void AItem::NativeOnInteract(ADungeonCharacter* InteractingCharacter)
 {
 	Super::NativeOnInteract(InteractingCharacter);
-
-	/*UInventoryComponent* CharacterInventory = Cast<UInventoryComponent>(InteractingCharacter->GetComponentByClass(UInventoryComponent::StaticClass()));
-	if(CharacterInventory)
-	{
-		CharacterInventory->Server_AddItem(this);
-	}*/
 }
+

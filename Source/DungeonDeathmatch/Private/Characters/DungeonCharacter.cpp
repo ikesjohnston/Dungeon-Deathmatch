@@ -1,11 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "DungeonCharacter.h"
+#include "DungeonDeathmatch.h"
 #include <Camera/CameraComponent.h>
 #include <GameFramework/SpringArmComponent.h>
-#include <GameFramework/PawnMovementComponent.h>
-#include <UnrealNetwork.h>
-#include <Engine/World.h>
 #include <Components/CapsuleComponent.h>
 #include <Components/SkeletalMeshComponent.h>
 #include "DungeonPlayerController.h"
@@ -16,12 +14,13 @@
 #include "DungeonGameplayAbility.h"
 #include <GameplayEffect.h>
 #include <AbilitySystemBlueprintLibrary.h>
-#include <Engine/Engine.h>
 #include <WidgetComponent.h>
 #include "Interactables/Interactable.h"
 #include "DrawDebugHelpers.h"
+#include "Kismet/GameplayStatics.h"
 #include <Private/KismetTraceUtils.h>
 
+// Console command for logging melee combo states
 static int32 LogCombos = 0;
 FAutoConsoleVariableRef CVARLogCombos(
 	TEXT("Dungeon.LogCombos"),
@@ -31,7 +30,7 @@ FAutoConsoleVariableRef CVARLogCombos(
 
 ADungeonCharacter::ADungeonCharacter()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
@@ -42,15 +41,6 @@ ADungeonCharacter::ADungeonCharacter()
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm);
-
-	// Set up interaction volume for interactable detection
-	// Collision should be turned off for all channels except for interactables
-	InteractionVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractionVolume"));
-	InteractionVolume->SetupAttachment(GetMesh());
-	InteractionVolume->SetCollisionResponseToAllChannels(ECR_Ignore);
-	InteractionVolume->SetCollisionResponseToChannel(TRACE_INTERACTABLE, ECR_Overlap);
-	InteractionVolume->OnComponentBeginOverlap.AddDynamic(this, &ADungeonCharacter::OnInteractionVolumeBeginOverlap);
-	InteractionVolume->OnComponentEndOverlap.AddDynamic(this, &ADungeonCharacter::OnInteractionVolumeEndOverlap);
 
 	// Set up fist colliders and overlap events for unarmed combat. 
 	// Collision should be off by default, it will get toggled on and off during animations.
@@ -85,9 +75,6 @@ ADungeonCharacter::ADungeonCharacter()
 
 	bIsMeleeComboReady = true;
 	CurrentMeleeComboState = -1;
-
-	InteractionCastLenth = 700.0f;
-	InteractionSweepRadius = 125.0f;
 }
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -169,103 +156,14 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAction("Roll", IE_Pressed, this, &ADungeonCharacter::OnRollPressed);
 
 	// Combat Inputs
-	//PlayerInputComponent->BindAction("Sheathe", IE_Pressed, this, &ADungeonCharacter::OnSheathePressed);
+	PlayerInputComponent->BindAction("Sheathe", IE_Pressed, this, &ADungeonCharacter::OnSheathePressed);
 	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &ADungeonCharacter::OnAttackPressed);
 
 	// Action Inputs
-	//PlayerInputComponent->BindAction("Use", IE_Pressed, this, &ADungeonCharacter::OnUsePressed);
+	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &ADungeonCharacter::OnInteractPressed);
 
 	//AbilitySystemComponent->BindAbilityActivationToInputComponent(PlayerInputComponent, FGameplayAbilityInputBinds("ConfirmInput", "CancelInput", "AbilityInput"));
 
-}
-
-void ADungeonCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-	//// Interactable detection using line and sphere traces, doesn't quite feel right for TPP
-	//// TODO: Move this into the PlayerController class?
-
-	//// Find targeted interactables
-	//AInteractable* ClosestInteractable = nullptr;
-
-	//// First, ray trace forward from the camera for any hits
-	//FVector TraceStart = Camera->GetComponentLocation();
-	//FVector TraceEnd = TraceStart + (Camera->GetForwardVector() * InteractionCastLenth);
-
-	//FHitResult TraceHit;
-	//bool DidTraceHit = GetWorld()->LineTraceSingleByChannel(TraceHit, TraceStart, TraceEnd, ECollisionChannel::ECC_WorldStatic);
-
-	//if (DidTraceHit)
-	//{
-	//	// If the raycast hit an interactable, we're done.
-	//	AInteractable* HitInteractable = Cast<AInteractable>(TraceHit.Actor);
-	//	if (HitInteractable)
-	//	{
-	//		ClosestInteractable = HitInteractable;
-	//	}
-	//	else
-	//	{
-	//		// Otherwise, sphere trace to hit location for interactables that are around the player but not directly on their cursor
-	//		TArray<FHitResult> OutHits;
-
-	//		FVector SweepStart = GetActorLocation();
-	//		FVector SweepEnd = TraceHit.Location;
-
-	//		FCollisionShape Sphere = FCollisionShape::MakeSphere(InteractionSweepRadius);
-
-	//		bool DidSweepHit = GetWorld()->SweepMultiByChannel(OutHits, SweepStart, SweepEnd, FQuat::Identity, ECollisionChannel::ECC_WorldStatic, Sphere);
-	//		//DrawDebugBoxTraceMulti(GetWorld(), SweepStart, SweepEnd, HalfSize, FRotator::ZeroRotator, EDrawDebugTrace::ForOneFrame, isHit, OutHits, FColor::Purple, FColor::Cyan, DeltaTime);
-
-	//		if (DidSweepHit)
-	//		{
-	//			// Find hit interactable closest to cursor
-	//			for (FHitResult SweepHit : OutHits)
-	//			{
-	//				if (GEngine)
-	//				{
-	//					HitInteractable = Cast<AInteractable>(SweepHit.Actor);
-	//					if (HitInteractable)
-	//					{
-	//						if (ClosestInteractable)
-	//						{
-	//							float HitDistance = FVector::Distance(SweepEnd, HitInteractable->GetActorLocation());
-	//							float ClosestDistance = FVector::Distance(SweepEnd, ClosestInteractable->GetActorLocation());
-	//							if (HitDistance < ClosestDistance)
-	//							{
-	//								ClosestInteractable = HitInteractable;
-	//							}
-	//						}
-	//						else
-	//						{
-	//							ClosestInteractable = HitInteractable;
-	//						}
-	//					}
-	//				}
-	//			}
-	//		}
-	//	}
-	//	
-	//	// If interactable was found, set as focus and render outline
-	//	if (ClosestInteractable)
-	//	{
-	//		if (FocusedInteractable)
-	//		{
-	//			FocusedInteractable->NativeOnUnfocused();
-	//		}
-	//		FocusedInteractable = ClosestInteractable;
-	//		FocusedInteractable->NativeOnFocused();
-	//	}
-	//	else
-	//	{
-	//		if (FocusedInteractable)
-	//		{
-	//			FocusedInteractable->NativeOnUnfocused();
-	//			FocusedInteractable = nullptr;
-	//		}
-	//	}
-
-	//}
 }
 
 UAbilitySystemComponent* ADungeonCharacter::GetAbilitySystemComponent() const
@@ -283,55 +181,6 @@ void ADungeonCharacter::GiveAbility(TSubclassOf<UGameplayAbility> Ability)
 		}
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	}
-}
-
-bool ADungeonCharacter::ActivateAbilitiesWithTags(FGameplayTagContainer AbilityTags, bool bAllowRemoteActivation)
-{
-	if (AbilitySystemComponent)
-	{
-		return AbilitySystemComponent->TryActivateAbilitiesByTag(AbilityTags, bAllowRemoteActivation);
-	}
-
-	return false;
-}
-
-void ADungeonCharacter::GetActiveAbilitiesWithTags(FGameplayTagContainer AbilityTags, TArray<UDungeonGameplayAbility*>& ActiveAbilities)
-{
-	if (AbilitySystemComponent)
-	{
-		AbilitySystemComponent->GetActiveAbilitiesWithTags(AbilityTags, ActiveAbilities);
-	}
-}
-
-bool ADungeonCharacter::GetCooldownRemainingForTag(FGameplayTagContainer CooldownTags, float& TimeRemaining, float& CooldownDuration)
-{
-	if (AbilitySystemComponent && CooldownTags.Num() > 0)
-	{
-		TimeRemaining = 0.f;
-		CooldownDuration = 0.f;
-
-		FGameplayEffectQuery const Query = FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(CooldownTags);
-		TArray< TPair<float, float> > DurationAndTimeRemaining = AbilitySystemComponent->GetActiveEffectsTimeRemainingAndDuration(Query);
-		if (DurationAndTimeRemaining.Num() > 0)
-		{
-			int32 BestIdx = 0;
-			float LongestTime = DurationAndTimeRemaining[0].Key;
-			for (int32 Idx = 1; Idx < DurationAndTimeRemaining.Num(); ++Idx)
-			{
-				if (DurationAndTimeRemaining[Idx].Key > LongestTime)
-				{
-					LongestTime = DurationAndTimeRemaining[Idx].Key;
-					BestIdx = Idx;
-				}
-			}
-
-			TimeRemaining = DurationAndTimeRemaining[BestIdx].Key;
-			CooldownDuration = DurationAndTimeRemaining[BestIdx].Value;
-
-			return true;
-		}
-	}
-	return false;
 }
 
 void ADungeonCharacter::AddStartupGameplayAbilities()
@@ -461,6 +310,77 @@ bool ADungeonCharacter::SetCharacterLevel(int32 NewLevel)
 	return false;
 }
 
+void ADungeonCharacter::HandleDamage(float DamageAmount, const FHitResult& HitInfo, const struct FGameplayTagContainer& DamageTags, ADungeonCharacter* InstigatorPawn, AActor* DamageCauser)
+{
+	OnDamaged(DamageAmount, HitInfo, DamageTags, InstigatorPawn, DamageCauser);
+}
+
+void ADungeonCharacter::HandleHealthChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
+{
+	if (Role == ROLE_Authority && GetHealth() <= 0)
+	{
+		Multicast_OnDeath();
+	}
+
+	if (bAbilitiesInitialized)
+	{
+		OnHealthChanged(DeltaValue, EventTags);
+	}
+}
+
+void ADungeonCharacter::HandleManaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
+{
+	if (bAbilitiesInitialized)
+	{
+		OnManaChanged(DeltaValue, EventTags);
+	}
+}
+
+void ADungeonCharacter::HandleStaminaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
+{
+	if (bAbilitiesInitialized)
+	{
+		OnStaminaChanged(DeltaValue, EventTags);
+	}
+}
+
+void ADungeonCharacter::HandleMoveSpeedChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
+{
+	// Update the character movement's walk speed
+	GetCharacterMovement()->MaxWalkSpeed = GetMoveSpeed();
+
+	if (bAbilitiesInitialized)
+	{
+		OnMoveSpeedChanged(DeltaValue, EventTags);
+	}
+}
+
+void ADungeonCharacter::Multicast_OnDeath_Implementation()
+{
+	// Stop player input
+	DetachFromControllerPendingDestroy();
+	OnDeath();
+
+	// Ragdoll the character's mesh
+	USkeletalMeshComponent* Mesh = GetMesh();
+	Mesh->SetCollisionObjectType(ECC_PhysicsBody);
+	Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	Mesh->SetAllBodiesSimulatePhysics(true);
+	Mesh->SetSimulatePhysics(true);
+	Mesh->WakeAllRigidBodies();
+
+	// TODO: Add a force to the mesh based on the location and type of hit that killed the character
+
+	// Disable capsule collision so we can walk over ragdoll
+	UCapsuleComponent* Capsule = GetCapsuleComponent();
+	Capsule->SetEnableGravity(false);
+	Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// Disable health plates on dead characters
+	HealthPlateWidget->Deactivate();
+	HealthPlateWidget->SetVisibility(false);
+}
+
 void ADungeonCharacter::MoveForward(float Value)
 {
 	AddMovementInput(GetActorForwardVector() * Value);
@@ -511,32 +431,32 @@ void ADungeonCharacter::OnRollPressed()
 	}
 }
 
-void ADungeonCharacter::OnUsePressed()
+void ADungeonCharacter::OnInteractPressed()
 {
-	Server_Use();
+	Server_Interact();
 }
 
-void ADungeonCharacter::Use()
+void ADungeonCharacter::Server_Interact_Implementation()
 {
-	Server_Use();
-}
-
-void ADungeonCharacter::Server_Use_Implementation()
-{
-	/*ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
+	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
 	if (PlayerController)
 	{
-		IFunctionable* CurrentFocus = Cast<IFunctionable>(PlayerController->GetCurrentFocus());
-		if (CurrentFocus)
+		AInteractable* FocusedInteractable = PlayerController->GetFocusedInteractable();
+		if (FocusedInteractable)
 		{
-			CurrentFocus->NativeOnStartPrimaryFunction(this);
+			FocusedInteractable->NativeOnInteract(this);
 		}
-	}*/
+	}
 }
 
-bool ADungeonCharacter::Server_Use_Validate()
+bool ADungeonCharacter::Server_Interact_Validate()
 {
 	return true;
+}
+
+void ADungeonCharacter::OnInventoryKeyPressed()
+{
+
 }
 
 void ADungeonCharacter::OnSheathePressed()
@@ -545,11 +465,6 @@ void ADungeonCharacter::OnSheathePressed()
 		UnsheatheWeapon();
 	else if (CombatState == ECombatState::WeaponReady)
 		SheatheWeapon();*/
-}
-
-void ADungeonCharacter::SheatheWeapon()
-{
-	Server_SheatheWeapon();
 }
 
 void ADungeonCharacter::Server_SheatheWeapon_Implementation()
@@ -567,11 +482,6 @@ bool ADungeonCharacter::Server_SheatheWeapon_Validate()
 	return true;
 }
 
-void ADungeonCharacter::UnsheatheWeapon()
-{
-	Server_UnsheatheWeapon();
-}
-
 void ADungeonCharacter::Server_UnsheatheWeapon_Implementation()
 {
 	/*AItem* Item = EquipmentComponent->GetEquipmentInSlot(EEquipmentSlot::MainHand);
@@ -585,65 +495,6 @@ void ADungeonCharacter::Server_UnsheatheWeapon_Implementation()
 bool ADungeonCharacter::Server_UnsheatheWeapon_Validate()
 {
 	return true;
-}
-
-void ADungeonCharacter::OnInteractionVolumeBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
-{
-	AInteractable* Interactable = Cast<AInteractable>(OtherActor);
-	if (Interactable && !InteractablesInRange.Contains(Interactable))
-	{
-		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::OnInteractionVolumeBeginOverlap - Started overlapping %s"), *Interactable->GetName());
-		InteractablesInRange.Add(Interactable);
-		Interactable->NativeOnFocused();
-	}
-}
-
-void ADungeonCharacter::OnInteractionVolumeEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	AInteractable* Interactable = Cast<AInteractable>(OtherActor);
-	if (Interactable && InteractablesInRange.Contains(Interactable))
-	{
-		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::OnInteractionVolumeEndOverlap - Stopped overlapping %s"), *Interactable->GetName());
-		InteractablesInRange.Remove(Interactable);
-		Interactable->NativeOnUnfocused();
-	}
-}
-
-void ADungeonCharacter::OnFistColliderLeftBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
-{
-	if (Role == ROLE_Authority)
-	{
-		if (OtherActor == this)
-		{
-			return;
-		}
-		SendUnarmedMeleeHitEvent(OtherActor);
-	}
-}
-
-void ADungeonCharacter::OnFistColliderRightBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
-{
-	if (Role == ROLE_Authority)
-	{
-		if (OtherActor == this)
-		{
-			return;
-		}
-		SendUnarmedMeleeHitEvent(OtherActor);
-	}
-}
-
-void ADungeonCharacter::SendUnarmedMeleeHitEvent(AActor* HitActor)
-{
-	if (Role == ROLE_Authority)
-	{
-		FGameplayEventData HitEventData = FGameplayEventData();
-		HitEventData.EventTag = UnarmedMeleeHitEventTag;
-		HitEventData.Instigator = this;
-		HitEventData.Target = HitActor;
-
-		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, UnarmedMeleeHitEventTag, HitEventData);
-	}
 }
 
 void ADungeonCharacter::OnAttackPressed()
@@ -762,73 +613,39 @@ USphereComponent* ADungeonCharacter::GetRightFistCollider()
 	return FistColliderRight;
 }
 
-void ADungeonCharacter::HandleDamage(float DamageAmount, const FHitResult& HitInfo, const struct FGameplayTagContainer& DamageTags, ADungeonCharacter* InstigatorPawn, AActor* DamageCauser)
+void ADungeonCharacter::OnFistColliderLeftBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
 {
-	OnDamaged(DamageAmount, HitInfo, DamageTags, InstigatorPawn, DamageCauser);
-}
-
-void ADungeonCharacter::HandleHealthChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
-{
-	if (Role == ROLE_Authority && GetHealth() <= 0)
+	if (Role == ROLE_Authority)
 	{
-		Multicast_OnDeath();
-	}
-
-	if (bAbilitiesInitialized)
-	{
-		OnHealthChanged(DeltaValue, EventTags);
+		if (OtherActor == this)
+		{
+			return;
+		}
+		SendUnarmedMeleeHitEvent(OtherActor);
 	}
 }
 
-void ADungeonCharacter::HandleManaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
+void ADungeonCharacter::OnFistColliderRightBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
 {
-	if (bAbilitiesInitialized)
+	if (Role == ROLE_Authority)
 	{
-		OnManaChanged(DeltaValue, EventTags);
+		if (OtherActor == this)
+		{
+			return;
+		}
+		SendUnarmedMeleeHitEvent(OtherActor);
 	}
 }
 
-void ADungeonCharacter::HandleStaminaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
+void ADungeonCharacter::SendUnarmedMeleeHitEvent(AActor* HitActor)
 {
-	if (bAbilitiesInitialized)
+	if (Role == ROLE_Authority)
 	{
-		OnStaminaChanged(DeltaValue, EventTags);
+		FGameplayEventData HitEventData = FGameplayEventData();
+		HitEventData.EventTag = UnarmedMeleeHitEventTag;
+		HitEventData.Instigator = this;
+		HitEventData.Target = HitActor;
+
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, UnarmedMeleeHitEventTag, HitEventData);
 	}
-}
-
-void ADungeonCharacter::HandleMoveSpeedChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
-{
-	// Update the character movement's walk speed
-	GetCharacterMovement()->MaxWalkSpeed = GetMoveSpeed();
-
-	if (bAbilitiesInitialized)
-	{
-		OnMoveSpeedChanged(DeltaValue, EventTags);
-	}
-}
-
-void ADungeonCharacter::Multicast_OnDeath_Implementation()
-{
-	// Stop player input
-	DetachFromControllerPendingDestroy();
-	OnDeath();
-
-	// Ragdoll the character's mesh
-	USkeletalMeshComponent* Mesh = GetMesh();
-	Mesh->SetCollisionObjectType(ECC_PhysicsBody);
-	Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	Mesh->SetAllBodiesSimulatePhysics(true);
-	Mesh->SetSimulatePhysics(true);
-	Mesh->WakeAllRigidBodies();
-
-	// TODO: Add a force to the mesh based on the location and type of hit that killed the character
-
-	// Disable capsule collision so we can walk over ragdoll
-	UCapsuleComponent* Capsule = GetCapsuleComponent();
-	Capsule->SetEnableGravity(false);
-	Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	// Disable health plates on dead characters
-	HealthPlateWidget->Deactivate();
-	HealthPlateWidget->SetVisibility(false);
 }

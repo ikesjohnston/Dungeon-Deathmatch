@@ -13,22 +13,12 @@ void IInteractionInterface::NativeOnInteract(ADungeonCharacter* InteractingChara
 	Execute_OnInteract(_getUObject(), InteractingCharacter);
 }
 
-void IInteractionInterface::NativeOnEnterInteractionVolume()
+void IInteractionInterface::OnFocused()
 {
 
 }
 
-void IInteractionInterface::NativeOnExitInteractionVolume()
-{
-
-}
-
-void IInteractionInterface::NativeOnFocused()
-{
-
-}
-
-void IInteractionInterface::NativeOnUnfocused()
+void IInteractionInterface::OnUnfocused()
 {
 
 }
