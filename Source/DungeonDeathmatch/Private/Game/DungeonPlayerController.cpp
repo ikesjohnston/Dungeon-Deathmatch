@@ -6,6 +6,7 @@
 #include <GameFramework/Actor.h>
 #include <DrawDebugHelpers.h>
 #include "Interactable.h"
+#include "DungeonHUD.h"
 
 // Console command for drawing interaction cast debug shapes
 static int32 DebugInteraction = 0;
@@ -37,6 +38,38 @@ void ADungeonPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 AInteractable* ADungeonPlayerController::GetFocusedInteractable()
 {
 	return FocusedInteractable;
+}
+
+void ADungeonPlayerController::OnInventoryKeyPressed()
+{
+	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
+	if (DungeonHUD)
+	{
+		if (DungeonHUD->AreInventoryAndEquipmentMenusVisible())
+		{
+			DungeonHUD->HideInventoryAndEquipmentMenus();
+			bShowMouseCursor = false;
+			EnableInput(this);
+		}
+		else
+		{
+			DungeonHUD->ShowInventoryAndEquipmentMenus();
+			bShowMouseCursor = true;
+			DisableInput(this);
+		}
+	}
+}
+
+void ADungeonPlayerController::OnEscapeKeyPressed()
+{
+	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
+	if (DungeonHUD)
+	{
+		DungeonHUD->HideInventoryAndEquipmentMenus();
+		bShowMouseCursor = false;
+		EnableInput(this);
+		
+	}
 }
 
 void ADungeonPlayerController::Server_SetFocusedInteractable_Implementation(AInteractable* Interactable)

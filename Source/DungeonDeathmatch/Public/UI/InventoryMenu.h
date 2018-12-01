@@ -3,18 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Items/Magic/Spell.h"
-#include "ProjectileSpell.generated.h"
+#include "Blueprint/UserWidget.h"
+#include "InventoryMenu.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API AProjectileSpell : public ASpell
+class DUNGEONDEATHMATCH_API UInventoryMenu : public UUserWidget
 {
 	GENERATED_BODY()
-	
-	
-	
 	
 };

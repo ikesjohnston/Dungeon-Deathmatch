@@ -317,31 +317,28 @@ protected:
 
 	void MoveRight(float Value);
 
-	virtual void OnJumpPressed();
+	virtual void OnJumpKeyPressed();
 
 	UFUNCTION()
-	void OnSprintPressed();
+	void OnSprintKeyPressed();
 
 	UFUNCTION()
-	void OnSprintReleased();
+	void OnSprintKeyReleased();
 
 	UFUNCTION()
-	void OnCrouchPressed();
+	void OnCrouchKeyPressed();
 
 	UFUNCTION()
-	void OnRollPressed();
+	void OnRollKeyPressed();
 
 	UFUNCTION()
-	void OnInteractPressed();
+	void OnInteractKeyPressed();
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_Interact();
 
 	UFUNCTION()
-	void OnInventoryKeyPressed();
-
-	UFUNCTION()
-	void OnSheathePressed();
+	void OnSheatheKeyPressed();
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_SheatheWeapon();
@@ -350,7 +347,7 @@ protected:
 	void Server_UnsheatheWeapon();
 
 	UFUNCTION()
-	void OnAttackPressed();
+	void OnAttackKeyPressed();
 
 	UFUNCTION(BlueprintPure, Category = "Combat")
 	bool CanAttack();
@@ -376,4 +373,16 @@ protected:
 	 */
 	UFUNCTION()
 	void SendUnarmedMeleeHitEvent(AActor* HitActor);
+
+	UFUNCTION()
+	void OnBlockKeyPressed();
+
+	UFUNCTION()
+	void OnBlockKeyReleased();
+
+	UFUNCTION()
+	void OnInventoryKeyPressed();
+
+	UFUNCTION()
+	void OnEscapeKeyPressed();
 };

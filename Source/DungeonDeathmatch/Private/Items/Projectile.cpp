@@ -5,7 +5,6 @@
 #include <Components/StaticMeshComponent.h>
 #include <Kismet/GameplayStatics.h>
 #include <Particles/ParticleSystemComponent.h>
-#include "StatusComponent.h"
 #include <PhysicsEngine/RadialForceComponent.h>
 
 

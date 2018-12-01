@@ -149,18 +149,22 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAxis("MoveRight", this, &ADungeonCharacter::MoveRight);
 	PlayerInputComponent->BindAxis("LookUp", this, &ADungeonCharacter::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("Turn", this, &ADungeonCharacter::AddControllerYawInput);
-	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &ADungeonCharacter::OnSprintPressed);
-	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &ADungeonCharacter::OnSprintReleased);
-	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ADungeonCharacter::OnCrouchPressed);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ADungeonCharacter::OnJumpPressed);
-	PlayerInputComponent->BindAction("Roll", IE_Pressed, this, &ADungeonCharacter::OnRollPressed);
-
-	// Combat Inputs
-	PlayerInputComponent->BindAction("Sheathe", IE_Pressed, this, &ADungeonCharacter::OnSheathePressed);
-	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &ADungeonCharacter::OnAttackPressed);
+	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &ADungeonCharacter::OnSprintKeyPressed);
+	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &ADungeonCharacter::OnSprintKeyReleased);
+	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ADungeonCharacter::OnCrouchKeyPressed);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ADungeonCharacter::OnJumpKeyPressed);
+	PlayerInputComponent->BindAction("Roll", IE_Pressed, this, &ADungeonCharacter::OnRollKeyPressed);
 
 	// Action Inputs
-	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &ADungeonCharacter::OnInteractPressed);
+	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &ADungeonCharacter::OnInteractKeyPressed);
+	PlayerInputComponent->BindAction("Sheathe", IE_Pressed, this, &ADungeonCharacter::OnSheatheKeyPressed);
+	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &ADungeonCharacter::OnAttackKeyPressed);
+	PlayerInputComponent->BindAction("Block", IE_Pressed, this, &ADungeonCharacter::OnBlockKeyPressed);
+	PlayerInputComponent->BindAction("Block", IE_Released, this, &ADungeonCharacter::OnBlockKeyReleased);
+
+	// Menu Inputs
+	PlayerInputComponent->BindAction("Inventory", IE_Pressed, this, &ADungeonCharacter::OnInventoryKeyPressed);
+	PlayerInputComponent->BindAction("Escape", IE_Pressed, this, &ADungeonCharacter::OnEscapeKeyPressed);
 
 	//AbilitySystemComponent->BindAbilityActivationToInputComponent(PlayerInputComponent, FGameplayAbilityInputBinds("ConfirmInput", "CancelInput", "AbilityInput"));
 
@@ -391,7 +395,7 @@ void ADungeonCharacter::MoveRight(float Value)
 	AddMovementInput(GetActorRightVector() * Value);
 }
 
-void ADungeonCharacter::OnSprintPressed()
+void ADungeonCharacter::OnSprintKeyPressed()
 {
 	if (StartSprintAbility)
 	{
@@ -399,7 +403,7 @@ void ADungeonCharacter::OnSprintPressed()
 	}
 }
 
-void ADungeonCharacter::OnSprintReleased()
+void ADungeonCharacter::OnSprintKeyReleased()
 {
 	if (StopSprintAbility)
 	{
@@ -407,7 +411,7 @@ void ADungeonCharacter::OnSprintReleased()
 	}
 }
 
-void ADungeonCharacter::OnJumpPressed()
+void ADungeonCharacter::OnJumpKeyPressed()
 {
 	if (JumpAbility)
 	{
@@ -415,7 +419,7 @@ void ADungeonCharacter::OnJumpPressed()
 	}
 }
 
-void ADungeonCharacter::OnCrouchPressed()
+void ADungeonCharacter::OnCrouchKeyPressed()
 {
 	if (CrouchAbility)
 	{
@@ -423,7 +427,7 @@ void ADungeonCharacter::OnCrouchPressed()
 	}
 }
 
-void ADungeonCharacter::OnRollPressed()
+void ADungeonCharacter::OnRollKeyPressed()
 {
 	if (RollAbility)
 	{
@@ -431,7 +435,7 @@ void ADungeonCharacter::OnRollPressed()
 	}
 }
 
-void ADungeonCharacter::OnInteractPressed()
+void ADungeonCharacter::OnInteractKeyPressed()
 {
 	Server_Interact();
 }
@@ -454,12 +458,7 @@ bool ADungeonCharacter::Server_Interact_Validate()
 	return true;
 }
 
-void ADungeonCharacter::OnInventoryKeyPressed()
-{
-
-}
-
-void ADungeonCharacter::OnSheathePressed()
+void ADungeonCharacter::OnSheatheKeyPressed()
 {
 	/*if (CombatState == ECombatState::WeaponSheathed)
 		UnsheatheWeapon();
@@ -497,7 +496,7 @@ bool ADungeonCharacter::Server_UnsheatheWeapon_Validate()
 	return true;
 }
 
-void ADungeonCharacter::OnAttackPressed()
+void ADungeonCharacter::OnAttackKeyPressed()
 {
 	Server_Attack();
 }
@@ -647,5 +646,35 @@ void ADungeonCharacter::SendUnarmedMeleeHitEvent(AActor* HitActor)
 		HitEventData.Target = HitActor;
 
 		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, UnarmedMeleeHitEventTag, HitEventData);
+	}
+}
+
+void ADungeonCharacter::OnBlockKeyPressed()
+{
+
+}
+
+void ADungeonCharacter::OnBlockKeyReleased()
+{
+
+}
+
+void ADungeonCharacter::OnInventoryKeyPressed()
+{
+	// Pass input to controller for processing
+	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
+	if (PlayerController)
+	{
+		PlayerController->OnInventoryKeyPressed();
+	}
+}
+
+void ADungeonCharacter::OnEscapeKeyPressed()
+{
+	// Pass input to controller for processing
+	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
+	if (PlayerController)
+	{
+		PlayerController->OnEscapeKeyPressed();
 	}
 }

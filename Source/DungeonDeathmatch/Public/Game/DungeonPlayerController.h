@@ -42,6 +42,10 @@ public:
 
 	AInteractable* GetFocusedInteractable();
 
+	void OnInventoryKeyPressed();
+
+	void OnEscapeKeyPressed();
+
 protected:
 	UFUNCTION(Server, Unreliable, WithValidation)
 	void Server_SetFocusedInteractable(AInteractable* Actor);

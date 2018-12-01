@@ -3,12 +3,16 @@
 #include "DungeonGameMode.h"
 #include "DungeonGameState.h"
 #include "DungeonPlayerState.h"
+#include "DungeonCharacter.h"
+#include "DungeonHUD.h"
 
 
 ADungeonGameMode::ADungeonGameMode()
 {
+	DefaultPawnClass = ADungeonCharacter::StaticClass();
 	GameStateClass = ADungeonGameState::StaticClass();
 	PlayerStateClass = ADungeonPlayerState::StaticClass();
+	HUDClass = ADungeonHUD::StaticClass();
 
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.TickInterval = 1.0f;

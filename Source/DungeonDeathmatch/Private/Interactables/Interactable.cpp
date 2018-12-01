@@ -3,6 +3,7 @@
 #include "Interactable.h"
 #include "DungeonCharacter.h"
 #include <Components/StaticMeshComponent.h>
+#include "DungeonDeathmatch.h"
 
 // Sets default values
 AInteractable::AInteractable()
