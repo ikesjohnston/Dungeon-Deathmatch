@@ -58,6 +58,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UEquipmentComponent* EquipmentComponent;
 
+	/** Relative location reference for where to "respawn" dropped items */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	USphereComponent* ItemDropLocation;
+
 	/** List of attributes modified by the ability system */
 	UPROPERTY()
 	UDungeonAttributeSet* AttributeSet;
@@ -132,6 +136,8 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
 	bool bIsMeleeComboReady;
 
+	bool bCanLook;
+
 private:
 	/** Needed for removing and restoring deceleration during rolls */
 	float DefaultWalkingDeceleration;
@@ -158,6 +164,8 @@ public:
 
 	// Implement IAbilitySystemInterface
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	void SetCanLook(bool CanLook);
 
 	/**
 	 * Adds an ability to the characters ability list
@@ -316,6 +324,10 @@ protected:
 	void MoveForward(float Value);
 
 	void MoveRight(float Value);
+
+	void LookRight(float YawInput);
+	
+	void LookUp(float PitchInput);
 
 	virtual void OnJumpKeyPressed();
 

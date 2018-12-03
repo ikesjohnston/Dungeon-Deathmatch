@@ -57,6 +57,9 @@ ADungeonCharacter::ADungeonCharacter()
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 	EquipmentComponent = CreateDefaultSubobject<UEquipmentComponent>(TEXT("Equipment"));
 
+	ItemDropLocation = CreateDefaultSubobject<USphereComponent>(TEXT("ItemDropLocation"));
+	ItemDropLocation->SetupAttachment(GetMesh());
+
 	// Initialize Health Plate widget.
 	HealthPlateWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("Health Plate Widget"));
 	HealthPlateWidget->SetupAttachment(GetCapsuleComponent());
@@ -75,6 +78,8 @@ ADungeonCharacter::ADungeonCharacter()
 
 	bIsMeleeComboReady = true;
 	CurrentMeleeComboState = -1;
+
+	bCanLook = true;
 }
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -147,8 +152,8 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	// Movement Inputs
 	PlayerInputComponent->BindAxis("MoveForward", this, &ADungeonCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &ADungeonCharacter::MoveRight);
-	PlayerInputComponent->BindAxis("LookUp", this, &ADungeonCharacter::AddControllerPitchInput);
-	PlayerInputComponent->BindAxis("Turn", this, &ADungeonCharacter::AddControllerYawInput);
+	PlayerInputComponent->BindAxis("LookUp", this, &ADungeonCharacter::LookUp);
+	PlayerInputComponent->BindAxis("Turn", this, &ADungeonCharacter::LookRight);
 	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &ADungeonCharacter::OnSprintKeyPressed);
 	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &ADungeonCharacter::OnSprintKeyReleased);
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ADungeonCharacter::OnCrouchKeyPressed);
@@ -395,6 +400,27 @@ void ADungeonCharacter::MoveRight(float Value)
 	AddMovementInput(GetActorRightVector() * Value);
 }
 
+void ADungeonCharacter::LookRight(float YawInput)
+{
+	if (bCanLook)
+	{
+		AddControllerYawInput(YawInput);
+	}
+}
+
+void ADungeonCharacter::LookUp(float PitchInput)
+{
+	if (bCanLook)
+	{
+		AddControllerPitchInput(PitchInput);
+	}
+}
+
+void ADungeonCharacter::SetCanLook(bool CanLook)
+{
+	bCanLook = CanLook;
+}
+
 void ADungeonCharacter::OnSprintKeyPressed()
 {
 	if (StartSprintAbility)
@@ -449,6 +475,11 @@ void ADungeonCharacter::Server_Interact_Implementation()
 		if (FocusedInteractable)
 		{
 			FocusedInteractable->NativeOnInteract(this);
+			AItem* Item = Cast<AItem>(FocusedInteractable);
+			if (Item)
+			{
+				InventoryComponent->Server_AddItem(Item);
+			}
 		}
 	}
 }
