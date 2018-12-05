@@ -8,6 +8,7 @@
 #include "Interactable.h"
 #include "DungeonHUD.h"
 #include "DungeonCharacter.h"
+#include <GameFramework/PlayerController.h>
 
 // Console command for drawing interaction cast debug shapes
 static int32 DebugInteraction = 0;
@@ -70,6 +71,11 @@ void ADungeonPlayerController::OnEscapeKeyPressed()
 		bShowMouseCursor = false;
 		SetPawnCanLook(false);	
 	}
+}
+
+TArray<FInputActionKeyMapping> ADungeonPlayerController::GetKeyForAction(FName ActionName)
+{
+	return PlayerInput->GetKeysForAction(ActionName);
 }
 
 void ADungeonPlayerController::Server_SetFocusedInteractable_Implementation(AInteractable* Interactable)

@@ -37,4 +37,8 @@ protected:
 	/** The number of items in this item stack, if one exists */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Inventory")
 	uint8 StackNumber;
+
+public:
+	UFUNCTION(BlueprintCallable)
+	bool IsOccupied();
 };

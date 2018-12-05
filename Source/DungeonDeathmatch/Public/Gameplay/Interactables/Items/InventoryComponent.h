@@ -6,6 +6,9 @@
 #include "Components/ActorComponent.h"
 #include "InventoryComponent.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnItemAddedSignature, class AItem*, Item);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnItemRemovedSignature, class AItem*, Item);
+
 class AItem;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -13,9 +16,21 @@ class DUNGEONDEATHMATCH_API UInventoryComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
+public:
+	UPROPERTY(BlueprintAssignable, Category = "Inventory")
+	/* Delegate called when item is added. For UI updates. */
+	FOnItemAddedSignature OnItemAdded;
+
+	UPROPERTY(BlueprintAssignable, Category = "Inventory")
+	/* Delegate called when item is removed. For UI updates. */
+	FOnItemRemovedSignature OnItemRemoved;
+
 protected:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	TArray<AItem*> Inventory;
+
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+	float InventoryCapactiy;
 
 public:	
 	// Sets default values for this component's properties

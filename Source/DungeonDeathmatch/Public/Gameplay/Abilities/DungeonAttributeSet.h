@@ -70,12 +70,27 @@ public:
 	FGameplayAttributeData StaminaRegen;
 	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, StaminaRegen)
 
-	/** AttackPower of the attacker is multiplied by the base Damage to reduce health, so 1.0 means no bonus */
+	/** Strength determines a player's base health and stamina, and augments strength weapons and skills. */
+	UPROPERTY(BlueprintReadOnly, Category = "Strength", ReplicatedUsing = OnRep_Strength)
+	FGameplayAttributeData Strength;
+	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, Strength)
+
+	/** Finesse determines a player's speed, and augments finesse weapons and skills. */
+	UPROPERTY(BlueprintReadOnly, Category = "Finnese", ReplicatedUsing = OnRep_Finesse)
+	FGameplayAttributeData Finnese;
+	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, Finnese)
+
+	/** Spirit determines a player's base mana, and augments spirit weapons and skills. */
+	UPROPERTY(BlueprintReadOnly, Category = "Spirit", ReplicatedUsing = OnRep_Spirit)
+	FGameplayAttributeData Spirit;
+	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, Spirit)
+
+	/** Base attack power used in dealing damage, increases automatically with each level */
 	UPROPERTY(BlueprintReadOnly, Category = "Damage", ReplicatedUsing = OnRep_AttackPower)
 	FGameplayAttributeData AttackPower;
 	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, AttackPower)
 
-	/** Base Damage is divided by DefensePower to get actual damage done, so 1.0 means no bonus */
+	/** Base defense power used in mitigating damage, increased by armor and skills */
 	UPROPERTY(BlueprintReadOnly, Category = "Damage", ReplicatedUsing = OnRep_DefensePower)
 	FGameplayAttributeData DefensePower;
 	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, DefensePower)
@@ -138,6 +153,15 @@ protected:
 
 	UFUNCTION()
 	virtual void OnRep_StaminaRegen();
+
+	UFUNCTION()
+	virtual void OnRep_Strength();
+
+	UFUNCTION()
+	virtual void OnRep_Finesse();
+
+	UFUNCTION()
+	virtual void OnRep_Spirit();
 
 	UFUNCTION()
 	virtual void OnRep_AttackPower();

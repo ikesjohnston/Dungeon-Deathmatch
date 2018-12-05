@@ -64,6 +64,11 @@ bool UInventoryComponent::Server_RemoveItem_Validate(AItem* Item)
 
 void UInventoryComponent::Multicast_OnItemAdd_Implementation(AItem* Item)
 {
+	ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetOwner());
+	if (Character && Character->IsLocallyControlled())
+	{
+		OnItemAdded.Broadcast(Item);
+	}
 	// Hide item in world
 	Item->SetActorEnableCollision(false);
 	Item->GetMeshComponent()->SetSimulatePhysics(false);
@@ -73,6 +78,11 @@ void UInventoryComponent::Multicast_OnItemAdd_Implementation(AItem* Item)
 
 void UInventoryComponent::Multicast_OnItemRemove_Implementation(AItem* Item)
 {
+	ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetOwner());
+	if (Character && Character->IsLocallyControlled())
+	{
+		OnItemRemoved.Broadcast(Item);
+	}
 	Item->SetActorEnableCollision(true);
 	Item->GetMeshComponent()->SetSimulatePhysics(true);
 	Item->GetMeshComponent()->SetVisibility(true);

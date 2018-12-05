@@ -259,6 +259,21 @@ void UDungeonAttributeSet::OnRep_StaminaRegen()
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, StaminaRegen);
 }
 
+void UDungeonAttributeSet::OnRep_Strength()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, Strength);
+}
+
+void UDungeonAttributeSet::OnRep_Finesse()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, Finnese);
+}
+
+void UDungeonAttributeSet::OnRep_Spirit()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, Spirit);
+}
+
 void UDungeonAttributeSet::OnRep_AttackPower()
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, AttackPower);

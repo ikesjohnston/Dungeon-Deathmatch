@@ -4,10 +4,11 @@
 
 #include "DungeonDeathmatch.h"
 #include "GameFramework/PlayerController.h"
+#include <GameFramework/PlayerInput.h>
 #include "DungeonPlayerController.generated.h"
 
 class AInteractable;
-
+class AItem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractableFocusedSignature, class AInteractable*, Interactable);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInteractableUnfocusedSignature);
@@ -57,6 +58,13 @@ public:
 	void OnInventoryKeyPressed();
 
 	void OnEscapeKeyPressed();
+
+	/**
+	 * Get key bindings for specific action.
+	 * @param ActionName The name of the action as defined in Input settings in the editor
+	 */
+	UFUNCTION(BlueprintCallable)
+	TArray<FInputActionKeyMapping> GetKeyForAction(FName ActionName);
 
 protected:
 	UFUNCTION(Server, Unreliable, WithValidation)
