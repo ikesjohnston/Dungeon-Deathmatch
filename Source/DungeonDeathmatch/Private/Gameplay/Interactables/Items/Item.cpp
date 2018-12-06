@@ -6,6 +6,9 @@
 #include "InventoryComponent.h"
 #include "DungeonCharacter.h"
 #include "EquipmentComponent.h" 
+#include "InteractTooltip.h"
+#include "ItemTooltip.h"
+#include "DungeonGameMode.h"
 
 // Sets default values
 AItem::AItem()
@@ -27,9 +30,44 @@ AItem::~AItem()
 // Called when the game starts or when spawned
 void AItem::BeginPlay()
 {
+	SetQualityTierStencilValue();
 	Super::BeginPlay();
-	
-	InteractableName = FText(ItemName);
+
+	// Initialize item tooltip
+	UInteractTooltip* InteractTooltip = Cast<UInteractTooltip>(WidgetComponent->GetUserWidgetObject());
+	if (InteractTooltip)
+	{
+		UItemTooltip* ItemTooltip = Cast<UItemTooltip>(InteractTooltip->GetItemTooltip());
+		if (ItemTooltip)
+		{
+			ItemTooltip->SetItem(this);
+			ItemTooltip->SetVisibility(ESlateVisibility::Visible);
+		}
+	}
+}
+
+void AItem::SetQualityTierStencilValue()
+{
+	switch (QualityTier)
+	{
+	case EItemQualityTier::Normal:
+		QualityTierStencilValue = STENCIL_ITEM_DEFAULT;
+		break;
+	case EItemQualityTier::Uncommon:
+		QualityTierStencilValue = STENCIL_ITEM_UNCOMMON;
+		break;
+	case EItemQualityTier::Rare:
+		QualityTierStencilValue = STENCIL_ITEM_RARE;
+		break;
+	case EItemQualityTier::Epic:
+		QualityTierStencilValue = STENCIL_ITEM_EPIC;
+		break;
+	case EItemQualityTier::Legendary:
+		QualityTierStencilValue = STENCIL_ITEM_LEGENDARY;
+		break;
+	default:
+		break;
+	}
 }
 
 // Called every frame
@@ -54,9 +92,42 @@ float AItem::GetValue()
 	return Value;
 }
 
+FText AItem::GetFlavorText()
+{
+	return FlavorText;
+}
+
 UTexture2D* AItem::GetIcon()
 {
 	return Icon;
+}
+
+FLinearColor AItem::GetQualityTierColor()
+{
+	float R, G, B;
+	ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode());
+	if (GameMode)
+	{
+		FLinearColor* Color = GameMode->GetItemQualityTierColors().Find(QualityTier);
+		if (Color)
+		{
+			// There is a bug with FLinearColors that have mid to high R values being set to 0? Need to manually set for now.
+			if (QualityTier == EItemQualityTier::Legendary)
+			{
+				R = 1.0f;
+			}
+			else
+			{
+				R = Color->R;
+			}
+
+			G = Color->G;
+			B = Color->B;
+
+			return FLinearColor(R, G, B);
+		}
+	}
+	return FLinearColor();
 }
 
 void AItem::NativeOnInteract(ADungeonCharacter* InteractingCharacter)

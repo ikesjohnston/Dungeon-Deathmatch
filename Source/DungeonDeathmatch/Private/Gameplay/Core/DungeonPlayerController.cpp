@@ -111,7 +111,7 @@ void ADungeonPlayerController::CheckFocus()
 				// Throw event for UI updates
 				if (OnInteractableUnfocused.IsBound())
 				{
-					OnInteractableUnfocused.Broadcast();
+					//OnInteractableUnfocused.Broadcast();
 				}
 				FocusedInteractable = nullptr;
 				Server_SetFocusedInteractable(nullptr);
@@ -187,7 +187,7 @@ void ADungeonPlayerController::CheckFocus()
 			// Throw event for UI updates
 			if (OnInteractableFocused.IsBound())
 			{
-				OnInteractableFocused.Broadcast(FocusedInteractable);
+				//OnInteractableFocused.Broadcast(FocusedInteractable);
 			}
 			if (DebugInteraction)
 			{
@@ -202,7 +202,7 @@ void ADungeonPlayerController::CheckFocus()
 				// Throw event for UI updates
 				if (OnInteractableUnfocused.IsBound())
 				{
-					OnInteractableUnfocused.Broadcast();
+					//OnInteractableUnfocused.Broadcast();
 				}
 				if (DebugInteraction)
 				{

@@ -5,6 +5,8 @@
 #include <Components/StaticMeshComponent.h>
 #include "DungeonDeathmatch.h"
 #include <Engine/EngineTypes.h>
+#include <WidgetComponent.h>
+#include "InteractTooltip.h"
 
 // Sets default values
 AInteractable::AInteractable()
@@ -16,6 +18,13 @@ AInteractable::AInteractable()
 
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	MeshComponent->SetCollisionObjectType(TRACE_INTERACTABLE);
+	
+	WidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
+	WidgetComponent->SetupAttachment(MeshComponent);
+	WidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	WidgetComponent->SetVisibility(false);
+
+	QualityTierStencilValue = STENCIL_ITEM_DEFAULT;
 }
 
 // Called when the game starts or when spawned
@@ -23,6 +32,28 @@ void AInteractable::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	SetMeshStencilValue();
+
+	// Initialize interaction tooltip
+	UInteractTooltip* InteractTooltip = Cast<UInteractTooltip>(WidgetComponent->GetUserWidgetObject());
+	if (InteractTooltip)
+	{
+		InteractTooltip->SetInteractable(this);
+	}
+}
+
+void AInteractable::SetMeshStencilValue()
+{
+	// Render custom depth on all mesh components. Certain interactables (like chests or special weapons) may have multiple mesh components.
+	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
+	for (int i = 0; i < MeshComponents.Num(); i++)
+	{
+		UMeshComponent* MeshComp = Cast<UMeshComponent>(MeshComponents[i]);
+		if (MeshComp)
+		{
+			MeshComp->SetCustomDepthStencilValue(QualityTierStencilValue);
+		}
+	}
 }
 
 // Called every frame
@@ -64,6 +95,8 @@ void AInteractable::OnFocused()
 			MeshComp->SetRenderCustomDepth(true);
 		}
 	}
+
+	WidgetComponent->SetVisibility(true);
 }
 
 void AInteractable::OnUnfocused()
@@ -78,4 +111,6 @@ void AInteractable::OnUnfocused()
 			MeshComp->SetRenderCustomDepth(false);
 		}
 	}
+
+	WidgetComponent->SetVisibility(false);
 }

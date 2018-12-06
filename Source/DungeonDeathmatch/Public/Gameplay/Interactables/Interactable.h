@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "DungeonDeathmatch.h"
 #include "GameFramework/Actor.h"
 #include "InteractionInterface.h"
 #include "Interactable.generated.h"
@@ -22,6 +22,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* MeshComponent;
 
+	/** Widget used to display tooltips on interact focus */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
+	UWidgetComponent* WidgetComponent;
+
 	/** The prompt text that should appear on screen when this interactable is focused */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interaction")
 	FText InteractionPromptText;
@@ -30,6 +34,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interaction")
 	FText InteractableName;
 
+	/** The stencil value to use when rendering the post process outline for this interactable, based on its quality*/
+	uint8 QualityTierStencilValue;
+
 public:	
 	// Sets default values for this actor's properties
 	AInteractable();
@@ -37,6 +44,8 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	void SetMeshStencilValue();
 
 public:	
 	// Called every frame

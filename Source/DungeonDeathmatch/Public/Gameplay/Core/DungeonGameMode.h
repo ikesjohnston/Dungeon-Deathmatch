@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "Item.h"
 #include "DungeonGameMode.generated.h"
 
 /*
@@ -20,19 +21,24 @@ UCLASS()
 class DUNGEONDEATHMATCH_API ADungeonGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
-	
+
 protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Global UI Settings")
+	TMap<EItemQualityTier, FLinearColor> ItemQualityTierColors;
 
-	void GameOver();
-	
 public:
-
 	ADungeonGameMode();
 
 	virtual void StartPlay() override;
 
 	virtual void Tick(float DeltaSeconds) override;
 
+	UFUNCTION(BlueprintPure)
+	TMap<EItemQualityTier, FLinearColor> GetItemQualityTierColors();
+
 	UPROPERTY(BlueprintAssignable, Category = "GameMode")
 	FOnActorKilled OnActorKilled;
+
+protected:
+	void GameOver();
 };

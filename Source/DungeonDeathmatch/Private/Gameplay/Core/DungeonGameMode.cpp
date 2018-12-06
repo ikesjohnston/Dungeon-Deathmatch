@@ -23,6 +23,11 @@ void ADungeonGameMode::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 }
 
+TMap<EItemQualityTier, FLinearColor> ADungeonGameMode::GetItemQualityTierColors()
+{
+	return ItemQualityTierColors;
+}
+
 void ADungeonGameMode::GameOver()
 {
 	UE_LOG(LogTemp, Log, TEXT("Game Over!"));

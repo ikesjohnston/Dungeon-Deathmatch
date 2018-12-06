@@ -9,6 +9,14 @@
 
 class ADungeonCharacter;
 
+UENUM(BlueprintType) enum class EItemQualityTier : uint8 {
+	Normal		UMETA(DisplayName = "Normal"),
+	Uncommon	UMETA(DisplayName = "Uncommon"),
+	Rare		UMETA(DisplayName = "Rare"),
+	Epic		UMETA(DisplayName = "Epic"),
+	Legendary	UMETA(DisplayName = "Legendary")
+};
+
 UCLASS()
 class DUNGEONDEATHMATCH_API AItem : public AInteractable
 {
@@ -26,9 +34,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
 	float Value;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
+	FText FlavorText;
+
 	/** Icon texture for this item to represent it in the UI */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
 	UTexture2D* Icon;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
+	EItemQualityTier QualityTier;
+
+	FLinearColor QualityTierColor;
 
 public:	
 	// Sets default values for this actor's properties
@@ -39,21 +55,29 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	void SetQualityTierStencilValue();
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	UFUNCTION(BlueprintCallable, Category = "Item")
+	UFUNCTION(BlueprintPure, Category = "Item")
 	FText GetItemName();
 
-	UFUNCTION(BlueprintCallable, Category = "Item")
+	UFUNCTION(BlueprintPure, Category = "Item")
 	float GetWeight();
 
-	UFUNCTION(BlueprintCallable, Category = "Item")
+	UFUNCTION(BlueprintPure, Category = "Item")
 	float GetValue();
 
-	UFUNCTION(BlueprintCallable, Category = "Item")
+	UFUNCTION(BlueprintPure, Category = "Item")
+	FText GetFlavorText();
+
+	UFUNCTION(BlueprintPure, Category = "Item")
 	UTexture2D* GetIcon();
+
+	UFUNCTION(BlueprintPure, Category = "Item")
+	FLinearColor GetQualityTierColor();
 
 	virtual void NativeOnInteract(ADungeonCharacter* InteractingCharacter) override;
 
