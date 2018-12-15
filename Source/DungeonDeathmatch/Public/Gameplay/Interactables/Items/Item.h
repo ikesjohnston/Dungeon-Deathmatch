@@ -57,6 +57,8 @@ protected:
 
 	void SetQualityTierStencilValue();
 
+	virtual void NativeOnInteract(ADungeonCharacter* InteractingCharacter) override;
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -78,7 +80,5 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Item")
 	FLinearColor GetQualityTierColor();
-
-	virtual void NativeOnInteract(ADungeonCharacter* InteractingCharacter) override;
 
 };

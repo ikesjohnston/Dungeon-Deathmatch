@@ -7,19 +7,29 @@
 #include "Equippable.generated.h"
 
 UENUM(BlueprintType)
+enum class EEquipmentType : uint8
+{
+	OneHand		UMETA(DisplayName = "One Hand"),
+	TwoHand		UMETA(DisplayName = "Two Hand"),
+	Shield		UMETA(DisplayName = "Shield"),
+	Ranged		UMETA(DisplayName = "Ranged"),
+
+	NUM_EQUIPMENT_TYPES
+};
+
+UENUM(BlueprintType)
 enum class EEquipmentSlot : uint8
 {
-	MainHand					UMETA(DisplayName = "Main Hand"),
-	OffHand						UMETA(DisplayName = "Off Hand"),
-	Head						UMETA(DisplayName = "Head"),
-	Chest						UMETA(DisplayName = "Chest"),
-	Legs						UMETA(DisplayName = "Legs"),
-	Gloves						UMETA(DisplayName = "Gloves"),
-	Boots						UMETA(DisplayName = "Boots"),
-	Amulet						UMETA(DisplayName = "Amulet"),
-	RingOne						UMETA(DisplayName = "RingOne"),
-	RingTwo						UMETA(DisplayName = "RingTwo"),
-	Consumable					UMETA(DisplayName = "Consumable"),
+	MainHand		UMETA(DisplayName = "Main Hand"),
+	OffHand			UMETA(DisplayName = "Off Hand"),
+	Head			UMETA(DisplayName = "Head"),
+	Chest			UMETA(DisplayName = "Chest"),
+	Legs			UMETA(DisplayName = "Legs"),
+	Gloves			UMETA(DisplayName = "Gloves"),
+	Amulet			UMETA(DisplayName = "Amulet"),
+	Ring			UMETA(DisplayName = "Ring"),
+	Consumable		UMETA(DisplayName = "Consumable"),
+	Skill			UMETA(DisplayName = "Skill"),
 
 	NUM_EQUIPMENT_SLOTS
 };

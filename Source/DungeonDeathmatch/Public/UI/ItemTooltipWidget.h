@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "ItemTooltip.generated.h"
+#include "ItemTooltipWidget.generated.h"
 
 class AItem;
 
@@ -12,7 +12,7 @@ class AItem;
  * 
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API UItemTooltip : public UUserWidget
+class DUNGEONDEATHMATCH_API UItemTooltipWidget : public UUserWidget
 {
 	GENERATED_BODY()
 

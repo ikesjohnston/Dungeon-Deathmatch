@@ -5,16 +5,16 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Interactable.h"
-#include "InteractTooltip.generated.h"
+#include "InteractTooltipWidget.generated.h"
 
 class AInteractable;
-class UInteractTooltip;
+class UItemTooltipWidget;
 
 /**
  * UI Widget for on screen button prompts when focusing interactables.
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API UInteractTooltip : public UUserWidget
+class DUNGEONDEATHMATCH_API UInteractTooltipWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
@@ -26,7 +26,7 @@ protected:
 	FText InteractionText;
 
 	/** Separate child widget for items. Hidden by default, will be set visible by parent item. */
-	UItemTooltip* ItemTooltip;
+	UItemTooltipWidget* ItemTooltip;
 
 	/** The name given to the ItemTooltip widget in the  editor. Used to find the widget in code. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
@@ -37,7 +37,7 @@ public:
 	void SetInteractable(AInteractable* NewInteractable);
 
 	UFUNCTION(BlueprintCallable)
-	UItemTooltip* GetItemTooltip();
+	UItemTooltipWidget* GetItemTooltip();
 
 protected:
 	UFUNCTION(BlueprintCallable)

@@ -4,15 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "InventoryMenu.generated.h"
+#include "InventoryEquipmentMenuWidget.generated.h"
 
-class UInventoryEquipmentSlot;
+class UInventoryEquipmentSlotWidget;
 
 /**
  * UI widget representing the player inventory. 
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API UInventoryMenu : public UUserWidget
+class DUNGEONDEATHMATCH_API UInventoryEquipmentMenuWidget : public UUserWidget
 {
 	GENERATED_BODY()
 	
@@ -33,7 +33,7 @@ protected:
 	FName InventoryGridPanelName;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-	TArray<UInventoryEquipmentSlot*> InventorySlots;
+	TArray<UInventoryEquipmentSlotWidget*> InventorySlots;
 
 protected:
 	UFUNCTION(BlueprintImplementableEvent)

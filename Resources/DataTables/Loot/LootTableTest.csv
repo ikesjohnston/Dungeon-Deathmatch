@@ -1,0 +1,10 @@
+---,ItemID,ItemName,ItemDescription,bIsEnabled,bIsGuaranteed,bIsUnique,DropChanceWeight,ItemClass
+1,"0","Sword of a Thousand Truths","Swig ol' bord","True","False","True","5.000000","/Game/Gameplay/Items/Equipment/Weapons/Melee/BP_LegendarySword.BP_LegendarySword_C"
+2,"1","Steel Sword","Steel Sword","True","False","False","50.000000","/Game/Gameplay/Items/Equipment/Weapons/Melee/BP_SteelSword.BP_SteelSword_C"
+3,"2","Steel Axe","Steel Axe","True","False","False","50.000000","/Game/Gameplay/Items/Equipment/Weapons/Melee/BP_SteelAxe.BP_SteelAxe_C"
+4,"3","Steel Mace","Steel Mace","True","False","False","50.000000","/Game/Gameplay/Items/Equipment/Weapons/Melee/BP_SteelMace.BP_SteelMace_C"
+5,"4","Steel Dagger","Steel Dagger","True","False","False","80.000000","/Game/Gameplay/Items/Equipment/Weapons/Melee/BP_SteelDagger.BP_SteelDagger_C"
+6,"5","Steel Battle Axe","Steel Battle Axe","True","False","False","20.000000","/Game/Gameplay/Items/Equipment/Weapons/Melee/BP_SteelBattleAxe.BP_SteelBattleAxe_C"
+7,"-1","Nothing","Nothing","True","False","False","150.000000","None"
+8,"6","Rare Dagger","Rare Dagger","True","False","False","15.000000","/Game/Gameplay/Items/Equipment/Weapons/Melee/BP_RareDagger.BP_RareDagger_C"
+9,"7","Epic Axe","Epic Axe","True","False","False","10.000000","/Game/Gameplay/Items/Equipment/Weapons/Melee/BP_EpicAxe.BP_EpicAxe_C"

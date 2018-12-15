@@ -6,7 +6,7 @@
 #include "GameFramework/HUD.h"
 #include "DungeonHUD.generated.h"
 
-class UInGameOverlay;
+class UInGameOverlayWidget;
 
 /**
  * HUD class for toggling the display of different UI widgets and screens. Can be accessed from the PlayerController. 
@@ -20,22 +20,22 @@ protected:
 	virtual void BeginPlay() override;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<UInGameOverlay> InGameOverlayClass;
+	TSubclassOf<UInGameOverlayWidget> InGameOverlayClass;
 
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
-	UInGameOverlay* InGameOverlay;
+	UInGameOverlayWidget* InGameOverlay;
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
-	UInGameOverlay* GetInGameOverlay();
+	UInGameOverlayWidget* GetInGameOverlay();
 
 	UFUNCTION(BlueprintCallable, Category = "UI")
-	void ShowInventoryAndEquipmentMenus();
+	void ShowCharacterMenu();
 
 	UFUNCTION(BlueprintCallable, Category = "UI")
-	void HideInventoryAndEquipmentMenus();
+	void HideCharacterMenu();
 
 	UFUNCTION(BlueprintCallable, Category = "UI")
-	bool AreInventoryAndEquipmentMenusVisible();
+	bool IsCharacterMenuVisible();
 
 };

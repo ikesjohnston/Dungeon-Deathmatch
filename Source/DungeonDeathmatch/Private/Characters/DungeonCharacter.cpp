@@ -474,7 +474,7 @@ void ADungeonCharacter::Server_Interact_Implementation()
 		AInteractable* FocusedInteractable = PlayerController->GetFocusedInteractable();
 		if (FocusedInteractable)
 		{
-			FocusedInteractable->NativeOnInteract(this);
+			FocusedInteractable->OnInteract(this);
 			AItem* Item = Cast<AItem>(FocusedInteractable);
 			if (Item)
 			{

@@ -6,7 +6,7 @@
 #include "DungeonDeathmatch.h"
 #include <Engine/EngineTypes.h>
 #include <WidgetComponent.h>
-#include "InteractTooltip.h"
+#include "InteractTooltipWidget.h"
 
 // Sets default values
 AInteractable::AInteractable()
@@ -18,6 +18,7 @@ AInteractable::AInteractable()
 
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	MeshComponent->SetCollisionObjectType(TRACE_INTERACTABLE);
+	//MeshComponent->SetCollisionResponseToChannel(TRACE_INTERACTABLE, ECR_Ignore);
 	
 	WidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
 	WidgetComponent->SetupAttachment(MeshComponent);
@@ -25,6 +26,8 @@ AInteractable::AInteractable()
 	WidgetComponent->SetVisibility(false);
 
 	QualityTierStencilValue = STENCIL_ITEM_DEFAULT;
+
+	bCanInteract = true;
 }
 
 // Called when the game starts or when spawned
@@ -35,11 +38,18 @@ void AInteractable::BeginPlay()
 	SetMeshStencilValue();
 
 	// Initialize interaction tooltip
-	UInteractTooltip* InteractTooltip = Cast<UInteractTooltip>(WidgetComponent->GetUserWidgetObject());
+	UInteractTooltipWidget* InteractTooltip = Cast<UInteractTooltipWidget>(WidgetComponent->GetUserWidgetObject());
 	if (InteractTooltip)
 	{
 		InteractTooltip->SetInteractable(this);
 	}
+}
+
+void AInteractable::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AInteractable, bCanInteract);
 }
 
 void AInteractable::SetMeshStencilValue()
@@ -68,6 +78,16 @@ UStaticMeshComponent* AInteractable::GetMeshComponent()
 	return MeshComponent;
 }
 
+bool AInteractable::GetCanInteract()
+{
+	return bCanInteract;
+}
+
+void AInteractable::SetCanInteract(bool CanInteract)
+{
+	bCanInteract = CanInteract;
+}
+
 FText AInteractable::GetInteractionPromptText()
 {
 	return InteractionPromptText;
@@ -81,6 +101,11 @@ FText AInteractable::GetInteractableName()
 void AInteractable::NativeOnInteract(ADungeonCharacter* InteractingCharacter)
 {
 
+}
+
+void AInteractable::OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
+{
+	NativeOnInteract(InteractingCharacter);
 }
 
 void AInteractable::OnFocused()

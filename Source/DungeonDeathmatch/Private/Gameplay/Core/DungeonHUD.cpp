@@ -1,49 +1,47 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "DungeonHUD.h"
-#include "UI/InGameOverlay.h"
+#include "UI/InGameOverlayWidget.h"
 
 void ADungeonHUD::BeginPlay()
 {
 	if (InGameOverlayClass)
 	{
-		InGameOverlay = Cast<UInGameOverlay>(CreateWidget(PlayerOwner, InGameOverlayClass, TEXT("In Game Overlay")));
+		InGameOverlay = Cast<UInGameOverlayWidget>(CreateWidget(PlayerOwner, InGameOverlayClass, TEXT("In Game Overlay")));
 		if (InGameOverlay)
 		{
 			InGameOverlay->AddToViewport();
-			HideInventoryAndEquipmentMenus();
+			HideCharacterMenu();
 		}
 	}
 }
 
-UInGameOverlay* ADungeonHUD::GetInGameOverlay()
+UInGameOverlayWidget* ADungeonHUD::GetInGameOverlay()
 {
 	return InGameOverlay;
 }
 
-void ADungeonHUD::ShowInventoryAndEquipmentMenus()
+void ADungeonHUD::ShowCharacterMenu()
 {
 	if (InGameOverlay)
 	{
-		InGameOverlay->ShowInventoryMenu();
-		InGameOverlay->ShowEquipmentMenu();
+		InGameOverlay->ShowCharacterMenu();
 	}
 }
 
-void ADungeonHUD::HideInventoryAndEquipmentMenus()
+void ADungeonHUD::HideCharacterMenu()
 {
 	if (InGameOverlay)
 	{
-		InGameOverlay->HideInventoryMenu();
-		InGameOverlay->HideEquipmentMenu();
+		InGameOverlay->HideCharacterMenu();
 	}
 }
 
-bool ADungeonHUD::AreInventoryAndEquipmentMenusVisible()
+bool ADungeonHUD::IsCharacterMenuVisible()
 {
 	if (InGameOverlay)
 	{
-		return InGameOverlay->AreInventoryAndEquipmentMenusVisible();
+		return InGameOverlay->IsCharacterMenuVisible();
 	}
 	return false;
 }

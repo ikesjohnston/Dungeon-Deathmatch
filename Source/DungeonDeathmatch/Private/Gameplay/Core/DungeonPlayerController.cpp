@@ -47,15 +47,15 @@ void ADungeonPlayerController::OnInventoryKeyPressed()
 	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
 	if (DungeonHUD)
 	{
-		if (DungeonHUD->AreInventoryAndEquipmentMenusVisible())
+		if (DungeonHUD->IsCharacterMenuVisible())
 		{
-			DungeonHUD->HideInventoryAndEquipmentMenus();
+			DungeonHUD->HideCharacterMenu();
 			bShowMouseCursor = false;
 			SetPawnCanLook(true);
 		}
 		else
 		{
-			DungeonHUD->ShowInventoryAndEquipmentMenus();
+			DungeonHUD->ShowCharacterMenu();
 			bShowMouseCursor = true;
 			SetPawnCanLook(false);
 		}
@@ -67,7 +67,7 @@ void ADungeonPlayerController::OnEscapeKeyPressed()
 	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
 	if (DungeonHUD)
 	{
-		DungeonHUD->HideInventoryAndEquipmentMenus();
+		DungeonHUD->HideCharacterMenu();
 		bShowMouseCursor = false;
 		SetPawnCanLook(false);	
 	}
@@ -147,7 +147,7 @@ void ADungeonPlayerController::CheckFocus()
 			for (FHitResult SweepHit : SphereOutHits)
 			{
 				AInteractable* HitInteractable = Cast<AInteractable>(SweepHit.Actor);
-				if (HitInteractable)
+				if (HitInteractable && HitInteractable->GetCanInteract())
 				{
 					if (ClosestInteractable)
 					{

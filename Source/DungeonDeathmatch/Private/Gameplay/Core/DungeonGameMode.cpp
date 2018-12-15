@@ -28,6 +28,20 @@ TMap<EItemQualityTier, FLinearColor> ADungeonGameMode::GetItemQualityTierColors(
 	return ItemQualityTierColors;
 }
 
+TMap<EEquipmentSlot, UTexture2D*> ADungeonGameMode::GetEmptyEquipmentSlotIcons()
+{
+	return EmptyEquipmentSlotIcons;
+}
+
+FVector ADungeonGameMode::GetRandomLootEjectionForce()
+{
+	FVector EjectionVector = FVector(LootEjectionForwardForce, 0, LootEjectionUpForce);
+	float RandomForwardAngle = FMath::FRand() * 360.0f;
+	EjectionVector.RotateAngleAxis(RandomForwardAngle, FVector::UpVector);
+
+	return EjectionVector;
+}
+
 void ADungeonGameMode::GameOver()
 {
 	UE_LOG(LogTemp, Log, TEXT("Game Over!"));

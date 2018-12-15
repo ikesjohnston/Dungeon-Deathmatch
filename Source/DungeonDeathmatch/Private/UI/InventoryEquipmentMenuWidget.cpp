@@ -1,12 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "InventoryMenu.h"
-#include "InventoryEquipmentSlot.h"
+#include "InventoryEquipmentMenuWidget.h"
+#include "InventoryEquipmentSlotWidget.h"
 #include <GridPanel.h>
 #include <UserWidget.h>
 #include <GridSlot.h>
 
-//void UInventoryMenu::InitializeGrid()
+//void UInventoryEquipmentMenuWidget::InitializeGrid()
 //{
 //	bool GridFound = false;
 //	if (!InventoryGridPanelName.IsNone())

@@ -6,8 +6,8 @@
 #include "InventoryComponent.h"
 #include "DungeonCharacter.h"
 #include "EquipmentComponent.h" 
-#include "InteractTooltip.h"
-#include "ItemTooltip.h"
+#include "InteractTooltipWidget.h"
+#include "ItemTooltipWidget.h"
 #include "DungeonGameMode.h"
 
 // Sets default values
@@ -20,6 +20,9 @@ AItem::AItem()
 	Value = 1.0f;
 
 	InteractionPromptText = FText::FromString("Pick Up");
+
+	MeshComponent->SetSimulatePhysics(true);
+	MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 }
 
 AItem::~AItem()
@@ -34,10 +37,10 @@ void AItem::BeginPlay()
 	Super::BeginPlay();
 
 	// Initialize item tooltip
-	UInteractTooltip* InteractTooltip = Cast<UInteractTooltip>(WidgetComponent->GetUserWidgetObject());
+	UInteractTooltipWidget* InteractTooltip = Cast<UInteractTooltipWidget>(WidgetComponent->GetUserWidgetObject());
 	if (InteractTooltip)
 	{
-		UItemTooltip* ItemTooltip = Cast<UItemTooltip>(InteractTooltip->GetItemTooltip());
+		UItemTooltipWidget* ItemTooltip = Cast<UItemTooltipWidget>(InteractTooltip->GetItemTooltip());
 		if (ItemTooltip)
 		{
 			ItemTooltip->SetItem(this);

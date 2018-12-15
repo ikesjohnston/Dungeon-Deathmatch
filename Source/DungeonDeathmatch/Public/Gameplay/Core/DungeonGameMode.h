@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Item.h"
+#include "Equippable.h"
 #include "DungeonGameMode.generated.h"
 
 /*
@@ -23,8 +24,19 @@ class DUNGEONDEATHMATCH_API ADungeonGameMode : public AGameModeBase
 	GENERATED_BODY()
 
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Global UI Settings")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI Settings")
 	TMap<EItemQualityTier, FLinearColor> ItemQualityTierColors;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI Settings")
+	TMap<EEquipmentSlot, UTexture2D*> EmptyEquipmentSlotIcons;
+
+	/* The initial forward force to apply to loot when it is ejected from loot containers */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gameplay Settings")
+	float LootEjectionForwardForce;
+
+	/* The initial upward force to apply to loot when it is ejected from loot containers */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gameplay Settings")
+	float LootEjectionUpForce;
 
 public:
 	ADungeonGameMode();
@@ -35,6 +47,12 @@ public:
 
 	UFUNCTION(BlueprintPure)
 	TMap<EItemQualityTier, FLinearColor> GetItemQualityTierColors();
+
+	UFUNCTION(BlueprintPure)
+	TMap<EEquipmentSlot, UTexture2D*> GetEmptyEquipmentSlotIcons();
+
+	UFUNCTION(BlueprintPure)
+	FVector GetRandomLootEjectionForce();
 
 	UPROPERTY(BlueprintAssignable, Category = "GameMode")
 	FOnActorKilled OnActorKilled;

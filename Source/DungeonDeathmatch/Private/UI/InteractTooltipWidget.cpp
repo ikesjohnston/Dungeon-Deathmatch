@@ -1,13 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "InteractTooltip.h"
+#include "InteractTooltipWidget.h"
 #include "Interactable.h"
-#include "ItemTooltip.h"
+#include "ItemTooltipWidget.h"
 #include <UserWidget.h>
 
 #define LOCTEXT_NAMESPACE "Interactions" 
 
-void UInteractTooltip::SetInteractable(AInteractable* NewInteractable)
+void UInteractTooltipWidget::SetInteractable(AInteractable* NewInteractable)
 {
 	Interactable = NewInteractable;
 
@@ -21,28 +21,28 @@ void UInteractTooltip::SetInteractable(AInteractable* NewInteractable)
 	InitItemTooltip();
 }
 
-UItemTooltip* UInteractTooltip::GetItemTooltip()
+UItemTooltipWidget* UInteractTooltipWidget::GetItemTooltip()
 {
 	return ItemTooltip;
 }
 
-void UInteractTooltip::OnInteractableFocused()
+void UInteractTooltipWidget::OnInteractableFocused()
 {
 	SetVisibility(ESlateVisibility::Visible);
 }
 
-void UInteractTooltip::OnInteractableUnfocused()
+void UInteractTooltipWidget::OnInteractableUnfocused()
 {
 	InteractionText = FText::GetEmpty();
 	SetVisibility(ESlateVisibility::Hidden);
 }
 
-void UInteractTooltip::InitItemTooltip()
+void UInteractTooltipWidget::InitItemTooltip()
 {
 	bool TooltipFound = false;
 	if (!ItemTooltipWidgetName.IsNone())
 	{
-		ItemTooltip = Cast<UItemTooltip>(WidgetTree->FindWidget(ItemTooltipWidgetName));
+		ItemTooltip = Cast<UItemTooltipWidget>(WidgetTree->FindWidget(ItemTooltipWidgetName));
 		if (ItemTooltip)
 		{
 			ItemTooltip->SetVisibility(ESlateVisibility::Hidden);

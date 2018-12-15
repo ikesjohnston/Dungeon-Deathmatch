@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Equippable.h"
-#include "InventoryEquipmentSlot.generated.h"
+#include "InventoryEquipmentSlotWidget.generated.h"
 
 class AItem;
 
@@ -13,13 +13,12 @@ class AItem;
  * Widget representing an item in an inventory. Processes drag and drop operations between equipment or other inventories.
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API UInventoryEquipmentSlot : public UUserWidget
+class DUNGEONDEATHMATCH_API UInventoryEquipmentSlotWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
 // Only Inventory and Equipment menu widgets should be able to access this widget's data
-friend class UInventoryMenu;
-friend class UEquipmentMenu;
+friend class UInventoryEquipmentMenuWidget;
 
 protected:
 	/** A reference to the item that this slot represents */
