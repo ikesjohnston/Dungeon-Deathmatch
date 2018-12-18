@@ -4,6 +4,7 @@
 #include "Interactable.h"
 #include "ItemTooltipWidget.h"
 #include <UserWidget.h>
+#include "Item.h"
 
 #define LOCTEXT_NAMESPACE "Interactions" 
 
@@ -47,6 +48,12 @@ void UInteractTooltipWidget::InitItemTooltip()
 		{
 			ItemTooltip->SetVisibility(ESlateVisibility::Hidden);
 			TooltipFound = true;
+
+			AItem* Item = Cast<AItem>(Interactable);
+			if (Item)
+			{
+				ItemTooltip->SetItem(Item);
+			}
 		}
 	}
 	if (!TooltipFound)

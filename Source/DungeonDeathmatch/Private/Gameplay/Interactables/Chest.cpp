@@ -2,9 +2,12 @@
 
 #include "Chest.h"
 #include "Loot/LootComponent.h"
+#include "ChestAnimInstance.h"
 
 AChest::AChest()
 {
+	bReplicates = true;
+
 	ChestMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ChestMeshComponent"));
 	ChestMeshComponent->SetupAttachment(MeshComponent);
 	ChestMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -13,6 +16,11 @@ AChest::AChest()
 	LootComponent = CreateDefaultSubobject<ULootComponent>(TEXT("LootComponent"));
 
 	bIsOpened = false;
+}
+
+bool AChest::GetIsOpened()
+{
+	return bIsOpened;
 }
 
 void AChest::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -24,11 +32,26 @@ void AChest::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimePr
 
 void AChest::NativeOnInteract(ADungeonCharacter* InteractingCharacter)
 {
-	// Just set open flag to true, the animation blueprint will then call loot events through AnimNotifies
-	bIsOpened = true;
+	if (Role == ROLE_Authority)
+	{
+		// Just set open flag to true, the animation blueprint will then call loot events through AnimNotifies
+		bIsOpened = true;
 
-	// Should no longer be able to interact with chest
-	SetCanInteract(false);
+		// Need to call OnRep functions manually for server in C++
+		OnRep_IsOpened();
+
+		// Should no longer be able to interact with chest
+		Server_SetCanInteract(false);
+	}
+}
+
+void AChest::OnRep_IsOpened()
+{
+	UChestAnimInstance* ChestAnimInstance = Cast<UChestAnimInstance>(ChestMeshComponent->GetAnimInstance());
+	if (ChestAnimInstance)
+	{
+		ChestAnimInstance->SetIsOpen(bIsOpened);
+	}
 }
 
 void AChest::Loot()

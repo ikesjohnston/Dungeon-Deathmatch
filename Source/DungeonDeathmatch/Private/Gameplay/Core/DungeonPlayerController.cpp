@@ -9,6 +9,8 @@
 #include "DungeonHUD.h"
 #include "DungeonCharacter.h"
 #include <GameFramework/PlayerController.h>
+#include "Item.h"
+#include "InventoryEquipmentSlotWidget.h"
 
 // Console command for drawing interaction cast debug shapes
 static int32 DebugInteraction = 0;
@@ -42,6 +44,16 @@ AInteractable* ADungeonPlayerController::GetFocusedInteractable()
 	return FocusedInteractable;
 }
 
+UInventoryEquipmentSlotWidget* ADungeonPlayerController::GetHoveringInventoryEquipmentSlot()
+{
+	return HoveringInventoryEquipmentSlot;
+}
+
+void ADungeonPlayerController::SetHoveringInventoryEquipmientSlot(UInventoryEquipmentSlotWidget* InventoryEquipmentSlot)
+{
+	HoveringInventoryEquipmentSlot = InventoryEquipmentSlot;
+}
+
 void ADungeonPlayerController::OnInventoryKeyPressed()
 {
 	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
@@ -70,6 +82,25 @@ void ADungeonPlayerController::OnEscapeKeyPressed()
 		DungeonHUD->HideCharacterMenu();
 		bShowMouseCursor = false;
 		SetPawnCanLook(false);	
+	}
+}
+
+void ADungeonPlayerController::OnUseInventoryItemKeyPressed()
+{
+
+}
+
+void ADungeonPlayerController::OnDropInventoryItemKeyPressed()
+{
+	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
+	if (DungeonHUD && DungeonHUD->IsCharacterMenuVisible() && HoveringInventoryEquipmentSlot)
+	{
+		AItem* SlottedItem = HoveringInventoryEquipmentSlot->GetItem();
+		ADungeonCharacter* DungeonPawn = Cast<ADungeonCharacter>(GetPawn());
+		if (DungeonPawn)
+		{
+			DungeonPawn->Server_TryDropItem(SlottedItem);
+		}
 	}
 }
 

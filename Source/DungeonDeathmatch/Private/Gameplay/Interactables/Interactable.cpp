@@ -52,6 +52,18 @@ void AInteractable::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AInteractable, bCanInteract);
 }
 
+// Called every frame
+void AInteractable::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+}
+
+UStaticMeshComponent* AInteractable::GetMeshComponent()
+{
+	return MeshComponent;
+}
+
 void AInteractable::SetMeshStencilValue()
 {
 	// Render custom depth on all mesh components. Certain interactables (like chests or special weapons) may have multiple mesh components.
@@ -66,24 +78,12 @@ void AInteractable::SetMeshStencilValue()
 	}
 }
 
-// Called every frame
-void AInteractable::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
-
-UStaticMeshComponent* AInteractable::GetMeshComponent()
-{
-	return MeshComponent;
-}
-
 bool AInteractable::GetCanInteract()
 {
 	return bCanInteract;
 }
 
-void AInteractable::SetCanInteract(bool CanInteract)
+void AInteractable::Server_SetCanInteract(bool CanInteract)
 {
 	bCanInteract = CanInteract;
 }
@@ -100,12 +100,30 @@ FText AInteractable::GetInteractableName()
 
 void AInteractable::NativeOnInteract(ADungeonCharacter* InteractingCharacter)
 {
+	// Server side safety check
+	if (Role == ROLE_Authority)
+	{
 
+	}
 }
 
 void AInteractable::OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
 {
-	NativeOnInteract(InteractingCharacter);
+	// Server side safety check
+	if (Role == ROLE_Authority)
+	{
+		NativeOnInteract(InteractingCharacter);
+	}
+}
+
+void AInteractable::Server_OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
+{
+	OnInteract(InteractingCharacter);
+}
+
+bool AInteractable::Server_OnInteract_Validate(ADungeonCharacter* InteractingCharacter)
+{
+	return true;
 }
 
 void AInteractable::OnFocused()

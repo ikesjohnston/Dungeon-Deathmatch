@@ -10,3 +10,13 @@ bool UInventoryEquipmentSlotWidget::IsOccupied()
 	}
 	return false;
 }
+
+AItem* UInventoryEquipmentSlotWidget::GetItem()
+{
+	return Item;
+}
+
+void UInventoryEquipmentSlotWidget::SetItem(AItem* NewItem)
+{
+	Item = NewItem;
+}

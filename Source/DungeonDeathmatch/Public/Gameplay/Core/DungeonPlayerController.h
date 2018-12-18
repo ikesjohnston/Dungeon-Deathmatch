@@ -9,6 +9,7 @@
 
 class AInteractable;
 class AItem;
+class UInventoryEquipmentSlotWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractableFocusedSignature, class AInteractable*, Interactable);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInteractableUnfocusedSignature);
@@ -32,21 +33,25 @@ public:
 	FOnInteractableUnfocusedSignature OnInteractableUnfocused;
 
 protected:
-	/** The Interactable that is currently focused by the player */
+	/* The Interactable that is currently focused by the player */
 	UPROPERTY(Replicated)
 	AInteractable* FocusedInteractable;
 
-	/** The distance to ray cast forward from the camera for interactables */
+	/* The distance to ray cast forward from the camera for interactables */
 	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
 	float InteractionCastLenth;
 
-	/** The radius of the multi sphere sweep for interactables */
+	/* The radius of the multi sphere sweep for interactables */
 	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
 	float InteractionSweepRadius;
 
-	/** The distance in front of the player to check interactable distance from */
+	/* The distance in front of the player to check interactable distance from */
 	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
 	float PlayerForwardInteractionDistance;
+
+	/* The InventoryEquipmentSlotWidget that the player is currently mousing over. */
+	UPROPERTY(BlueprintReadOnly, Category = "UI")
+	UInventoryEquipmentSlotWidget* HoveringInventoryEquipmentSlot;
 
 public:
 	ADungeonPlayerController();
@@ -55,9 +60,19 @@ public:
 
 	AInteractable* GetFocusedInteractable();
 
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	UInventoryEquipmentSlotWidget* GetHoveringInventoryEquipmentSlot();
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void SetHoveringInventoryEquipmientSlot(UInventoryEquipmentSlotWidget* InventoryEquipmentSlot);
+
 	void OnInventoryKeyPressed();
 
 	void OnEscapeKeyPressed();
+
+	void OnUseInventoryItemKeyPressed();
+
+	void OnDropInventoryItemKeyPressed();
 
 	/**
 	 * Get key bindings for specific action.

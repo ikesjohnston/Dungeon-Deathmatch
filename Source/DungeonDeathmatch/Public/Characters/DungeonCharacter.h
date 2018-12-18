@@ -162,6 +162,10 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	UInventoryComponent* GetInventoryComponent();
+
+	UEquipmentComponent* GetEquipmentComponent();
+
 	// Implement IAbilitySystemInterface
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
@@ -250,6 +254,20 @@ public:
 	USphereComponent* GetLeftFistCollider();
 
 	USphereComponent* GetRightFistCollider();
+
+	/**
+	 * Attempts to pick up an item and add it to the player's inventory
+	 * @param Item The item to attempt to pick up
+	 */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_TryPickUpItem(AItem* Item);
+
+	/**
+	 * Attempts to remove an item from the player's inventory
+	 * @param Item The item to attempt to drop
+	 */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_TryDropItem(AItem* Item);
 
 protected:
 	/** Apply initial acitve and passive gameplay abilities to player. */
@@ -397,4 +415,10 @@ protected:
 
 	UFUNCTION()
 	void OnEscapeKeyPressed();
+
+	UFUNCTION()
+	void OnUseInventoryItemKeyPressed();
+
+	UFUNCTION()
+	void OnDropInventoryItemKeyPressed();
 };

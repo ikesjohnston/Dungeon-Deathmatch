@@ -29,14 +29,19 @@ protected:
 	ULootComponent* LootComponent;
 
 protected:
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing=OnRep_IsOpened)
 	bool bIsOpened;
 
 public:
 	AChest();
 
+	bool GetIsOpened();
+
 protected:
 	virtual void NativeOnInteract(ADungeonCharacter* InteractingCharacter) override;
+
+	UFUNCTION()
+	void OnRep_IsOpened();
 
 	void Loot();
 };

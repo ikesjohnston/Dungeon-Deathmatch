@@ -40,4 +40,10 @@ protected:
 public:
 	UFUNCTION(BlueprintCallable)
 	bool IsOccupied();
+
+	UFUNCTION(BlueprintCallable)
+	AItem* GetItem();
+
+	UFUNCTION(BlueprintCallable)
+	void SetItem(AItem* NewItem);
 };

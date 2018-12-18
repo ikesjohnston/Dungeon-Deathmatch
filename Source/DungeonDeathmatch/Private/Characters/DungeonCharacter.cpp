@@ -170,9 +170,21 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	// Menu Inputs
 	PlayerInputComponent->BindAction("Inventory", IE_Pressed, this, &ADungeonCharacter::OnInventoryKeyPressed);
 	PlayerInputComponent->BindAction("Escape", IE_Pressed, this, &ADungeonCharacter::OnEscapeKeyPressed);
+	PlayerInputComponent->BindAction("UseInventoryItem", IE_Pressed, this, &ADungeonCharacter::OnUseInventoryItemKeyPressed);
+	PlayerInputComponent->BindAction("DropInventoryItem", IE_Pressed, this, &ADungeonCharacter::OnDropInventoryItemKeyPressed);
 
 	//AbilitySystemComponent->BindAbilityActivationToInputComponent(PlayerInputComponent, FGameplayAbilityInputBinds("ConfirmInput", "CancelInput", "AbilityInput"));
 
+}
+
+UInventoryComponent* ADungeonCharacter::GetInventoryComponent()
+{
+	return InventoryComponent;
+}
+
+UEquipmentComponent* ADungeonCharacter::GetEquipmentComponent()
+{
+	return EquipmentComponent;
 }
 
 UAbilitySystemComponent* ADungeonCharacter::GetAbilitySystemComponent() const
@@ -474,17 +486,34 @@ void ADungeonCharacter::Server_Interact_Implementation()
 		AInteractable* FocusedInteractable = PlayerController->GetFocusedInteractable();
 		if (FocusedInteractable)
 		{
-			FocusedInteractable->OnInteract(this);
+			FocusedInteractable->Server_OnInteract(this);
 			AItem* Item = Cast<AItem>(FocusedInteractable);
-			if (Item)
-			{
-				InventoryComponent->Server_AddItem(Item);
-			}
+			Server_TryPickUpItem(Item);
 		}
 	}
 }
 
 bool ADungeonCharacter::Server_Interact_Validate()
+{
+	return true;
+}
+
+void ADungeonCharacter::Server_TryPickUpItem_Implementation(AItem* Item)
+{
+	InventoryComponent->Server_AddItem(Item);
+}
+
+bool ADungeonCharacter::Server_TryPickUpItem_Validate(AItem* Item)
+{
+	return true;
+}
+
+void ADungeonCharacter::Server_TryDropItem_Implementation(AItem* Item)
+{
+	InventoryComponent->Server_RemoveItem(Item);
+}
+
+bool ADungeonCharacter::Server_TryDropItem_Validate(AItem* Item)
 {
 	return true;
 }
@@ -707,5 +736,23 @@ void ADungeonCharacter::OnEscapeKeyPressed()
 	if (PlayerController)
 	{
 		PlayerController->OnEscapeKeyPressed();
+	}
+}
+
+void ADungeonCharacter::OnUseInventoryItemKeyPressed()
+{
+	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
+	if (PlayerController)
+	{
+		PlayerController->OnUseInventoryItemKeyPressed();
+	}
+}
+
+void ADungeonCharacter::OnDropInventoryItemKeyPressed()
+{
+	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
+	if (PlayerController)
+	{
+		PlayerController->OnDropInventoryItemKeyPressed();
 	}
 }

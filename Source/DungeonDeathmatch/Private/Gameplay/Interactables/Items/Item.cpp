@@ -16,6 +16,9 @@ AItem::AItem()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	bReplicates = true;
+	bReplicateMovement = true;
+
 	Weight = 1.0f;
 	Value = 1.0f;
 
@@ -29,6 +32,13 @@ AItem::~AItem()
 {
 
 }
+
+//void AItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+//{
+//	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+//
+//	DOREPLIFETIME(AItem, QualityTier);
+//}
 
 // Called when the game starts or when spawned
 void AItem::BeginPlay()
