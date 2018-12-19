@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
 #include <Engine/StreamableManager.h>
+#include "Item.h"
+#include "Equippable.h"
 #include "DungeonGameInstance.generated.h"
 
 /**
@@ -18,8 +20,32 @@ class DUNGEONDEATHMATCH_API UDungeonGameInstance : public UGameInstance
 protected:
 	FStreamableManager AssetLoader;
 
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI Settings")
+	TMap<EItemQualityTier, FLinearColor> ItemQualityTierColors;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI Settings")
+	TMap<EEquipmentSlot, UTexture2D*> EmptyEquipmentSlotIcons;
+
+	/* The initial forward force to apply to loot when it is ejected from loot containers */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gameplay Settings")
+	float LootEjectionForwardForce;
+
+	/* The initial upward force to apply to loot when it is ejected from loot containers */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gameplay Settings")
+	float LootEjectionUpForce;
+
 public:
 	UDungeonGameInstance(const FObjectInitializer& ObjectInitializer);
 
 	FStreamableManager& GetAssetLoader();
+
+	UFUNCTION(BlueprintPure)
+	TMap<EItemQualityTier, FLinearColor> GetItemQualityTierColors();
+
+	UFUNCTION(BlueprintPure)
+	TMap<EEquipmentSlot, UTexture2D*> GetEmptyEquipmentSlotIcons();
+
+	UFUNCTION(BlueprintPure)
+	FVector GetRandomLootEjectionForce();
 };

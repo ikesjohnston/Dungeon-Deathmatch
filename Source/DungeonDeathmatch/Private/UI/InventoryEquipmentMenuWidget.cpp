@@ -12,10 +12,7 @@ UInventoryEquipmentMenuWidget::UInventoryEquipmentMenuWidget(const FObjectInitia
 	: Super(ObjectInitializer)
 {
 	InventoryGridPanelName = "Grid_Inventory";
-
-	NumberOfInventorySlots = 16;
 	NumberOfGridColumns = 4;
-
 	GridSlotPadding = 1.0f;
 
 	//InitializeGrid();
@@ -31,6 +28,7 @@ bool UInventoryEquipmentMenuWidget::Initialize()
 		UInventoryComponent* InventoryComp = OwningCharacter->GetInventoryComponent();
 		if (InventoryComp)
 		{
+			NumberOfInventorySlots = InventoryComp->GetInventoryCapacity();
 			InventoryComp->OnItemAdded.AddDynamic(this, &UInventoryEquipmentMenuWidget::AddItem);
 			InventoryComp->OnItemRemoved.AddDynamic(this, &UInventoryEquipmentMenuWidget::RemoveItem);
 		}

@@ -15,10 +15,10 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
 	ADungeonCharacter* OwningCharacter;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Locomotion")
 	float MovementSpeed;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Locomotion")
 	float MovementDirection;
 
 public:

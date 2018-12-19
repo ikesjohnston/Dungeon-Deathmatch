@@ -8,7 +8,6 @@
 #include "EquipmentComponent.h" 
 #include "InteractTooltipWidget.h"
 #include "ItemTooltipWidget.h"
-#include "DungeonGameMode.h"
 
 // Sets default values
 AItem::AItem()
@@ -32,13 +31,6 @@ AItem::~AItem()
 {
 
 }
-
-//void AItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-//{
-//	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-//
-//	DOREPLIFETIME(AItem, QualityTier);
-//}
 
 // Called when the game starts or when spawned
 void AItem::BeginPlay()
@@ -118,10 +110,10 @@ UTexture2D* AItem::GetIcon()
 FLinearColor AItem::GetQualityTierColor()
 {
 	float R, G, B;
-	ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode());
-	if (GameMode)
+	UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
+	if (GameInstance)
 	{
-		FLinearColor* Color = GameMode->GetItemQualityTierColors().Find(QualityTier);
+		FLinearColor* Color = GameInstance->GetItemQualityTierColors().Find(QualityTier);
 		if (Color)
 		{
 			// There is a bug with FLinearColors that have mid to high R values being set to 0? Need to manually set for now.

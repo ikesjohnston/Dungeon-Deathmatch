@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Items/Item.h"
+#include "Equippable.h"
 #include "Weapon.generated.h"
 
 class UCapsuleComponent;

@@ -9,6 +9,8 @@
 UInventoryComponent::UInventoryComponent()
 {
 	bReplicates = true;
+
+	InventoryCapactiy = 16;
 }
 
 // Called when the game starts
@@ -29,15 +31,41 @@ TArray<AItem*> UInventoryComponent::GetInventory()
 	return Inventory;
 }
 
+uint8 UInventoryComponent::GetInventoryCapacity()
+{
+	return InventoryCapactiy;
+}
+
+bool UInventoryComponent::TryAddItem(AItem* Item)
+{
+	bool Result = false;
+	if (Item && Inventory.Num() < InventoryCapactiy)
+	{
+		Server_AddItem(Item);
+		Result = true;
+	}
+
+	return Result;
+}
+
+bool UInventoryComponent::TryRemoveItem(AItem* Item)
+{
+	bool Result = false;
+	for (int32 i = 0; i < Inventory.Num(); i++)
+	{
+		if (Inventory[i] == Item)
+		{
+			Server_RemoveItem(i);
+			Result = true;
+		}
+	}
+	return Result;
+}
+
 void UInventoryComponent::Server_AddItem_Implementation(AItem* Item)
 {
-	if (Item)
-	{
-		Multicast_OnItemAdd(Item);
-
-		// Add instance to the Array
-		int32 AddedIndex = Inventory.Add(Item);
-	}
+	Multicast_OnItemAdd(Item);
+	Inventory.Add(Item);
 }
 
 bool UInventoryComponent::Server_AddItem_Validate(AItem* Item)
@@ -45,19 +73,14 @@ bool UInventoryComponent::Server_AddItem_Validate(AItem* Item)
 	return true;
 }
 
-void UInventoryComponent::Server_RemoveItem_Implementation(AItem* Item)
+void UInventoryComponent::Server_RemoveItem_Implementation(int32 InventoryIndex)
 {
-	for (int32 i = 0; i < Inventory.Num(); i++)
-	{
-		if (Inventory[i] == Item)
-		{
-			Multicast_OnItemRemove(Item);
-			Inventory.RemoveAtSwap(i);
-		}
-	}
+	AItem* ItemToRemove = Inventory[InventoryIndex];
+	Multicast_OnItemRemove(ItemToRemove);
+	Inventory.RemoveAtSwap(InventoryIndex);
 }
 
-bool UInventoryComponent::Server_RemoveItem_Validate(AItem* Item)
+bool UInventoryComponent::Server_RemoveItem_Validate(int32 InventoryIndex)
 {
 	return true;
 }
@@ -69,7 +92,7 @@ void UInventoryComponent::Multicast_OnItemAdd_Implementation(AItem* Item)
 	{
 		OnItemAdded.Broadcast(Item);
 	}
-	// Hide item in world
+	// Hide item in world and move it to origin
 	Item->SetActorEnableCollision(false);
 	Item->GetMeshComponent()->SetSimulatePhysics(false);
 	Item->GetMeshComponent()->SetVisibility(false);
@@ -83,6 +106,7 @@ void UInventoryComponent::Multicast_OnItemRemove_Implementation(AItem* Item)
 	{
 		OnItemRemoved.Broadcast(Item);
 	}
+	// Set the item back to visible and drop it at the owner's location
 	Item->SetActorEnableCollision(true);
 	Item->GetMeshComponent()->SetSimulatePhysics(true);
 	Item->GetMeshComponent()->SetVisibility(true);

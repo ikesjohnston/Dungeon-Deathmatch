@@ -31,7 +31,6 @@ FAutoConsoleVariableRef CVARLogCombos(
 ADungeonCharacter::ADungeonCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
-	bReplicates = true;
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->bUsePawnControlRotation = true;
@@ -56,9 +55,6 @@ ADungeonCharacter::ADungeonCharacter()
 
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 	EquipmentComponent = CreateDefaultSubobject<UEquipmentComponent>(TEXT("Equipment"));
-
-	ItemDropLocation = CreateDefaultSubobject<USphereComponent>(TEXT("ItemDropLocation"));
-	ItemDropLocation->SetupAttachment(GetMesh());
 
 	// Initialize Health Plate widget.
 	HealthPlateWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("Health Plate Widget"));
@@ -486,9 +482,15 @@ void ADungeonCharacter::Server_Interact_Implementation()
 		AInteractable* FocusedInteractable = PlayerController->GetFocusedInteractable();
 		if (FocusedInteractable)
 		{
-			FocusedInteractable->Server_OnInteract(this);
 			AItem* Item = Cast<AItem>(FocusedInteractable);
-			Server_TryPickUpItem(Item);
+			if (Item)
+			{
+				Server_TryPickUpItem(Item);
+			}
+			else
+			{
+				FocusedInteractable->Server_OnInteract(this);
+			}
 		}
 	}
 }
@@ -500,7 +502,7 @@ bool ADungeonCharacter::Server_Interact_Validate()
 
 void ADungeonCharacter::Server_TryPickUpItem_Implementation(AItem* Item)
 {
-	InventoryComponent->Server_AddItem(Item);
+	bool WasPickedUp = InventoryComponent->TryAddItem(Item);
 }
 
 bool ADungeonCharacter::Server_TryPickUpItem_Validate(AItem* Item)
@@ -510,7 +512,7 @@ bool ADungeonCharacter::Server_TryPickUpItem_Validate(AItem* Item)
 
 void ADungeonCharacter::Server_TryDropItem_Implementation(AItem* Item)
 {
-	InventoryComponent->Server_RemoveItem(Item);
+	bool WasDropped = InventoryComponent->TryRemoveItem(Item);
 }
 
 bool ADungeonCharacter::Server_TryDropItem_Validate(AItem* Item)

@@ -18,7 +18,7 @@ class DUNGEONDEATHMATCH_API UInventoryEquipmentMenuWidget : public UUserWidget
 	
 protected:
 	/* The number of inventory slots this menu should have. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory")
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
 	uint8 NumberOfInventorySlots;
 
 	/* The maximum number of columns the inventory grid should have. */

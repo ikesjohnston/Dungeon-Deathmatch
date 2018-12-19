@@ -77,11 +77,11 @@ void ULootComponent::EjectLoot()
 			FRotator ItemSpawnRotation = FRotator(ItemSpawnPitch, ItemSpawnYaw, ItemSpawnRoll);
 
 			AItem* SpawnedItem = Owner->GetWorld()->SpawnActor<AItem>(ItemClass, Owner->GetActorLocation() + FVector(0, 0, 100), ItemSpawnRotation);
-			ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(Owner->GetWorld()->GetAuthGameMode());
-			if (GameMode)
+			UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(Owner->GetGameInstance());
+			if (GameInstance)
 			{
 				// Just apply a global force vector for ejection, no need to use temporary actor components
-				SpawnedItem->GetMeshComponent()->AddForce(GameMode->GetRandomLootEjectionForce());
+				SpawnedItem->GetMeshComponent()->AddForce(GameInstance->GetRandomLootEjectionForce());
 			}
 
 			// Call eject loot again until we run out of items

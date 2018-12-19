@@ -58,10 +58,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UEquipmentComponent* EquipmentComponent;
 
-	/** Relative location reference for where to "respawn" dropped items */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
-	USphereComponent* ItemDropLocation;
-
 	/** List of attributes modified by the ability system */
 	UPROPERTY()
 	UDungeonAttributeSet* AttributeSet;
