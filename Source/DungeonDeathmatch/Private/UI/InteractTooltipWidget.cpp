@@ -8,14 +8,14 @@
 
 #define LOCTEXT_NAMESPACE "Interactions" 
 
-void UInteractTooltipWidget::SetInteractable(AInteractable* NewInteractable)
+void UInteractTooltipWidget::SetInteractable(AActor* NewInteractable)
 {
 	Interactable = NewInteractable;
 
-	FFormatNamedArguments Args;
+	/*FFormatNamedArguments Args;
 	Args.Add("Prompt", Interactable->GetInteractionPromptText());
 	Args.Add("Name", Interactable->GetInteractableName());
-	InteractionText = FText::Format(LOCTEXT("InteractionText", "{Prompt} {Name}"), Args);
+	InteractionText = FText::Format(LOCTEXT("InteractionText", "{Prompt} {Name}"), Args);*/
 
 	ItemTooltipWidgetName = "WBP_ItemTooltip";
 

@@ -30,7 +30,7 @@ protected:
 	float GridSlotPadding;
 
 	/*
-	 * The name of the GridPanel that is contained in this widget in the editor, which will hold the individual UInventoryEquipmentSlotWidgets.
+	 * The name of the GridPanel that is contained in this widget in the editor, which will hold the individual Inventory UInventoryEquipmentSlotWidgets.
 	 * Used to find the widget from the WidgetTree.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Inventory")
@@ -44,6 +44,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	TArray<UInventoryEquipmentSlotWidget*> InventorySlots;
 
+	/*
+	 * Map of Equipment UInventoryEquipmentSlotWidgets added to the menu. These are placed manually in the editor for better control by designers.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Equipment")
+	TMap<EEquipmentSlot, UInventoryEquipmentSlotWidget*> EquipmentSlots;
+
 public:
 	UInventoryEquipmentMenuWidget(const FObjectInitializer& ObjectInitializer);
 
@@ -55,4 +61,8 @@ protected:
 	void AddItem(AItem* Item);
 
 	void RemoveItem(AItem* Item);
+
+	void EquipItem(AEquippable* Equippable);
+
+	void UnequipItem(AEquippable* Equippable);
 };

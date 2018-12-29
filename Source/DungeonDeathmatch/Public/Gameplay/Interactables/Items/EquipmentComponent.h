@@ -34,14 +34,6 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-public:	
-	
-	UFUNCTION(BlueprintPure, Category = "Equipment")
-	TArray<AEquippable*> GetEquipment() const;
-
-	UFUNCTION(BlueprintPure, Category = "Equipment")
-	AEquippable* GetEquipmentInSlot(EEquipmentSlot Slot) const;
-
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Equipment")
 	void Server_EquipItem(AEquippable* Equippable);
 
@@ -57,6 +49,28 @@ public:
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Equipment")
 	void Server_UnequipAll();
 
+public:	
+	
+	UFUNCTION(BlueprintPure, Category = "Equipment")
+	TArray<AEquippable*> GetEquipment() const;
+
+	UFUNCTION(BlueprintPure, Category = "Equipment")
+	AEquippable* GetEquipmentInSlot(EEquipmentSlot Slot) const;
+
 	UFUNCTION(BlueprintPure, Category = "Equipment")
 	bool HasItemEquipped(AEquippable* Equippable) const;
+
+	/**
+	 * Local function that checks if it is valid to equip an item, and makes a server call to do so if valid.
+	 *
+	 * @param Equippable The item to be equipped
+	 */
+	bool TryEquipItem(AEquippable* Equippable);
+
+	/**
+	 * Local function that checks if it is valid to unequip an item, and makes a server call to do so if valid.
+	 *
+	 * @param Equippable The item to be unequipped
+	 */
+	bool TryUnequipItem(AEquippable* Equippable);
 };

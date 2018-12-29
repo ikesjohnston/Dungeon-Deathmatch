@@ -8,8 +8,6 @@
 UEquipmentComponent::UEquipmentComponent()
 {
 	bReplicates = true;
-
-	Equipment.SetNum((int32) EEquipmentSlot::NUM_EQUIPMENT_SLOTS);
 }
 
 // Called when the game starts
@@ -114,5 +112,15 @@ bool UEquipmentComponent::HasItemEquipped(AEquippable* Equippable) const
 	}
 
 	return false;
+}
+
+bool UEquipmentComponent::TryEquipItem(AEquippable* Equippable)
+{
+	return true;
+}
+
+bool UEquipmentComponent::TryUnequipItem(AEquippable* Equippable)
+{
+	return true;
 }
 

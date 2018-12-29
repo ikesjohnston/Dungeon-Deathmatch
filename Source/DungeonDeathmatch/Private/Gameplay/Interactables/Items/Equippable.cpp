@@ -12,12 +12,32 @@ AEquippable::~AEquippable()
 
 }
 
-void AEquippable::OnEquip_Implementation(ADungeonCharacter* EquippingCharacter)
+TArray<EEquipmentSlot> AEquippable::GetValidEquipmentSlots()
 {
-
+	return TArray<EEquipmentSlot>();
 }
 
-void AEquippable::OnUnequip_Implementation(ADungeonCharacter* UnequippingCharacter)
+TArray<EEquipmentSlot> AEquippable::GetLockedEquipmentSlots()
 {
+	return TArray<EEquipmentSlot>();
+}
 
+FText AEquippable::GetInventoryUseTooltipText()
+{
+	if (EquippingCharacter)
+	{
+		return FText::FromString("Unequip");
+	}
+
+	return FText::FromString("Equip");
+}
+
+void AEquippable::OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)
+{
+	EquippingCharacter = NewEquippingCharacter;
+}
+
+void AEquippable::OnUnequip_Implementation()
+{
+	EquippingCharacter = nullptr;
 }

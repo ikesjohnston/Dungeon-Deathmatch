@@ -43,7 +43,7 @@ void UInventoryEquipmentMenuWidget::InitializeGrid()
 {
 	if (SlotWidgetClass == NULL)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("UInventoryMenu::InitializeGrid - No SlotWidgetClass set in %s. Verify that SlotWidgetClass is correctly set to a valid UInventoryEquipmentSlotWidget blueprint subclass."), *GetName());
+		UE_LOG(LogTemp, Warning, TEXT("UInventoryEquipmentMenuWidget::InitializeGrid - No SlotWidgetClass set in %s. Verify that SlotWidgetClass is correctly set to a valid UInventoryEquipmentSlotWidget blueprint subclass."), *GetName());
 		return;
 	}
 
@@ -73,8 +73,7 @@ void UInventoryEquipmentMenuWidget::InitializeGrid()
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("UInventoryMenu::InitializeGrid - No InventoryGrid widget found in %s. Verify that InventoryGridPanelName is correctly set."), *GetName());
-			return;
+			UE_LOG(LogTemp, Warning, TEXT("UInventoryEquipmentMenuWidget::InitializeGrid - No Inventory Grid widget found in %s. Verify that InventoryGridPanelName is correctly set."), *GetName());
 		}
 	}
 }
@@ -101,4 +100,18 @@ void UInventoryEquipmentMenuWidget::RemoveItem(AItem* Item)
 			Slot->SetItem(nullptr);
 		}
 	}
+}
+
+void UInventoryEquipmentMenuWidget::EquipItem(AEquippable* Equippable)
+{
+	if (Equippable)
+	{
+		TArray<EEquipmentSlot> ValidEquipmentSlots = Equippable->GetValidEquipmentSlots();
+		
+	}
+}
+
+void UInventoryEquipmentMenuWidget::UnequipItem(AEquippable* Equippable)
+{
+
 }

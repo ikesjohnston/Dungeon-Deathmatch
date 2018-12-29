@@ -31,7 +31,7 @@ protected:
 
 	/** The type of equipment this slot is for, if any. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment", meta = (EditCondition = "bIsEquipmentSlot"))
-	EEquipmentSlot EquipmentSlotType;
+	EEquipmentSlot EquipmentSlot;
 
 	/** The number of items in this item stack, if one exists */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Inventory")

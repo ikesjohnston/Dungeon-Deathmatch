@@ -39,6 +39,10 @@ protected:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	uint8 InventoryCapactiy;
 
+	/* The amount of gold in this inventory. */
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (ClampMin = 0))
+	int32 Gold;
+
 public:	
 	// Sets default values for this component's properties
 	UInventoryComponent();

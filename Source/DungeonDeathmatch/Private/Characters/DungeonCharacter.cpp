@@ -28,9 +28,15 @@ FAutoConsoleVariableRef CVARLogCombos(
 	TEXT("Log melee combo states"),
 	ECVF_Cheat);
 
+#define CARDINAL_MOVEMENT_FORWARD_MAX 22.5f
+#define CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX 67.5f
+#define CARDINAL_MOVEMENT_RIGHT_MAX 112.5f
+#define CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX 157.5f
+#define CARDINAL_MOVEMENT_BACKWARD 180.0f
+
 ADungeonCharacter::ADungeonCharacter()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->bUsePawnControlRotation = true;
@@ -40,6 +46,60 @@ ADungeonCharacter::ADungeonCharacter()
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm);
+
+	// --------------- Begin Mesh Segment Setup ---------------
+	MeshComponentHelm = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHelm"));
+	MeshComponentHelm->SetupAttachment(GetMesh());
+	MeshComponentHelm->SetMasterPoseComponent(GetMesh());
+
+	MeshComponentHead = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHead"));
+	MeshComponentHead->SetupAttachment(GetMesh());
+	MeshComponentHead->SetMasterPoseComponent(GetMesh());
+
+	MeshComponentShoulderLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentShoulderLeft"));
+	MeshComponentShoulderLeft->SetupAttachment(GetMesh());
+	MeshComponentShoulderLeft->SetMasterPoseComponent(GetMesh());
+
+	MeshComponentShoulderRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentShoulderRight"));
+	MeshComponentShoulderRight->SetupAttachment(GetMesh());
+	MeshComponentShoulderRight->SetMasterPoseComponent(GetMesh());
+
+	MeshComponentTorso = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentTorso"));
+	MeshComponentTorso->SetupAttachment(GetMesh());
+	MeshComponentTorso->SetMasterPoseComponent(GetMesh());
+
+	MeshComponentChestArmor = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentChestArmor"));
+	MeshComponentChestArmor->SetupAttachment(GetMesh());
+	MeshComponentChestArmor->SetMasterPoseComponent(GetMesh());
+
+	MeshComponentHandLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHandLeft"));
+	MeshComponentHandLeft->SetupAttachment(GetMesh());
+	MeshComponentHandLeft->SetMasterPoseComponent(GetMesh());
+
+	MeshComponentHandRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHandRight"));
+	MeshComponentHandRight->SetupAttachment(GetMesh());
+	MeshComponentHandRight->SetMasterPoseComponent(GetMesh());
+
+	MeshComponentBelt = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentBelt"));
+	MeshComponentBelt->SetupAttachment(GetMesh());
+	MeshComponentBelt->SetMasterPoseComponent(GetMesh());
+
+	MeshComponentLegs = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentLegs"));
+	MeshComponentLegs->SetupAttachment(GetMesh());
+	MeshComponentLegs->SetMasterPoseComponent(GetMesh());
+
+	MeshComponentLegArmor = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentLegArmor"));
+	MeshComponentLegArmor->SetupAttachment(GetMesh());
+	MeshComponentLegArmor->SetMasterPoseComponent(GetMesh());
+
+	MeshComponentFootLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentFootLeft"));
+	MeshComponentFootLeft->SetupAttachment(GetMesh());
+	MeshComponentFootLeft->SetMasterPoseComponent(GetMesh());
+
+	MeshComponentFootRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentFootRight"));
+	MeshComponentFootRight->SetupAttachment(GetMesh());
+	MeshComponentFootRight->SetMasterPoseComponent(GetMesh());
+	// --------------- End Mesh Segment Setup -----------------
 
 	// Set up fist colliders and overlap events for unarmed combat. 
 	// Collision should be off by default, it will get toggled on and off during animations.
@@ -53,6 +113,8 @@ ADungeonCharacter::ADungeonCharacter()
 	FistColliderRight->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	FistColliderRight->OnComponentBeginOverlap.AddDynamic(this, &ADungeonCharacter::OnFistColliderRightBeginOverlap);
 
+	//DungeonCharMovementComponent = CreateDefaultSubobject<UDungeonCharMovementComponent>(TEXT("DungeonCharMovementComponent"));
+	
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 	EquipmentComponent = CreateDefaultSubobject<UEquipmentComponent>(TEXT("Equipment"));
 
@@ -76,6 +138,13 @@ ADungeonCharacter::ADungeonCharacter()
 	CurrentMeleeComboState = -1;
 
 	bCanLook = true;
+
+	AimYawTurnStart = 60;
+	AimYawTurnStop = 5;
+	AimYawClampMin = -90;
+	AimYawClampMax = 90;
+	AimPitchClampMin = -90;
+	AimPitchClampMax = 90;
 }
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -84,6 +153,10 @@ void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 	DOREPLIFETIME(ADungeonCharacter, CurrentMeleeComboState);
 	DOREPLIFETIME(ADungeonCharacter, bIsMeleeComboReady);
+
+	DOREPLIFETIME(ADungeonCharacter, AimYaw);
+	DOREPLIFETIME(ADungeonCharacter, AimPitch);
+	DOREPLIFETIME(ADungeonCharacter, bIsReorientingBody);
 }
 
 // Called when the game starts or when spawned
@@ -173,6 +246,16 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 }
 
+void ADungeonCharacter::Tick(float DeltaSeconds)
+{
+	// Have server calculate aim offset
+	// TODO: This will need to be updated to use client prediction for smoothness at some point, with some defined error acception range
+	if (Role == ROLE_Authority)
+	{
+		CalculateAimRotation();
+	}
+}
+
 UInventoryComponent* ADungeonCharacter::GetInventoryComponent()
 {
 	return InventoryComponent;
@@ -186,6 +269,72 @@ UEquipmentComponent* ADungeonCharacter::GetEquipmentComponent()
 UAbilitySystemComponent* ADungeonCharacter::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
+}
+
+FVector ADungeonCharacter::GetMovementVelocity()
+{
+	FVector Velocity;
+
+	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
+	if (MovementComp)
+	{
+		Velocity = MovementComp->Velocity;
+	}
+	else
+	{
+		Velocity = FVector(0, 0, 0);
+	}
+	
+	return Velocity;
+}
+
+float ADungeonCharacter::GetMovementDirection()
+{	
+	FVector Velocity = GetMovementVelocity();
+	FRotator ActorRotation = GetActorRotation();
+	FVector LocalVelocity = ActorRotation.UnrotateVector(Velocity);
+	float MovementDirection = FMath::RadiansToDegrees(FMath::Atan2(LocalVelocity.Y, LocalVelocity.X));
+
+	return MovementDirection;
+}
+
+ECardinalMovementDirection ADungeonCharacter::GetCardinalMovementDirection()
+{
+	float MovementDirection = GetMovementDirection();
+
+	if (MovementDirection >= -CARDINAL_MOVEMENT_FORWARD_MAX && MovementDirection <= CARDINAL_MOVEMENT_FORWARD_MAX)
+	{
+		return ECardinalMovementDirection::Forward;
+	}
+	else if (MovementDirection > CARDINAL_MOVEMENT_FORWARD_MAX && MovementDirection <= CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX)
+	{
+		return ECardinalMovementDirection::ForwardRight;
+	}
+	else if (MovementDirection > CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX && MovementDirection <= CARDINAL_MOVEMENT_RIGHT_MAX)
+	{
+		return ECardinalMovementDirection::Right;
+	}
+	else if (MovementDirection > CARDINAL_MOVEMENT_RIGHT_MAX && MovementDirection <= CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX)
+	{
+		return ECardinalMovementDirection::BackwardRight;
+	}
+	else if ((MovementDirection > CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX && MovementDirection <= CARDINAL_MOVEMENT_BACKWARD) ||
+		(MovementDirection >= -CARDINAL_MOVEMENT_BACKWARD && MovementDirection < -CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX))
+	{
+		return ECardinalMovementDirection::Backward;
+	}
+	else if (MovementDirection >= -CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX && MovementDirection < -CARDINAL_MOVEMENT_RIGHT_MAX)
+	{
+		return ECardinalMovementDirection::BackwardLeft;
+	}
+	else if (MovementDirection >= -CARDINAL_MOVEMENT_RIGHT_MAX && MovementDirection < -CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX)
+	{
+		return ECardinalMovementDirection::Left;
+	}
+	else
+	{
+		return ECardinalMovementDirection::ForwardLeft;
+	}
 }
 
 void ADungeonCharacter::GiveAbility(TSubclassOf<UGameplayAbility> Ability)
@@ -221,7 +370,7 @@ void ADungeonCharacter::AddStartupGameplayAbilities()
 		}
 
 		// Now apply passives
-		for (TSubclassOf<UGameplayEffect>& GameplayEffect : PassiveGameplayEffects)
+		for (TSubclassOf<UGameplayEffect>& GameplayEffect : StartingGameplayEffects)
 		{
 			FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
 			EffectContext.AddSourceObject(this);
@@ -270,41 +419,81 @@ void ADungeonCharacter::RemoveStartupGameplayAbilities()
 
 float ADungeonCharacter::GetHealth() const
 {
+	if (!AttributeSet)
+	{
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::GetHealth - No AttributeSet set for %s"), *GetName());
+		return 0;
+	}
 	return AttributeSet->GetHealth();
 }
 
 float ADungeonCharacter::GetMaxHealth() const
 {
+	if (!AttributeSet)
+	{
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::GetMaxHealth - No AttributeSet set for %s"), *GetName());
+		return 0;
+	}
 	return AttributeSet->GetMaxHealth();
 }
 
 float ADungeonCharacter::GetMana() const
 {
+	if (!AttributeSet)
+	{
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::GetMana - No AttributeSet set for %s"), *GetName());
+		return 0;
+	}
 	return AttributeSet->GetMana();
 }
 
 float ADungeonCharacter::GetMaxMana() const
 {
+	if (!AttributeSet)
+	{
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::GetMaxMana - No AttributeSet set for %s"), *GetName());
+		return 0;
+	}
 	return AttributeSet->GetMaxMana();
 }
 
 float ADungeonCharacter::GetStamina() const
 {
+	if (!AttributeSet)
+	{
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::GetStamina - No AttributeSet set for %s"), *GetName());
+		return 0;
+	}
 	return AttributeSet->GetStamina();
 }
 
 float ADungeonCharacter::GetMaxStamina() const
 {
+	if (!AttributeSet)
+	{
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::GetMaxStamina - No AttributeSet set for %s"), *GetName());
+		return 0;
+	}
 	return AttributeSet->GetMaxStamina();
 }
 
 float ADungeonCharacter::GetStaminaRegen() const
 {
+	if (!AttributeSet)
+	{
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::GetStaminaRegen - No AttributeSet set for %s"), *GetName());
+		return 0;
+	}
 	return AttributeSet->GetStaminaRegen();
 }
 
 float ADungeonCharacter::GetMoveSpeed() const
 {
+	if (!AttributeSet)
+	{
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::GetMoveSpeed - No AttributeSet set for %s"), *GetName());
+		return 0;
+	}
 	return AttributeSet->GetMoveSpeed();
 }
 
@@ -479,7 +668,7 @@ void ADungeonCharacter::Server_Interact_Implementation()
 	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
 	if (PlayerController)
 	{
-		AInteractable* FocusedInteractable = PlayerController->GetFocusedInteractable();
+		AActor* FocusedInteractable = PlayerController->GetFocusedInteractable();
 		if (FocusedInteractable)
 		{
 			AItem* Item = Cast<AItem>(FocusedInteractable);
@@ -489,7 +678,7 @@ void ADungeonCharacter::Server_Interact_Implementation()
 			}
 			else
 			{
-				FocusedInteractable->Server_OnInteract(this);
+				//FocusedInteractable->Server_OnInteract(this);
 			}
 		}
 	}
@@ -756,5 +945,63 @@ void ADungeonCharacter::OnDropInventoryItemKeyPressed()
 	if (PlayerController)
 	{
 		PlayerController->OnDropInventoryItemKeyPressed();
+	}
+}
+
+bool ADungeonCharacter::GetIsReorientingBody()
+{
+	return bIsReorientingBody;
+}
+
+float ADungeonCharacter::GetAimYaw()
+{
+	return AimYaw;
+}
+
+float ADungeonCharacter::GetAimPitch()
+{
+	return AimPitch;
+}
+
+void ADungeonCharacter::CalculateAimRotation()
+{
+	FRotator ControlRotation = GetControlRotation();
+	FRotator ActorRotation = GetActorRotation();
+
+	FRotator DeltaRotation = ControlRotation - ActorRotation;
+	AimYaw = FMath::ClampAngle(DeltaRotation.Yaw, AimYawClampMin, AimYawClampMax);
+	AimPitch = FMath::ClampAngle(DeltaRotation.Pitch, AimPitchClampMin, AimPitchClampMax);
+
+	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
+	if (MovementComp)
+	{
+		FVector Velocity = MovementComp->Velocity;
+
+		if (Velocity.Size() > 0)
+		{
+			// No aim offsets when moving unless aiming a bow/spell
+			bIsReorientingBody = false;
+			UseControllerDesiredRotation(true);
+		}
+		else
+		{
+			if (!bIsReorientingBody)
+			{
+				if (FMath::Abs(AimYaw) >= AimYawTurnStart)
+				{
+					bIsReorientingBody = true;
+					UseControllerDesiredRotation(true);
+				}
+				else
+				{
+					// Allow aim offsets when not moving
+					UseControllerDesiredRotation(false);
+				}
+			}
+			else if (bIsReorientingBody && FMath::Abs(AimYaw) <= AimYawTurnStop)
+			{
+				bIsReorientingBody = false;
+			}
+		}
 	}
 }

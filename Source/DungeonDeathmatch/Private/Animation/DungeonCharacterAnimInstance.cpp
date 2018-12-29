@@ -8,7 +8,6 @@
 UDungeonCharacterAnimInstance::UDungeonCharacterAnimInstance(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-
 }
 
 void UDungeonCharacterAnimInstance::NativeInitializeAnimation()
@@ -24,14 +23,12 @@ void UDungeonCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	if (OwningCharacter)
 	{
-		UCharacterMovementComponent* MovementComp = OwningCharacter->GetCharacterMovement();
+		MovementSpeed = OwningCharacter->GetMovementVelocity().Size();
+		MovementDirection = OwningCharacter->GetMovementDirection();
 
-		FVector Velocity = MovementComp->Velocity;
-		MovementSpeed = Velocity.Size();
-
-		FRotator Rotation = OwningCharacter->GetActorRotation();
-		FVector LocalVelocity = Rotation.UnrotateVector(Velocity);
-		MovementDirection = FMath::RadiansToDegrees(FMath::Atan2(LocalVelocity.Y, LocalVelocity.X));
+		bIsReorientingBody = OwningCharacter->GetIsReorientingBody();
+		AimYaw = OwningCharacter->GetAimYaw();
+		AimPitch = OwningCharacter->GetAimPitch();
 	}
 }
 
@@ -45,38 +42,6 @@ UBlendSpace* UDungeonCharacterAnimInstance::GetMovementBlendSpace()
 		if (AnimProfile)
 		{
 			BlendSpace = AnimProfile->GetMovementBlendSpace();
-		}
-	}
-
-	return BlendSpace;
-}
-
-UBlendSpace* UDungeonCharacterAnimInstance::GetJumpBlendSpace()
-{
-	UBlendSpace* BlendSpace = nullptr;
-
-	if (OwningCharacter)
-	{
-		UAnimationProfile* AnimProfile = OwningCharacter->GetAnimationProfile();
-		if (AnimProfile)
-		{
-			BlendSpace = AnimProfile->GetJumpBlendSpace();
-		}
-	}
-
-	return BlendSpace;
-}
-
-UBlendSpace* UDungeonCharacterAnimInstance::GetLandBlendSpace()
-{
-	UBlendSpace* BlendSpace = nullptr;
-
-	if (OwningCharacter)
-	{
-		UAnimationProfile* AnimProfile = OwningCharacter->GetAnimationProfile();
-		if (AnimProfile)
-		{
-			BlendSpace = AnimProfile->GetLandBlendSpace();
 		}
 	}
 

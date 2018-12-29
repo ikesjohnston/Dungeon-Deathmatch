@@ -29,9 +29,9 @@ UWeaponData* AWeapon::GetWeaponData()
 	return WeaponData;
 }
 
-EWeaponClass AWeapon::GetWeaponClass()
+EWeaponType AWeapon::GetWeaponType()
 {
-	return WeaponClass;
+	return WeaponType;
 }
 
 EWeaponState AWeapon::GetWeaponState()

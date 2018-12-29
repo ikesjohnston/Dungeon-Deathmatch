@@ -8,8 +8,13 @@
 #include <WidgetComponent.h>
 #include "InteractTooltipWidget.h"
 
+UInteractable::UInteractable(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+}
+
 // Sets default values
-AInteractable::AInteractable()
+AInteractableActor::AInteractableActor()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -31,7 +36,7 @@ AInteractable::AInteractable()
 }
 
 // Called when the game starts or when spawned
-void AInteractable::BeginPlay()
+void AInteractableActor::BeginPlay()
 {
 	Super::BeginPlay();
 	
@@ -45,26 +50,26 @@ void AInteractable::BeginPlay()
 	}
 }
 
-void AInteractable::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void AInteractableActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(AInteractable, bCanInteract);
+	DOREPLIFETIME(AInteractableActor, bCanInteract);
 }
 
 // Called every frame
-void AInteractable::Tick(float DeltaTime)
+void AInteractableActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
 }
 
-UStaticMeshComponent* AInteractable::GetMeshComponent()
+UStaticMeshComponent* AInteractableActor::GetMeshComponent()
 {
 	return MeshComponent;
 }
 
-void AInteractable::SetMeshStencilValue()
+void AInteractableActor::SetMeshStencilValue()
 {
 	// Render custom depth on all mesh components. Certain interactables (like chests or special weapons) may have multiple mesh components.
 	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
@@ -78,27 +83,27 @@ void AInteractable::SetMeshStencilValue()
 	}
 }
 
-bool AInteractable::GetCanInteract()
+bool AInteractableActor::GetCanInteract()
 {
 	return bCanInteract;
 }
 
-void AInteractable::Server_SetCanInteract(bool CanInteract)
+void AInteractableActor::Server_SetCanInteract(bool CanInteract)
 {
 	bCanInteract = CanInteract;
 }
 
-FText AInteractable::GetInteractionPromptText()
+FText AInteractableActor::GetInteractionPromptText()
 {
 	return InteractionPromptText;
 }
 
-FText AInteractable::GetInteractableName()
+FText AInteractableActor::GetInteractableName()
 {
 	return InteractableName;
 }
 
-void AInteractable::NativeOnInteract(ADungeonCharacter* InteractingCharacter)
+void AInteractableActor::NativeOnInteract(ADungeonCharacter* InteractingCharacter)
 {
 	// Server side safety check
 	if (Role == ROLE_Authority)
@@ -107,7 +112,7 @@ void AInteractable::NativeOnInteract(ADungeonCharacter* InteractingCharacter)
 	}
 }
 
-void AInteractable::OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
+void AInteractableActor::OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
 {
 	// Server side safety check
 	if (Role == ROLE_Authority)
@@ -116,17 +121,17 @@ void AInteractable::OnInteract_Implementation(ADungeonCharacter* InteractingChar
 	}
 }
 
-void AInteractable::Server_OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
+void AInteractableActor::Server_OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
 {
 	OnInteract(InteractingCharacter);
 }
 
-bool AInteractable::Server_OnInteract_Validate(ADungeonCharacter* InteractingCharacter)
+bool AInteractableActor::Server_OnInteract_Validate(ADungeonCharacter* InteractingCharacter)
 {
 	return true;
 }
 
-void AInteractable::OnFocused()
+void AInteractableActor::OnFocused()
 {
 	// Add glowing outline to mesh(es). Set by the post processing object in the level. This should only happen on the client.
 	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
@@ -142,7 +147,7 @@ void AInteractable::OnFocused()
 	WidgetComponent->SetVisibility(true);
 }
 
-void AInteractable::OnUnfocused()
+void AInteractableActor::OnUnfocused()
 {
 	// Remove glowing outline from mesh(es). Set by the post processing object in the level. This should only happen on the client.
 	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
@@ -156,4 +161,39 @@ void AInteractable::OnUnfocused()
 	}
 
 	WidgetComponent->SetVisibility(false);
+}
+
+void IInteractable::OnFocused()
+{
+
+}
+
+void IInteractable::OnUnfocused()
+{
+
+}
+
+UWidgetComponent* IInteractable::GetWidgetComponent()
+{
+	return nullptr;
+}
+
+bool IInteractable::GetCanInteract()
+{
+	return false;
+}
+
+void IInteractable::SetCanInteract(bool CanInteract)
+{
+
+}
+
+FText IInteractable::GetInteractionPromptText()
+{
+	return FText();
+}
+
+FText IInteractable::GetInteractableName()
+{
+	return FText();
 }

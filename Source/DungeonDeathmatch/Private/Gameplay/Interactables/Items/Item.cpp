@@ -18,10 +18,10 @@ AItem::AItem()
 	bReplicates = true;
 	bReplicateMovement = true;
 
-	Weight = 1.0f;
 	Value = 1.0f;
 
 	InteractionPromptText = FText::FromString("Pick Up");
+	InventoryUseTooltipText = FText::FromString("Use");
 
 	MeshComponent->SetSimulatePhysics(true);
 	MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
@@ -87,11 +87,6 @@ FText AItem::GetItemName()
 	return ItemName;
 }
 
-float AItem::GetWeight()
-{
-	return Weight;
-}
-
 float AItem::GetValue()
 {
 	return Value;
@@ -133,6 +128,16 @@ FLinearColor AItem::GetQualityTierColor()
 		}
 	}
 	return FLinearColor();
+}
+
+FText AItem::GetInventoryUseTooltipText()
+{
+	return InventoryUseTooltipText;
+}
+
+bool AItem::TryInventoryUse()
+{
+	return false;
 }
 
 void AItem::NativeOnInteract(ADungeonCharacter* InteractingCharacter)

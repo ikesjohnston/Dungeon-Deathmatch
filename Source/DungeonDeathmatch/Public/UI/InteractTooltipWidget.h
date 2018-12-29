@@ -7,7 +7,7 @@
 #include "Interactable.h"
 #include "InteractTooltipWidget.generated.h"
 
-class AInteractable;
+class AInteractableActor;
 class UItemTooltipWidget;
 
 /**
@@ -19,8 +19,9 @@ class DUNGEONDEATHMATCH_API UInteractTooltipWidget : public UUserWidget
 	GENERATED_BODY()
 
 protected:
+	/* The interactable actor this tooltip details. It is assumed that this actor implements IInteractable. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
-	AInteractable* Interactable;
+	AActor* Interactable;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
 	FText InteractionText;
@@ -34,7 +35,7 @@ protected:
 
 public:
 	UFUNCTION(BlueprintCallable)
-	void SetInteractable(AInteractable* NewInteractable);
+	void SetInteractable(AActor* NewInteractable);
 
 	UFUNCTION(BlueprintCallable)
 	UItemTooltipWidget* GetItemTooltip();

@@ -12,10 +12,68 @@ class UStaticMeshComponent;
 class UWidgetComponent;
 
 /**
+ * Interface class that all interactable objects, such as doors, chests, items, and NPCs should implement.
+ */
+UINTERFACE(BlueprintType)
+class UInteractable : public UInterface
+{
+	GENERATED_UINTERFACE_BODY()
+};
+
+class IInteractable
+{
+	GENERATED_IINTERFACE_BODY()
+
+public:
+	/**
+	 * Event to be fired when a player interacts with this interactable. Can be overridden in blueprint.
+	 */
+	UFUNCTION(BlueprintNativeEvent, Category = "Interaction")
+	void OnInteract(ADungeonCharacter* InteractingCharacter);
+
+	/**
+	 * Event to be fired when a player focuses this interactable.
+	 */
+	virtual void OnFocused();
+
+	/**
+	 * Event to be fired when a player stops focusing this interactable.
+	 */
+	virtual void OnUnfocused();
+
+	/**
+	 * Get the widget component used for interaction tooltips.
+	 */
+	virtual UWidgetComponent* GetWidgetComponent();
+
+	/**
+	 * Gets whether or not the interactable can currently be interacted with.
+	 */
+	virtual bool GetCanInteract();
+
+	/**
+	 * Sets whether or not this actor can be interacted with.
+	 * @param CanInteract Whether the actor should be interactable.
+	 */
+	virtual void SetCanInteract(bool CanInteract);
+
+	/**
+	 * Gets the text to be displayed for interaction tooltips.
+	 */
+	virtual FText GetInteractionPromptText();
+
+	/**
+	 * Gets the name of the interactable to be displayed for interaction tooltips.
+	 */
+	virtual FText GetInteractableName();
+	
+};
+
+/**
  * Base class for all interactables in the game, such as doors, chests, and items.
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API AInteractable : public AActor
+class DUNGEONDEATHMATCH_API AInteractableActor : public AActor
 {
 	GENERATED_BODY()
 
@@ -44,7 +102,7 @@ protected:
 
 public:	
 	// Sets default values for this actor's properties
-	AInteractable();
+	AInteractableActor();
 
 protected:
 	// Called when the game starts or when spawned

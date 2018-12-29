@@ -4,31 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Equippable.h"
+#include "WeaponGlobals.h"
 #include "Weapon.generated.h"
 
 class UCapsuleComponent;
 class UWeaponData;
 
-/*
- * Weapon Class Enum
- * Used to determine what equipment slot a weapon should go into
- * when equipping an item, as well as what character animations should be used.
- */
-UENUM(BlueprintType)
-enum class EWeaponClass : uint8
-{
-	FistWeapon		UMETA(DisplayName = "Fist Weapon"),
-	OneHanded		UMETA(DisplayName = "One Handed"),
-	TwoHanded		UMETA(DisplayName = "Two Handed"),
-	Bow				UMETA(DisplayName = "Bow"),
-	Shield			UMETA(DisplayName = "Shield"),
-	Spell			UMETA(DisplayName = "Spell")
-};
-
-/*
- * Weapon State Enum
- * Used in combat logic to determine if a weapon is available for use.
- */
+/*  Used in combat logic to determine if a weapon is available for use. */
 UENUM(BlueprintType)
 enum class EWeaponState : uint8
 {
@@ -39,11 +21,8 @@ enum class EWeaponState : uint8
 	AttackInProgress	UMETA(DisplayName = "Attacking")
 };
 
-/*
- * Weapon Class
- * The base class for all weapons in the game. Stores damaging effects and
- * generates hit events for melee weapons when they are set in an attacking
- * state.
+/**
+ * The base class for all weapons in the game. Stores damaging effects and generates hit events for melee weapons when they are set in an attacking state.
  */
 UCLASS()
 class DUNGEONDEATHMATCH_API AWeapon : public AEquippable
@@ -51,10 +30,7 @@ class DUNGEONDEATHMATCH_API AWeapon : public AEquippable
 	GENERATED_BODY()
 	
 public:
-	/* 
-	 * The volume that generates overlap events stating that a weapon can damage
-	 * a target.
-	 */
+	/* The volume that generates overlap events stating that a weapon can damage a target. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	UCapsuleComponent* DamagingVolume;
 
@@ -63,7 +39,7 @@ protected:
 	UWeaponData* WeaponData;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
-	EWeaponClass WeaponClass;
+	EWeaponType WeaponType;
 
 	EWeaponState WeaponState;
 
@@ -85,7 +61,7 @@ protected:
 public:
 	UWeaponData* GetWeaponData();
 
-	EWeaponClass GetWeaponClass();
+	EWeaponType GetWeaponType();
 
 	EWeaponState GetWeaponState();
 

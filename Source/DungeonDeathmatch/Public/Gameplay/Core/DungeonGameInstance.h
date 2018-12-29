@@ -21,18 +21,18 @@ protected:
 	FStreamableManager AssetLoader;
 
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI Settings")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI Globals")
 	TMap<EItemQualityTier, FLinearColor> ItemQualityTierColors;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI Settings")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI Globals")
 	TMap<EEquipmentSlot, UTexture2D*> EmptyEquipmentSlotIcons;
 
 	/* The initial forward force to apply to loot when it is ejected from loot containers */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gameplay Settings")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay Globals - Loot")
 	float LootEjectionForwardForce;
 
 	/* The initial upward force to apply to loot when it is ejected from loot containers */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gameplay Settings")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay Globals - Loot")
 	float LootEjectionUpForce;
 
 public:

@@ -7,11 +7,11 @@
 #include <GameFramework/PlayerInput.h>
 #include "DungeonPlayerController.generated.h"
 
-class AInteractable;
+class UInteractable;
 class AItem;
 class UInventoryEquipmentSlotWidget;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractableFocusedSignature, class AInteractable*, Interactable);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractableFocusedSignature, class UInteractable*, Interactable);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInteractableUnfocusedSignature);
 
 /**
@@ -33,9 +33,8 @@ public:
 	FOnInteractableUnfocusedSignature OnInteractableUnfocused;
 
 protected:
-	/* The Interactable that is currently focused by the player */
-	UPROPERTY(Replicated)
-	AInteractable* FocusedInteractable;
+	/* The interactable actor that is currently focused by the player. It is assumed that this actor implements IInteractable. */
+	AActor* FocusedInteractable;
 
 	/* The distance to ray cast forward from the camera for interactables */
 	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
@@ -58,7 +57,7 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
-	AInteractable* GetFocusedInteractable();
+	AActor* GetFocusedInteractable();
 
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	UInventoryEquipmentSlotWidget* GetHoveringInventoryEquipmentSlot();
@@ -83,7 +82,7 @@ public:
 
 protected:
 	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_SetFocusedInteractable(AInteractable* Actor);
+	void Server_SetFocusedInteractable(AActor* Actor);
 
 	void SetPawnCanLook(bool bCanLook);
 

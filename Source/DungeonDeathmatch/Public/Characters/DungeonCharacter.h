@@ -20,7 +20,7 @@ class UEquipmentComponent;
 class USphereComponent;
 class UWidgetComponent;
 class UGameplayEffect;
-class AInteractable;
+class AInteractableActor;
 
 /**
  * Enum that maps gameplay abilities to the action mappings defined in project settings. The enum index corresponds to the
@@ -29,6 +29,20 @@ class AInteractable;
 UENUM(BlueprintType) enum class AbilityInput : uint8 {
 	Sprint		UMETA(DisplayName = "Sprint Ability"),
 	Roll		UMETA(DisplayName = "Roll Ability"),
+};
+
+/**
+ * Enum for movement direction used for implementing certain gaeplay abilities in blueprint.
+ */
+UENUM(BlueprintType) enum class ECardinalMovementDirection : uint8 {
+	Forward			UMETA(DisplayName = "Forward"),
+	ForwardLeft		UMETA(DisplayName = "Forward Left"),
+	ForwardRight	UMETA(DisplayName = "Forward Right"),
+	Left			UMETA(DisplayName = "Left"),
+	Right			UMETA(DisplayName = "Right"),
+	Backward		UMETA(DisplayName = "Backward"),
+	BackwardLeft	UMETA(DisplayName = "BackwardLeft"),
+	BackwardRight	UMETA(DisplayName = "BackwardRight"),
 };
 
 /** Character class that encapsulates player input and attribute change processing. */
@@ -48,14 +62,55 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	USpringArmComponent* SpringArm;
 
+	// -------------------- Begin Character Mesh Segments --------------------
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentHelm;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentHead;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentShoulderLeft;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentShoulderRight;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentTorso;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentChestArmor;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentHandLeft;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentHandRight;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentBelt;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentLegs;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentLegArmor;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentFootLeft;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentFootRight;
+	// -------------------- End Character Mesh Segments ----------------------
+
 	/** The component used to handle gameplay ability system interactions */
 	UPROPERTY()
 	UDungeonAbilitySystemComponent* AbilitySystemComponent;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UPROPERTY(EditAnywhere, Category = "Inventory & Equipment")
 	UInventoryComponent* InventoryComponent;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UPROPERTY(EditAnywhere, Category = "Inventory & Equipment")
 	UEquipmentComponent* EquipmentComponent;
 
 	/** List of attributes modified by the ability system */
@@ -82,7 +137,7 @@ protected:
 
 	/** Passive gameplay effects applied on creation */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
-	TArray<TSubclassOf<UGameplayEffect>> PassiveGameplayEffects;
+	TArray<TSubclassOf<UGameplayEffect>> StartingGameplayEffects;
 
 	/** Volume for detecting unarmed attack hits with left fist */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
@@ -134,6 +189,44 @@ protected:
 
 	bool bCanLook;
 
+	// -------------------------------------------- Begin Aim Offset Calculation Variables --------------------------------------------
+	/* Used to determine when to correct body orientation so it is facing the aim direction */
+	UPROPERTY(Replicated)
+	bool bIsReorientingBody;
+
+	/* The delta rotation yaw from the control rotation to the character rotation, used for aim offset blendspaces */
+	UPROPERTY(Replicated)
+	float AimYaw;
+
+	/* The delta rotation pitch from the control rotation to the character rotation, used for aim offset blendspaces */
+	UPROPERTY(Replicated)
+	float AimPitch;
+
+	/** Maximum yaw degrees the character can aim away from where their body is facing before the body will perform a correction turn to face the aim direction */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	float AimYawTurnStart;
+
+	/** Minimum yaw degrees the character can be aim away from where their body is facing during a correction turn before the turn will stop */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	float AimYawTurnStop;
+
+	/* The minimum value to clamp the aim rotation yaw to */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	float AimYawClampMin;
+
+	/* The maximum value to clamp the aim rotation yaw to */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	float AimYawClampMax;
+
+	/* The minimum value to clamp the aim rotation pitch to */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	float AimPitchClampMin;
+
+	/* The maximum value to clamp the aim rotation pitch to */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	float AimPitchClampMax;
+	// -------------------------------------------- End Aim Offset Calculation Variables --------------------------------------------
+
 private:
 	/** Needed for removing and restoring deceleration during rolls */
 	float DefaultWalkingDeceleration;
@@ -158,12 +251,25 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	virtual void Tick(float DeltaSeconds) override;
+
+	UFUNCTION(BlueprintPure)
 	UInventoryComponent* GetInventoryComponent();
 
+	UFUNCTION(BlueprintPure)
 	UEquipmentComponent* GetEquipmentComponent();
 
 	// Implement IAbilitySystemInterface
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	UFUNCTION(BlueprintPure)
+	FVector GetMovementVelocity();
+
+	UFUNCTION(BlueprintPure)
+	float GetMovementDirection();
+
+	UFUNCTION(BlueprintPure)
+	ECardinalMovementDirection GetCardinalMovementDirection();
 
 	void SetCanLook(bool CanLook);
 
@@ -264,6 +370,19 @@ public:
 	 */
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_TryDropItem(AItem* Item);
+
+	UFUNCTION(BlueprintCallable)
+	bool GetIsReorientingBody();
+
+	UFUNCTION(BlueprintCallable)
+	float GetAimYaw();
+
+	UFUNCTION(BlueprintCallable)
+	float GetAimPitch();
+
+	/* Event for toggling the matching of actor rotation to controller rotation. Used for orienting the character body back towards the looking direction. */
+	UFUNCTION(BlueprintImplementableEvent)
+	void UseControllerDesiredRotation(bool UseRotation);
 
 protected:
 	/** Apply initial acitve and passive gameplay abilities to player. */
@@ -417,4 +536,7 @@ protected:
 
 	UFUNCTION()
 	void OnDropInventoryItemKeyPressed();
+
+private:
+	void CalculateAimRotation();
 };
