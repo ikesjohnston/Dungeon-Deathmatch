@@ -12,10 +12,18 @@ void UInteractTooltipWidget::SetInteractable(AActor* NewInteractable)
 {
 	Interactable = NewInteractable;
 
-	/*FFormatNamedArguments Args;
-	Args.Add("Prompt", Interactable->GetInteractionPromptText());
-	Args.Add("Name", Interactable->GetInteractableName());
-	InteractionText = FText::Format(LOCTEXT("InteractionText", "{Prompt} {Name}"), Args);*/
+	IInteractable* InteractableInterface = Cast<IInteractable>(Interactable);
+	if (InteractableInterface)
+	{
+		FFormatNamedArguments Args;
+		Args.Add("Prompt", InteractableInterface->Execute_GetInteractionPromptText(Interactable));
+		Args.Add("Name", InteractableInterface->Execute_GetInteractableName(Interactable));
+		InteractionText = FText::Format(LOCTEXT("InteractionText", "{Prompt} {Name}"), Args);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UInteractTooltip::SetInteractable - %s does not inherit from a class that implements IInteractable."), *GetName());
+	}
 
 	ItemTooltipWidgetName = "WBP_ItemTooltip";
 

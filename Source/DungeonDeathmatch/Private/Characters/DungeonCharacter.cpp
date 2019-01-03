@@ -34,6 +34,8 @@ FAutoConsoleVariableRef CVARLogCombos(
 #define CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX 157.5f
 #define CARDINAL_MOVEMENT_BACKWARD 180.0f
 
+#define MOVEMENT_SPEED_ATTRIBUTE_DIVISOR 100.0f
+
 ADungeonCharacter::ADungeonCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -137,6 +139,12 @@ ADungeonCharacter::ADungeonCharacter()
 	bIsMeleeComboReady = true;
 	CurrentMeleeComboState = -1;
 
+	BaseStandingMovementSpeed = 400.0f;
+	GetCharacterMovement()->MaxWalkSpeed = BaseStandingMovementSpeed;
+	BaseCrouchedMovementSpeed = 200.0f;
+	GetCharacterMovement()->MaxWalkSpeedCrouched = BaseCrouchedMovementSpeed;
+
+	bIsMovementInputEnabled = true;
 	bCanLook = true;
 
 	AimYawTurnStart = 60;
@@ -145,6 +153,7 @@ ADungeonCharacter::ADungeonCharacter()
 	AimYawClampMax = 90;
 	AimPitchClampMin = -90;
 	AimPitchClampMax = 90;
+
 }
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -157,12 +166,18 @@ void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(ADungeonCharacter, AimYaw);
 	DOREPLIFETIME(ADungeonCharacter, AimPitch);
 	DOREPLIFETIME(ADungeonCharacter, bIsReorientingBody);
+	DOREPLIFETIME(ADungeonCharacter, bIsMovementInputEnabled);
+	DOREPLIFETIME(ADungeonCharacter, bIsJumping);
 }
 
 // Called when the game starts or when spawned
 void ADungeonCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	GetCharacterMovement()->MaxWalkSpeed = BaseStandingMovementSpeed;
+	BaseCrouchedMovementSpeed = 200.0f;
+	GetCharacterMovement()->MaxWalkSpeedCrouched = BaseCrouchedMovementSpeed;
 
 	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
 	if (MovementComp)
@@ -248,11 +263,19 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 void ADungeonCharacter::Tick(float DeltaSeconds)
 {
+	Super::Tick(DeltaSeconds);
+
 	// Have server calculate aim offset
 	// TODO: This will need to be updated to use client prediction for smoothness at some point, with some defined error acception range
 	if (Role == ROLE_Authority)
 	{
 		CalculateAimRotation();
+	}
+
+	// Set jumping back to false after hitting the ground, used by animation instances
+	if (bIsJumping && !GetCharacterMovement()->IsFalling())
+	{
+		SetIsJumping(false);
 	}
 }
 
@@ -335,6 +358,26 @@ ECardinalMovementDirection ADungeonCharacter::GetCardinalMovementDirection()
 	{
 		return ECardinalMovementDirection::ForwardLeft;
 	}
+}
+
+bool ADungeonCharacter::GetIsMovementInputEnabled()
+{
+	return bIsMovementInputEnabled;
+}
+
+void ADungeonCharacter::SetIsMovementInputEnabled(bool IsMovementInputEnabled)
+{
+	bIsMovementInputEnabled = IsMovementInputEnabled;
+}
+
+bool ADungeonCharacter::GetIsJumping()
+{
+	return bIsJumping;
+}
+
+void ADungeonCharacter::SetIsJumping(bool IsJumping)
+{
+	bIsJumping = IsJumping;
 }
 
 void ADungeonCharacter::GiveAbility(TSubclassOf<UGameplayAbility> Ability)
@@ -487,14 +530,24 @@ float ADungeonCharacter::GetStaminaRegen() const
 	return AttributeSet->GetStaminaRegen();
 }
 
-float ADungeonCharacter::GetMoveSpeed() const
+float ADungeonCharacter::GetMovementSpeed() const
 {
 	if (!AttributeSet)
 	{
-		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::GetMoveSpeed - No AttributeSet set for %s"), *GetName());
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::GetMovementSpeed - No AttributeSet set for %s"), *GetName());
 		return 0;
 	}
-	return AttributeSet->GetMoveSpeed();
+	return AttributeSet->GetMovementSpeed();
+}
+
+float ADungeonCharacter::GetMovementSpeedMultiplier() const
+{
+	if (!AttributeSet)
+	{
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::GetMovementSpeedMultiplier - No AttributeSet set for %s"), *GetName());
+		return 0;
+	}
+	return AttributeSet->GetMovementSpeedMultiplier();
 }
 
 int32 ADungeonCharacter::GetCharacterLevel() const
@@ -550,14 +603,15 @@ void ADungeonCharacter::HandleStaminaChanged(float DeltaValue, const struct FGam
 	}
 }
 
-void ADungeonCharacter::HandleMoveSpeedChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
+void ADungeonCharacter::HandleMovementSpeedChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags)
 {
 	// Update the character movement's walk speed
-	GetCharacterMovement()->MaxWalkSpeed = GetMoveSpeed();
+	GetCharacterMovement()->MaxWalkSpeed = BaseStandingMovementSpeed * ((GetMovementSpeed() * GetMovementSpeedMultiplier()) / MOVEMENT_SPEED_ATTRIBUTE_DIVISOR);
+	GetCharacterMovement()->MaxWalkSpeedCrouched = BaseCrouchedMovementSpeed * ((GetMovementSpeed() * GetMovementSpeedMultiplier()) / MOVEMENT_SPEED_ATTRIBUTE_DIVISOR);
 
 	if (bAbilitiesInitialized)
 	{
-		OnMoveSpeedChanged(DeltaValue, EventTags);
+		OnMovementSpeedChanged(DeltaValue, EventTags);
 	}
 }
 
@@ -589,12 +643,18 @@ void ADungeonCharacter::Multicast_OnDeath_Implementation()
 
 void ADungeonCharacter::MoveForward(float Value)
 {
-	AddMovementInput(GetActorForwardVector() * Value);
+	if (bIsMovementInputEnabled)
+	{
+		AddMovementInput(GetActorForwardVector() * Value);
+	}
 }
 
 void ADungeonCharacter::MoveRight(float Value)
 {
-	AddMovementInput(GetActorRightVector() * Value);
+	if (bIsMovementInputEnabled)
+	{
+		AddMovementInput(GetActorRightVector() * Value);
+	}
 }
 
 void ADungeonCharacter::LookRight(float YawInput)
@@ -642,6 +702,16 @@ void ADungeonCharacter::OnJumpKeyPressed()
 	}
 }
 
+void ADungeonCharacter::Jump()
+{
+	if (bIsMovementInputEnabled)
+	{
+		Super::Jump();
+
+		SetIsJumping(true);
+	}
+}
+
 void ADungeonCharacter::OnCrouchKeyPressed()
 {
 	if (CrouchAbility)
@@ -671,14 +741,22 @@ void ADungeonCharacter::Server_Interact_Implementation()
 		AActor* FocusedInteractable = PlayerController->GetFocusedInteractable();
 		if (FocusedInteractable)
 		{
-			AItem* Item = Cast<AItem>(FocusedInteractable);
-			if (Item)
+			IInteractable* InteractableInterface = Cast<IInteractable>(FocusedInteractable);
+			if (InteractableInterface)
 			{
-				Server_TryPickUpItem(Item);
+				InteractableInterface->Execute_OnInteract(FocusedInteractable, this);
 			}
 			else
 			{
-				//FocusedInteractable->Server_OnInteract(this);
+				AItem* Item = Cast<AItem>(FocusedInteractable);
+				if (Item)
+				{
+					Server_TryPickUpItem(Item);
+				}
+				else
+				{
+					//FocusedInteractable->Server_OnInteract(this);
+				}
 			}
 		}
 	}
@@ -961,6 +1039,48 @@ float ADungeonCharacter::GetAimYaw()
 float ADungeonCharacter::GetAimPitch()
 {
 	return AimPitch;
+}
+
+void ADungeonCharacter::UpdateMeshSegments(TMap<EMeshSegment, USkeletalMesh*> MeshMap)
+{
+	for (TPair<EMeshSegment, USkeletalMesh*> MeshPair : MeshMap)
+	{
+		switch (MeshPair.Key)
+		{
+		case EMeshSegment::Head:
+			MeshComponentHelm->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::LeftShoulder:
+			MeshComponentShoulderLeft->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::RightShoulder:
+			MeshComponentShoulderRight->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::Chest:
+			MeshComponentTorso->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::Waist:
+			MeshComponentBelt->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::Legs:
+			MeshComponentLegArmor->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::LeftFoot:
+			MeshComponentFootLeft->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::RightFoot:
+			MeshComponentFootRight->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::LeftHand:
+			MeshComponentHandLeft->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::RightHand:
+			MeshComponentHandRight->SetSkeletalMesh(MeshPair.Value);
+			break;
+		default:
+			break;
+		}
+	}
 }
 
 void ADungeonCharacter::CalculateAimRotation()

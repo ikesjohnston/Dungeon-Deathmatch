@@ -8,9 +8,11 @@
 #include "EquipmentComponent.h" 
 #include "InteractTooltipWidget.h"
 #include "ItemTooltipWidget.h"
+#include "DungeonGameInstance.h"
 
 // Sets default values
-AItem::AItem()
+AItem::AItem(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -23,8 +25,18 @@ AItem::AItem()
 	InteractionPromptText = FText::FromString("Pick Up");
 	InventoryUseTooltipText = FText::FromString("Use");
 
-	MeshComponent->SetSimulatePhysics(true);
+	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
+	//MeshComponent->SetSimulatePhysics(true);
+	MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	MeshComponent->SetCollisionObjectType(TRACE_INTERACTABLE);
 	MeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+
+	WidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
+	WidgetComponent->SetupAttachment(MeshComponent);
+	WidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	WidgetComponent->SetVisibility(false);
+
+	bCanInteract = true;
 }
 
 AItem::~AItem()
@@ -32,10 +44,17 @@ AItem::~AItem()
 
 }
 
+void AItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AItem, bCanInteract);
+}
+
 // Called when the game starts or when spawned
 void AItem::BeginPlay()
 {
-	SetQualityTierStencilValue();
+	SetMeshStencilValue();
 	Super::BeginPlay();
 
 	// Initialize item tooltip
@@ -51,36 +70,41 @@ void AItem::BeginPlay()
 	}
 }
 
-void AItem::SetQualityTierStencilValue()
-{
-	switch (QualityTier)
-	{
-	case EItemQualityTier::Normal:
-		QualityTierStencilValue = STENCIL_ITEM_DEFAULT;
-		break;
-	case EItemQualityTier::Uncommon:
-		QualityTierStencilValue = STENCIL_ITEM_UNCOMMON;
-		break;
-	case EItemQualityTier::Rare:
-		QualityTierStencilValue = STENCIL_ITEM_RARE;
-		break;
-	case EItemQualityTier::Epic:
-		QualityTierStencilValue = STENCIL_ITEM_EPIC;
-		break;
-	case EItemQualityTier::Legendary:
-		QualityTierStencilValue = STENCIL_ITEM_LEGENDARY;
-		break;
-	default:
-		break;
-	}
-}
-
 // Called every frame
 void AItem::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
 }
+
+UStaticMeshComponent* AItem::GetMeshComponent()
+{
+	return MeshComponent;
+}
+
+//void AItem::SetMeshStencilValue()
+//{
+//	switch (QualityTier)
+//	{
+//	case EItemQualityTier::Normal:
+//		QualityTierStencilValue = STENCIL_ITEM_DEFAULT;
+//		break;
+//	case EItemQualityTier::Uncommon:
+//		QualityTierStencilValue = STENCIL_ITEM_UNCOMMON;
+//		break;
+//	case EItemQualityTier::Rare:
+//		QualityTierStencilValue = STENCIL_ITEM_RARE;
+//		break;
+//	case EItemQualityTier::Epic:
+//		QualityTierStencilValue = STENCIL_ITEM_EPIC;
+//		break;
+//	case EItemQualityTier::Legendary:
+//		QualityTierStencilValue = STENCIL_ITEM_LEGENDARY;
+//		break;
+//	default:
+//		break;
+//	}
+//}
 
 FText AItem::GetItemName()
 {
@@ -140,8 +164,166 @@ bool AItem::TryInventoryUse()
 	return false;
 }
 
-void AItem::NativeOnInteract(ADungeonCharacter* InteractingCharacter)
+// ------------------------ BEGIN INTERACTABLE INTERFACE FUNCTIONS ------------------------
+void AItem::OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
 {
-	Super::NativeOnInteract(InteractingCharacter);
+	UE_LOG(LogTemp, Log, TEXT("AItem::OnInteract_Implementation - Interacted with %s!"), *GetName());
 }
+
+void AItem::OnFocused_Implementation()
+{
+	// Add glowing outline to mesh(es). Set by the post processing object in the level. This should only happen on the client.
+	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
+	for (int i = 0; i < MeshComponents.Num(); i++)
+	{
+		UMeshComponent* MeshComp = Cast<UMeshComponent>(MeshComponents[i]);
+		if (MeshComp)
+		{
+			MeshComp->SetRenderCustomDepth(true);
+		}
+	}
+
+	WidgetComponent->SetVisibility(true);
+}
+
+void AItem::OnUnfocused_Implementation()
+{
+	// Remove glowing outline from mesh(es). Set by the post processing object in the level. This should only happen on the client.
+	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
+	for (int i = 0; i < MeshComponents.Num(); i++)
+	{
+		UMeshComponent* MeshComp = Cast<UMeshComponent>(MeshComponents[i]);
+		if (MeshComp)
+		{
+			MeshComp->SetRenderCustomDepth(false);
+		}
+	}
+
+	WidgetComponent->SetVisibility(false);
+}
+
+bool AItem::GetCanInteract_Implementation()
+{
+	return bCanInteract;
+}
+
+void AItem::SetCanInteract_Implementation(bool CanInteract)
+{
+	bCanInteract = CanInteract;
+}
+
+FText AItem::GetInteractionPromptText_Implementation()
+{
+	return InteractionPromptText;
+}
+
+FText AItem::GetInteractableName_Implementation()
+{
+	return ItemName;
+}
+// ------------------------ END INTERACTABLE INTERFACE FUNCTIONS ------------------------
+
+//UWidgetComponent* AItem::GetWidgetComponent()
+//{
+//	return WidgetComponent;
+//}
+
+//void AItem::SetCanInteract(bool CanInteract)
+//{
+//	Server_SetCanInteract(CanInteract);
+//}
+
+void AItem::SetMeshStencilValue()
+{
+	// Render custom depth on all mesh components. Certain interactables (like chests or special weapons) may have multiple mesh components.
+	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
+	for (int i = 0; i < MeshComponents.Num(); i++)
+	{
+		UMeshComponent* MeshComp = Cast<UMeshComponent>(MeshComponents[i]);
+		if (MeshComp)
+		{
+			MeshComp->SetCustomDepthStencilValue(QualityTierStencilValue);
+		}
+	}
+}
+
+//bool AItem::GetCanInteract()
+//{
+//	return bCanInteract;
+//}
+//
+//void AItem::Server_SetCanInteract(bool CanInteract)
+//{
+//	bCanInteract = CanInteract;
+//}
+//
+//FText AItem::GetInteractionPromptText()
+//{
+//	return InteractionPromptText;
+//}
+//
+//FText AItem::GetInteractableName()
+//{
+//	return InteractableName;
+//}
+//
+//void AItem::NativeOnInteract(ADungeonCharacter* InteractingCharacter)
+//{
+//	// Server side safety check
+//	if (Role == ROLE_Authority)
+//	{
+//
+//	}
+//}
+//
+//void AItem::OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
+//{
+//	// Server side safety check
+//	if (Role == ROLE_Authority)
+//	{
+//		NativeOnInteract(InteractingCharacter);
+//	}
+//}
+//
+//void AItem::Server_OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
+//{
+//	OnInteract(InteractingCharacter);
+//}
+//
+//bool AItem::Server_OnInteract_Validate(ADungeonCharacter* InteractingCharacter)
+//{
+//	return true;
+//}
+//
+//void AItem::OnFocused()
+//{
+//	// Add glowing outline to mesh(es). Set by the post processing object in the level. This should only happen on the client.
+//	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
+//	for (int i = 0; i < MeshComponents.Num(); i++)
+//	{
+//		UMeshComponent* MeshComp = Cast<UMeshComponent>(MeshComponents[i]);
+//		if (MeshComp)
+//		{
+//			MeshComp->SetRenderCustomDepth(true);
+//		}
+//	}
+//
+//	WidgetComponent->SetVisibility(true);
+//}
+//
+//void AItem::OnUnfocused()
+//{
+//	// Remove glowing outline from mesh(es). Set by the post processing object in the level. This should only happen on the client.
+//	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
+//	for (int i = 0; i < MeshComponents.Num(); i++)
+//	{
+//		UMeshComponent* MeshComp = Cast<UMeshComponent>(MeshComponents[i]);
+//		if (MeshComp)
+//		{
+//			MeshComp->SetRenderCustomDepth(false);
+//		}
+//	}
+//
+//	WidgetComponent->SetVisibility(false);
+//}
 

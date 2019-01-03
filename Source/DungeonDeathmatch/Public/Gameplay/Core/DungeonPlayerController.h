@@ -36,21 +36,28 @@ protected:
 	/* The interactable actor that is currently focused by the player. It is assumed that this actor implements IInteractable. */
 	AActor* FocusedInteractable;
 
-	/* The distance to ray cast forward from the camera for interactables */
-	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
-	float InteractionCastLenth;
+	/* The distance from the camera to multi sphere trace for interactables. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction")
+	float InteractionCameraTraceDistance;
 
-	/* The radius of the multi sphere sweep for interactables */
-	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
-	float InteractionSweepRadius;
+	/* The radius of the multi sphere trace from the camera for interactables. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction")
+	float InteractionCameraTraceRadius;
 
-	/* The distance in front of the player to check interactable distance from */
-	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
-	float PlayerForwardInteractionDistance;
+	/* The distance in front of the player to trace for interactables. A sphere trace will be cast with a radius equal to half of this distance if the initial multi sphere trace fails. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction")
+	float InteractionPlayerTraceDistance;
 
 	/* The InventoryEquipmentSlotWidget that the player is currently mousing over. */
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 	UInventoryEquipmentSlotWidget* HoveringInventoryEquipmentSlot;
+
+	/* Separate debug variable to be used in blueprint for drawing debug traces; set by the CVAR Dungeon.DebugInteraction */
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsDebuggingInteraction;
+
+private:
+	float InteractionPlayerTraceRadius;
 
 public:
 	ADungeonPlayerController();

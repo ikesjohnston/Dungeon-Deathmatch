@@ -2,7 +2,8 @@
 
 #include "Equippable.h"
 
-AEquippable::AEquippable()
+AEquippable::AEquippable(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
 
 }
@@ -30,6 +31,11 @@ FText AEquippable::GetInventoryUseTooltipText()
 	}
 
 	return FText::FromString("Equip");
+}
+
+void AEquippable::OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
+{
+	OnEquip(InteractingCharacter);
 }
 
 void AEquippable::OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)

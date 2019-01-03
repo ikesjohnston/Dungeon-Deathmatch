@@ -7,7 +7,6 @@
 #include "Interactable.h"
 #include "InteractTooltipWidget.generated.h"
 
-class AInteractableActor;
 class UItemTooltipWidget;
 
 /**
@@ -19,17 +18,18 @@ class DUNGEONDEATHMATCH_API UInteractTooltipWidget : public UUserWidget
 	GENERATED_BODY()
 
 protected:
-	/* The interactable actor this tooltip details. It is assumed that this actor implements IInteractable. */
+	/* The interactable actor this tooltip details. It is assumed that this actor implements IInteractable */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
 	AActor* Interactable;
 
+	/* The prompt text that should appear on the tooltip when the interactable is focused by the player */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
 	FText InteractionText;
 
-	/** Separate child widget for items. Hidden by default, will be set visible by parent item. */
+	/* Separate child widget for items. Hidden by default, will be set visible by parent item */
 	UItemTooltipWidget* ItemTooltip;
 
-	/** The name given to the ItemTooltip widget in the  editor. Used to find the widget in code. */
+	/* The name given to the ItemTooltip widget in the  editor. Used to find the widget in code */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
 	FName ItemTooltipWidgetName;
 

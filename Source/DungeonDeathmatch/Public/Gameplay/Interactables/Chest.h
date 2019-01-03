@@ -46,22 +46,6 @@ public:
 
 	bool GetIsOpened();
 
-	virtual void OnInteract_Implementation(ADungeonCharacter* InteractingCharacter) override;
-
-	virtual void OnFocused() override;
-
-	virtual void OnUnfocused() override;
-
-	virtual UWidgetComponent* GetWidgetComponent() override;
-
-	virtual bool GetCanInteract() override;
-
-	virtual void SetCanInteract(bool CanInteract) override;
-
-	virtual FText GetInteractionPromptText() override;
-
-	virtual FText GetInteractableName() override;
-
 protected:
 	UFUNCTION()
 	void OnRep_IsOpened();

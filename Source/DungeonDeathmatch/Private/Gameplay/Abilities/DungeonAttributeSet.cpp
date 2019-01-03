@@ -17,11 +17,11 @@ UDungeonAttributeSet::UDungeonAttributeSet()
 	, Stamina(100.0f)
 	, MaxStamina(100.0f)
 	, StaminaRegen(10.0f)
-	, AttackPower(10.0f)
 	, DefensePower(10.0f)
-	, MoveSpeed(100.0f)
+	, MovementSpeed(100.0f)
+	, MovementSpeedMultiplier(1.0f)
 	, CarryingWeight(0.0f)
-	, CarryingWeightCapacity(50.0f)
+	, MaxCarryingWeight(50.0f)
 	, Damage(5.0f)
 {
 }
@@ -39,11 +39,11 @@ void UDungeonAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME(UDungeonAttributeSet, Stamina);
 	DOREPLIFETIME(UDungeonAttributeSet, MaxStamina);
 	DOREPLIFETIME(UDungeonAttributeSet, StaminaRegen);
-	DOREPLIFETIME(UDungeonAttributeSet, AttackPower);
 	DOREPLIFETIME(UDungeonAttributeSet, DefensePower);
-	DOREPLIFETIME(UDungeonAttributeSet, MoveSpeed);
+	DOREPLIFETIME(UDungeonAttributeSet, MovementSpeed);
+	DOREPLIFETIME(UDungeonAttributeSet, MovementSpeedMultiplier);
 	DOREPLIFETIME(UDungeonAttributeSet, CarryingWeight);
-	DOREPLIFETIME(UDungeonAttributeSet, CarryingWeightCapacity);
+	DOREPLIFETIME(UDungeonAttributeSet, MaxCarryingWeight);
 }
 
 void UDungeonAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -188,15 +188,25 @@ void UDungeonAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 	{
 		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::PostGameplayEffectExecute - StaminaRegen set to %f"), GetStaminaRegen());
 	}
-	else if (Data.EvaluatedData.Attribute == GetMoveSpeedAttribute())
+	else if (Data.EvaluatedData.Attribute == GetMovementSpeedAttribute())
 	{
 		if (TargetCharacter)
 		{
-			// Call for all movespeed changes
-			TargetCharacter->HandleMoveSpeedChanged(DeltaValue, SourceTags);
+			// Call for all MovementSpeed changes
+			TargetCharacter->HandleMovementSpeedChanged(DeltaValue, SourceTags);
 
-			UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::PostGameplayEffectExecute - MoveSpeed set to %f"), GetMoveSpeed());
+			UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::PostGameplayEffectExecute - MovementSpeed set to %f"), GetMovementSpeed());
 		}
+	}
+	else if (Data.EvaluatedData.Attribute == GetMovementSpeedMultiplierAttribute())
+	{
+	if (TargetCharacter)
+	{
+		// Call for all MovementSpeedMultiplier changes
+		TargetCharacter->HandleMovementSpeedChanged(DeltaValue, SourceTags);
+
+		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::PostGameplayEffectExecute - MovementSpeedMultiplier set to %f"), GetMovementSpeedMultiplier());
+	}
 	}
 }
 
@@ -274,19 +284,19 @@ void UDungeonAttributeSet::OnRep_Spirit()
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, Spirit);
 }
 
-void UDungeonAttributeSet::OnRep_AttackPower()
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, AttackPower);
-}
-
 void UDungeonAttributeSet::OnRep_DefensePower()
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, DefensePower);
 }
 
-void UDungeonAttributeSet::OnRep_MoveSpeed()
+void UDungeonAttributeSet::OnRep_MovementSpeed()
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, MoveSpeed);
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, MovementSpeed);
+}
+
+void UDungeonAttributeSet::OnRep_MovementSpeedMultiplier()
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, MovementSpeedMultiplier);
 }
 
 void UDungeonAttributeSet::OnRep_CarryingWeight()
@@ -294,7 +304,7 @@ void UDungeonAttributeSet::OnRep_CarryingWeight()
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, CarryingWeight);
 }
 
-void UDungeonAttributeSet::OnRep_CarryingWeightCapacity()
+void UDungeonAttributeSet::OnRep_MaxCarryingWeight()
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, CarryingWeightCapacity);
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDungeonAttributeSet, MaxCarryingWeight);
 }

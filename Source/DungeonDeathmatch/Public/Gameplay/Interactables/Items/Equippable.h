@@ -9,14 +9,13 @@
 UENUM(BlueprintType)
 enum class EEquipmentSlot : uint8
 {
-	MainHand		UMETA(DisplayName = "Main Hand"),
-	OffHand			UMETA(DisplayName = "Off Hand"),
 	Head			UMETA(DisplayName = "Head"),
+	Shoulders		UMETA(DisplayName = "Shoulders"),
 	Chest			UMETA(DisplayName = "Chest"),
+	Waist			UMETA(DisplayName = "Waist"),
 	Legs			UMETA(DisplayName = "Legs"),
+	Feet			UMETA(DisplayName = "Feet"),
 	Hands			UMETA(DisplayName = "Hands"),
-	Neck			UMETA(DisplayName = "Neck"),
-	Finger			UMETA(DisplayName = "Finger"),
 
 	NUM_EQUIPMENT_SLOTS
 };
@@ -38,7 +37,7 @@ protected:
 
 public:
 	// Sets default values for this actor's properties
-	AEquippable();
+	AEquippable(const FObjectInitializer& ObjectInitializer);
 
 	virtual ~AEquippable();
 
@@ -49,6 +48,10 @@ public:
 	virtual TArray<EEquipmentSlot> GetLockedEquipmentSlots();
 
 	virtual FText GetInventoryUseTooltipText() override;
+	
+	// ------------------------ BEGIN INTERACTABLE INTERFACE OVERRIDES ------------------------
+	virtual void OnInteract_Implementation(ADungeonCharacter* InteractingCharacter) override;
+	// ------------------------ END INTERACTABLE INTERFACE OVERRIDES ------------------------
 
 protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "Equipment")

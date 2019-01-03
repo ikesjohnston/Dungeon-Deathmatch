@@ -22,13 +22,19 @@ FAutoConsoleVariableRef CVARDebugInteraction(
 
 ADungeonPlayerController::ADungeonPlayerController()
 {
-	InteractionCastLenth = 400.0f;
-	InteractionSweepRadius = 100.0f;
-	PlayerForwardInteractionDistance = 10.0f;
+	InteractionCameraTraceDistance = 5000.0f;
+	InteractionCameraTraceRadius = 25.0f;
+
+	InteractionPlayerTraceDistance = 200.0f;
+	InteractionPlayerTraceRadius = InteractionPlayerTraceDistance / 2;
 }
 
 void ADungeonPlayerController::Tick(float DeltaTime)
 {
+	Super::Tick(DeltaTime);
+
+	bIsDebuggingInteraction = (DebugInteraction > 0);
+
 	CheckFocus();
 }
 
@@ -123,120 +129,184 @@ void ADungeonPlayerController::SetPawnCanLook(bool bCanLook)
 
 void ADungeonPlayerController::CheckFocus()
 {
-	//if (IsLocalController())
-	//{
-	//	// Only run interaction checks when this controller is possessing a pawn
-	//	APawn* PlayerPawn = GetPawn();
-	//	if (!PlayerPawn)
-	//	{
-	//		if (FocusedInteractable)
-	//		{
-	//			FocusedInteractable->OnUnfocused();
-	//			// Throw event for UI updates
-	//			if (OnInteractableUnfocused.IsBound())
-	//			{
-	//				//OnInteractableUnfocused.Broadcast();
-	//			}
-	//			FocusedInteractable = nullptr;
-	//			Server_SetFocusedInteractable(nullptr);
-	//		}
+	if (IsLocalController())
+	{
+		// Only run interaction checks when this controller is possessing a pawn
+		APawn* PlayerPawn = GetPawn();
+		if (!PlayerPawn)
+		{
+			if (FocusedInteractable)
+			{
+				IInteractable::Execute_OnUnfocused(FocusedInteractable);
+				// Throw event for UI updates
+				if (OnInteractableUnfocused.IsBound())
+				{
+					//OnInteractableUnfocused.Broadcast();
+				}
+				FocusedInteractable = nullptr;
+				Server_SetFocusedInteractable(nullptr);
+			}
+			return;
+		}
 
-	//		return;
-	//	}
+		IInteractable* InteractableInterface = nullptr;
+		AActor* ClosestInteractable = nullptr;
 
-	//	// Just do a single sphere trace in front of the player and find the closest object
-	//	AActor* ClosestInteractable = nullptr;
-	//	TArray<FHitResult> SphereOutHits;
+		FHitResult LineTraceOutHit;
+		TArray<FHitResult> SphereTraceOutHits;
 
-	//	// We don't want to detect interactables behind the player
-	//	FVector PlayerLocation = PlayerPawn->GetActorLocation();
-	//	FVector PlayerForwadVector = PlayerPawn->GetActorForwardVector();
-	//	FVector PlayerForwardLocation = PlayerLocation + (PlayerForwadVector * PlayerForwardInteractionDistance);
-	//	FVector SphereSweepStart = PlayerLocation + (PlayerForwadVector * InteractionSweepRadius);
-	//	FVector SphereSweepEnd = SphereSweepStart;
+		FVector PlayerLocation = PlayerPawn->GetActorLocation();
+		FVector CameraLocation = PlayerCameraManager->GetCameraLocation();
+		FVector ControlForwadVector = GetControlRotation().Vector();
+		FVector CameraForwardTraceEndLocation = CameraLocation + (ControlForwadVector * InteractionCameraTraceDistance);
+		FVector PlayerAimTraceLocation = PlayerLocation + (ControlForwadVector * InteractionPlayerTraceRadius);
 
-	//	FCollisionShape Sphere = FCollisionShape::MakeSphere(InteractionSweepRadius);
+		// Line trace for all objects
+		FCollisionObjectQueryParams LineQueryObjectParams = FCollisionObjectQueryParams();
+		FCollisionQueryParams LineQueryParams;
+		LineQueryParams.AddIgnoredActor(GetPawn());
 
-	//	bool DidSphereSweepHit = GetWorld()->SweepMultiByChannel(SphereOutHits, SphereSweepStart, SphereSweepEnd, FQuat::Identity, TRACE_INTERACTABLE, Sphere);
-	//	if (DebugInteraction)
-	//	{
-	//		DrawDebugSphere(GetWorld(), SphereSweepStart, InteractionSweepRadius, 32, FColor::Magenta);
-	//		DrawDebugLine(GetWorld(), PlayerLocation, PlayerForwardLocation, FColor::Purple);
-	//	}
+		// Sphere trace only for interactables
+		FCollisionObjectQueryParams SphereQueryObjectParams;
+		SphereQueryObjectParams.AddObjectTypesToQuery(TRACE_INTERACTABLE);
 
-	//	// If anything was hit by the sphere sweep, process those interactables
-	//	if (DidSphereSweepHit)
-	//	{
-	//		// Find hit interactable closest to cursor
-	//		for (FHitResult SweepHit : SphereOutHits)
-	//		{
-	//			AActor* HitActor = SweepHit.Actor;
-	//			IInteractable* HitInteractable = Cast<IInteractable>(SweepHit.Actor);
-	//			if (HitInteractable && IInteractable::Execute_GetCanInteract(HitActor))
-	//			{
-	//				if (ClosestInteractable)
-	//				{
-	//					float HitDistance = FVector::Distance(PlayerForwardLocation, HitActor->GetActorLocation());
-	//					float ClosestDistance = FVector::Distance(PlayerForwardLocation, ClosestInteractable->GetActorLocation());
-	//					if (HitDistance < ClosestDistance)
-	//					{
-	//						ClosestInteractable = HitActor;
-	//					}
-	//				}
-	//				else
-	//				{
-	//					ClosestInteractable = HitActor;
-	//				}
-	//			}
-	//		}
-	//	}
+		// First, do a simple line trace outward from the camera, to get anything the player might be directly targeting.
+		bool DidCameraLineTraceHit = GetWorld()->LineTraceSingleByObjectType(LineTraceOutHit, CameraLocation, CameraForwardTraceEndLocation, LineQueryObjectParams, LineQueryParams);
+		if (DebugInteraction && !DidCameraLineTraceHit)
+		{
+			// Draw the full line trace with no hit
+			DrawDebugLine(GetWorld(), CameraLocation, CameraForwardTraceEndLocation, FColor::Orange);
+		}
+		if (DidCameraLineTraceHit)
+		{
+			AActor* HitActor = LineTraceOutHit.GetActor();
 
-	//	// If interactable was found, set as focus and render outline
-	//	if (ClosestInteractable)
-	//	{
-	//		if (FocusedInteractable)
-	//		{
-	//			if (FocusedInteractable == ClosestInteractable)
-	//			{
-	//				return;
-	//			}
-	//			FocusedInteractable->OnUnfocused();
-	//			if (DebugInteraction)
-	//			{
-	//				UE_LOG(LogTemp, Log, TEXT("ADungeonPlayerController::CheckFocus - Stopped focusing %s"), *FocusedInteractable->GetName());
-	//			}
-	//		}
-	//		Server_SetFocusedInteractable(ClosestInteractable);
-	//		FocusedInteractable = ClosestInteractable;
-	//		FocusedInteractable->OnFocused();
-	//		// Throw event for UI updates
-	//		if (OnInteractableFocused.IsBound())
-	//		{
-	//			//OnInteractableFocused.Broadcast(FocusedInteractable);
-	//		}
-	//		if (DebugInteraction)
-	//		{
-	//			UE_LOG(LogTemp, Log, TEXT("ADungeonPlayerController::CheckFocus - Started focusing %s"), *FocusedInteractable->GetName());
-	//		}
-	//	}
-	//	else
-	//	{
-	//		if (FocusedInteractable)
-	//		{
-	//			FocusedInteractable->OnUnfocused();
-	//			// Throw event for UI updates
-	//			if (OnInteractableUnfocused.IsBound())
-	//			{
-	//				//OnInteractableUnfocused.Broadcast();
-	//			}
-	//			if (DebugInteraction)
-	//			{
-	//				UE_LOG(LogTemp, Log, TEXT("ADungeonPlayerController::CheckFocus - Stopped focusing %s"), *FocusedInteractable->GetName());
-	//			}
-	//			Server_SetFocusedInteractable(nullptr);
-	//			FocusedInteractable = nullptr;
-	//		}
-	//	}
-	//	
-	//}
+			// Verify that the actor is within the max interaction range
+			float HitDistance = FVector::Distance(HitActor->GetActorLocation(), PlayerPawn->GetActorLocation());
+			if (HitDistance <= InteractionPlayerTraceDistance)
+			{
+				InteractableInterface = Cast<IInteractable>(HitActor);
+				if (InteractableInterface && InteractableInterface->Execute_GetCanInteract(HitActor))
+				{
+					if (DebugInteraction)
+					{
+						// Draw the line trace up to the impact point and draw a green point at that location, signifying an interactable was hit
+						DrawDebugLine(GetWorld(), CameraLocation, LineTraceOutHit.ImpactPoint, FColor::Orange);
+						DrawDebugPoint(GetWorld(), LineTraceOutHit.ImpactPoint, 10, FColor::Green);
+					}
+					ClosestInteractable = HitActor;
+				}
+				else
+				{
+					if (DebugInteraction)
+					{
+						// Draw the line trace up to the impact point and draw a red point at that location, signifying an actor was hit, but not an interactable 
+						DrawDebugLine(GetWorld(), CameraLocation, LineTraceOutHit.ImpactPoint, FColor::Orange);
+						DrawDebugPoint(GetWorld(), LineTraceOutHit.ImpactPoint, 10, FColor::Red);
+					}
+
+					// If the player isn't directly targeting an interactable, do a sphere trace at the line trace hit location, if it exists
+					FCollisionShape Sphere = FCollisionShape::MakeSphere(InteractionCameraTraceRadius);
+					if (DebugInteraction)
+					{
+						// Draw the sphere at the impact point of the previous line trace
+						DrawDebugSphere(GetWorld(), LineTraceOutHit.ImpactPoint, InteractionCameraTraceRadius, 32, FColor::Orange);
+					}
+					bool DidPrimarySphereTraceHit = GetWorld()->SweepMultiByObjectType(SphereTraceOutHits, LineTraceOutHit.ImpactPoint, LineTraceOutHit.ImpactPoint, FQuat::Identity, SphereQueryObjectParams, Sphere);
+					if (DidPrimarySphereTraceHit)
+					{
+						// Find hit interactable closest to cursor
+						for (FHitResult SphereHit : SphereTraceOutHits)
+						{
+							AActor* HitActor = SphereHit.GetActor();
+							// Verify that the actor is within the max interaction range
+							float HitDistance = FVector::Distance(HitActor->GetActorLocation(), PlayerPawn->GetActorLocation());
+							if (HitDistance <= InteractionPlayerTraceDistance)
+							{
+								InteractableInterface = Cast<IInteractable>(HitActor);
+								if (InteractableInterface && InteractableInterface->Execute_GetCanInteract(HitActor))
+								{
+									if (DebugInteraction)
+									{
+										// Draw the impact point on the sphere
+										DrawDebugPoint(GetWorld(), SphereHit.ImpactPoint, 10, FColor::Green);
+									}
+									// Check if this hit is closest to the center of the sphere
+									if (ClosestInteractable)
+									{
+										float HitToCenterDistance = FVector::Distance(SphereHit.Location, HitActor->GetActorLocation());
+										float ClosestToCenterDistance = FVector::Distance(SphereHit.Location, ClosestInteractable->GetActorLocation());
+										if (HitToCenterDistance < ClosestToCenterDistance)
+										{
+											ClosestInteractable = HitActor;
+										}
+									}
+									else
+									{
+										ClosestInteractable = HitActor;
+									}
+								}
+							}
+							
+						}
+					}
+				}
+			}
+			else if (DebugInteraction)
+			{
+				// Draw the full line trace with no hit
+				DrawDebugLine(GetWorld(), CameraLocation, CameraForwardTraceEndLocation, FColor::Orange);
+			}
+		}
+
+		// If interactable was found, set as focus and render outline
+		if (ClosestInteractable)
+		{
+			InteractableInterface = Cast<IInteractable>(ClosestInteractable);
+			if (FocusedInteractable)
+			{
+				if (FocusedInteractable == ClosestInteractable)
+				{
+					return;
+				}
+				InteractableInterface->Execute_OnUnfocused(FocusedInteractable);
+				if (DebugInteraction)
+				{
+					UE_LOG(LogTemp, Log, TEXT("ADungeonPlayerController::CheckFocus - Stopped focusing %s"), *FocusedInteractable->GetName());
+				}
+			}
+			Server_SetFocusedInteractable(ClosestInteractable);
+			FocusedInteractable = ClosestInteractable;
+			InteractableInterface->Execute_OnFocused(FocusedInteractable);
+			// Throw event for UI updates
+			if (OnInteractableFocused.IsBound())
+			{
+				//OnInteractableFocused.Broadcast(FocusedInteractable);
+			}
+			if (DebugInteraction)
+			{
+				UE_LOG(LogTemp, Log, TEXT("ADungeonPlayerController::CheckFocus - Started focusing %s"), *FocusedInteractable->GetName());
+			}
+		}
+		else
+		{
+			if (FocusedInteractable)
+			{
+				InteractableInterface = Cast<IInteractable>(FocusedInteractable);
+				InteractableInterface->Execute_OnUnfocused(FocusedInteractable);
+				// Throw event for UI updates
+				if (OnInteractableUnfocused.IsBound())
+				{
+					//OnInteractableUnfocused.Broadcast();
+				}
+				if (DebugInteraction)
+				{
+					UE_LOG(LogTemp, Log, TEXT("ADungeonPlayerController::CheckFocus - Stopped focusing %s"), *FocusedInteractable->GetName());
+				}
+				Server_SetFocusedInteractable(nullptr);
+				FocusedInteractable = nullptr;
+			}
+		}
+		
+	}
 }

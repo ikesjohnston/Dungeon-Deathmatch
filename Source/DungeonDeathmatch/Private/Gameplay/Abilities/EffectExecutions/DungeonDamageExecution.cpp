@@ -7,7 +7,7 @@
 struct DungeonDamageStatics
 {
 	DECLARE_ATTRIBUTE_CAPTUREDEF(DefensePower);
-	DECLARE_ATTRIBUTE_CAPTUREDEF(AttackPower);
+	//DECLARE_ATTRIBUTE_CAPTUREDEF(AttackPower);
 	DECLARE_ATTRIBUTE_CAPTUREDEF(Damage);
 
 	DungeonDamageStatics()
@@ -18,7 +18,7 @@ struct DungeonDamageStatics
 		// Capture the Source's AttackPower. We do want to snapshot this at the moment we create the GameplayEffectSpec that will execute the damage.
 		// (imagine we fire a projectile: we create the GE Spec when the projectile is fired. When it hits the target, we want to use the AttackPower at the moment
 		// the projectile was launched, not when it hits).
-		DEFINE_ATTRIBUTE_CAPTUREDEF(UDungeonAttributeSet, AttackPower, Source, true);
+		//DEFINE_ATTRIBUTE_CAPTUREDEF(UDungeonAttributeSet, AttackPower, Source, true);
 
 		// Also capture the source's raw Damage, which is normally passed in directly via the execution
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UDungeonAttributeSet, Damage, Source, true);
@@ -34,7 +34,6 @@ static const DungeonDamageStatics& DamageStatics()
 UDungeonDamageExecution::UDungeonDamageExecution()
 {
 	RelevantAttributesToCapture.Add(DamageStatics().DefensePowerDef);
-	RelevantAttributesToCapture.Add(DamageStatics().AttackPowerDef);
 	RelevantAttributesToCapture.Add(DamageStatics().DamageDef);
 }
 
@@ -69,7 +68,7 @@ void UDungeonDamageExecution::Execute_Implementation(const FGameplayEffectCustom
 	}
 
 	float AttackPower = 0.f;
-	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().AttackPowerDef, EvaluationParameters, AttackPower);
+	//ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().AttackPowerDef, EvaluationParameters, AttackPower);
 
 	float Damage = 0.f;
 	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().DamageDef, EvaluationParameters, Damage);

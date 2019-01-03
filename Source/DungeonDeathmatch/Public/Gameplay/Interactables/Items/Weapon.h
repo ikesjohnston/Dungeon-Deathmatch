@@ -51,7 +51,8 @@ protected:
 
 public:
 	// Sets default values for this actor's properties
-	AWeapon();
+	AWeapon(const FObjectInitializer& ObjectInitializer);
+
 	virtual ~AWeapon() override;
 
 protected:

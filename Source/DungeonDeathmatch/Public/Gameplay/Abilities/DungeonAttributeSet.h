@@ -85,20 +85,20 @@ public:
 	FGameplayAttributeData Spirit;
 	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, Spirit)
 
-	/** Base attack power used in dealing damage, increases automatically with each level */
-	UPROPERTY(BlueprintReadOnly, Category = "Damage", ReplicatedUsing = OnRep_AttackPower)
-	FGameplayAttributeData AttackPower;
-	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, AttackPower)
-
 	/** Base defense power used in mitigating damage, increased by armor and skills */
 	UPROPERTY(BlueprintReadOnly, Category = "Damage", ReplicatedUsing = OnRep_DefensePower)
 	FGameplayAttributeData DefensePower;
 	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, DefensePower)
 
-	/** MoveSpeed affects how fast characters can move */
-	UPROPERTY(BlueprintReadOnly, Category = "MoveSpeed", ReplicatedUsing = OnRep_MoveSpeed)
-	FGameplayAttributeData MoveSpeed;
-	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, MoveSpeed)
+	/** MovementSpeed affects how fast characters can move */
+	UPROPERTY(BlueprintReadOnly, Category = "MovementSpeed", ReplicatedUsing = OnRep_MovementSpeed)
+	FGameplayAttributeData MovementSpeed;
+	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, MovementSpeed)
+
+	/** MovementSpeedMultiplier is used to increase movement speed by a multiple of itself for actions like sprniting and rolling */
+	UPROPERTY(BlueprintReadOnly, Category = "MovementSpeed", ReplicatedUsing = OnRep_MovementSpeedMultiplier)
+	FGameplayAttributeData MovementSpeedMultiplier;
+	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, MovementSpeedMultiplier)
 
 	/** The weight of all items currently equipped or stored in inventory */
 	UPROPERTY(BlueprintReadOnly, Category = "Weight", ReplicatedUsing = OnRep_CarryingWeight)
@@ -106,9 +106,9 @@ public:
 	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, CarryingWeight)
 	
 	/** The maximum amount of weight that can be carried */
-	UPROPERTY(BlueprintReadOnly, Category = "Weight", ReplicatedUsing = OnRep_CarryingWeightCapacity)
-	FGameplayAttributeData CarryingWeightCapacity;
-	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, CarryingWeightCapacity)
+	UPROPERTY(BlueprintReadOnly, Category = "Weight", ReplicatedUsing = OnRep_MaxCarryingWeight)
+	FGameplayAttributeData MaxCarryingWeight;
+	ATTRIBUTE_ACCESSORS(UDungeonAttributeSet, MaxCarryingWeight)
 
 	/** Damage is a 'temporary' attribute used by the DamageExecution to calculate final damage, which then turns into -Health */
 	UPROPERTY(BlueprintReadOnly, Category = "Damage", meta = (HideFromLevelInfos))
@@ -164,17 +164,17 @@ protected:
 	virtual void OnRep_Spirit();
 
 	UFUNCTION()
-	virtual void OnRep_AttackPower();
-
-	UFUNCTION()
 	virtual void OnRep_DefensePower();
 
 	UFUNCTION()
-	virtual void OnRep_MoveSpeed();
+	virtual void OnRep_MovementSpeed();
+
+	UFUNCTION()
+	virtual void OnRep_MovementSpeedMultiplier();
 
 	UFUNCTION()
 	virtual void OnRep_CarryingWeight();
 
 	UFUNCTION()
-	virtual void OnRep_CarryingWeightCapacity();
+	virtual void OnRep_MaxCarryingWeight();
 };

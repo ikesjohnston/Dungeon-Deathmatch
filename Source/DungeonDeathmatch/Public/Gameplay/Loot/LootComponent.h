@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include <Engine/DataTable.h>
 #include "LootComponent.generated.h"
 
 class AItem;

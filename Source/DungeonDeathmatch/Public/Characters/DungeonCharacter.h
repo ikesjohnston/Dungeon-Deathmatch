@@ -45,6 +45,21 @@ UENUM(BlueprintType) enum class ECardinalMovementDirection : uint8 {
 	BackwardRight	UMETA(DisplayName = "BackwardRight"),
 };
 
+UENUM(BlueprintType)
+enum class EMeshSegment : uint8
+{
+	Head						UMETA(DisplayName = "Head"),
+	LeftShoulder				UMETA(DisplayName = "Left Shoulder"),
+	RightShoulder				UMETA(DisplayName = "Right Shoulder"),
+	Chest						UMETA(DisplayName = "Chest"),
+	Waist						UMETA(DisplayName = "Waist"),
+	Legs						UMETA(DisplayName = "Legs"),
+	LeftFoot					UMETA(DisplayName = "LeftFoot"),
+	RightFoot					UMETA(DisplayName = "RightFoot"),
+	LeftHand					UMETA(DisplayName = "LeftHand"),
+	RightHand					UMETA(DisplayName = "RightHand")
+};
+
 /** Character class that encapsulates player input and attribute change processing. */
 UCLASS()
 class DUNGEONDEATHMATCH_API ADungeonCharacter : public ACharacter, public IAbilitySystemInterface
@@ -187,6 +202,22 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
 	bool bIsMeleeComboReady;
 
+	/** The base movement speed when standing, used to calculate new movement speeds when speed attributes are changed */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
+	float BaseStandingMovementSpeed;
+
+	/** The base movement speed when crouched, used to calculate new movement speeds when speed attributes are changed */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
+	float BaseCrouchedMovementSpeed;
+
+	/** Flag to determine if character is currently accepting movement input */
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Movement")
+	bool bIsMovementInputEnabled;
+
+	/** Flag to determine if character is in the middle of a jump, as opposed to just falling */
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Movement")
+	bool bIsJumping;
+
 	bool bCanLook;
 
 	// -------------------------------------------- Begin Aim Offset Calculation Variables --------------------------------------------
@@ -271,6 +302,34 @@ public:
 	UFUNCTION(BlueprintPure)
 	ECardinalMovementDirection GetCardinalMovementDirection();
 
+	/**
+	 * Get if the character is currently accepting movement input
+	 */
+	UFUNCTION(BlueprintCallable)
+	bool GetIsMovementInputEnabled();
+
+	/**
+	 * Set if the character is currently accepting movement input
+	 * @param IsJumping Is the character accepting movement input?
+	 */
+	UFUNCTION(BlueprintCallable)
+	void SetIsMovementInputEnabled(bool IsMovementInputEnabled);
+
+	/**
+	 * Get if the character is currently jumping, as opposed to just falling.
+	 */
+	bool GetIsJumping();
+
+	/**
+	 * Set if the character is currently jumping, as opposed to just falling.
+	 * @param IsJumping Is the character jumping?
+	 */
+	void SetIsJumping(bool IsJumping);
+
+	/**
+	 * Set if the character can control the camera. Typically used to disable camera input while in menus.
+	 * @param CanLook Can the character look around?
+	 */
 	void SetCanLook(bool CanLook);
 
 	/**
@@ -311,7 +370,11 @@ public:
 
 	/** Returns current movement speed */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
-	virtual float GetMoveSpeed() const;
+	virtual float GetMovementSpeed() const;
+
+	/** Returns current movement speed multiplier*/
+	UFUNCTION(BlueprintCallable, Category = "Attributes")
+	virtual float GetMovementSpeedMultiplier() const;
 
 	/** Returns the character level that is passed to the ability system */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
@@ -384,6 +447,8 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void UseControllerDesiredRotation(bool UseRotation);
 
+	void UpdateMeshSegments(TMap<EMeshSegment, USkeletalMesh*> MeshMap);
+
 protected:
 	/** Apply initial acitve and passive gameplay abilities to player. */
 	void AddStartupGameplayAbilities();
@@ -431,13 +496,13 @@ protected:
 	void OnStaminaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
 
 	/**
-	 * BP Event called when move speed is changed
+	 * BP Event called when movement speed is changed
 	 *
-	 * @param DeltaValue Change in move speed
-	 * @param EventTags The gameplay tags of the event that changed move speed
+	 * @param DeltaValue Change in movement speed
+	 * @param EventTags The gameplay tags of the event that changed movement speed
 	 */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Attributes")
-	void OnMoveSpeedChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
+	void OnMovementSpeedChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
 
 	/** BP Event called when the player is killed */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Attributes")
@@ -452,7 +517,7 @@ protected:
 	virtual void HandleHealthChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
 	virtual void HandleManaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
 	virtual void HandleStaminaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
-	virtual void HandleMoveSpeedChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
+	virtual void HandleMovementSpeedChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
 
 	void MoveForward(float Value);
 
@@ -463,6 +528,11 @@ protected:
 	void LookUp(float PitchInput);
 
 	virtual void OnJumpKeyPressed();
+
+	/**
+	 * Makes the character jump on the next update. Also sets bIsJumping to true.
+	 */
+	virtual void Jump() override;
 
 	UFUNCTION()
 	void OnSprintKeyPressed();

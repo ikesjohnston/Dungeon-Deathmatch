@@ -4,7 +4,8 @@
 #include <Components/CapsuleComponent.h>
 
 // Sets default values
-AWeapon::AWeapon()
+AWeapon::AWeapon(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = false;
 

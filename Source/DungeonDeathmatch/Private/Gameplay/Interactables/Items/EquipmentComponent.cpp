@@ -49,17 +49,17 @@ void UEquipmentComponent::Multicast_OnEquipItem_Implementation(AEquippable* Equi
 
 void UEquipmentComponent::Server_EquipItem_Implementation(AEquippable* Equippable)
 {
-	if (!HasItemEquipped(Equippable))
-	{
-		Equipment.Insert(Equippable, (int32) EEquipmentSlot::MainHand);
-		Multicast_OnEquipItem(Equippable);
-		// test code, to remove 
-		ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetOwner());
-		if (Character)
-		{
-//				Item->Server_OnEquip(Character);
-		}
-	}
+//	if (!HasItemEquipped(Equippable))
+//	{
+//		Equipment.Insert(Equippable, (int32) EEquipmentSlot::MainHand);
+//		Multicast_OnEquipItem(Equippable);
+//		// test code, to remove 
+//		ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetOwner());
+//		if (Character)
+//		{
+////				Item->Server_OnEquip(Character);
+//		}
+//	}
 }
 
 bool UEquipmentComponent::Server_EquipItem_Validate(AEquippable* Equippable)
