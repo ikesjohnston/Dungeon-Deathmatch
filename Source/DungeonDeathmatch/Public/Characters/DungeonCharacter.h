@@ -21,6 +21,7 @@ class USphereComponent;
 class UWidgetComponent;
 class UGameplayEffect;
 class AInteractableActor;
+class AArmor;
 
 /**
  * Enum that maps gameplay abilities to the action mappings defined in project settings. The enum index corresponds to the
@@ -190,73 +191,119 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UDungeonGameplayAbility> RollAbility;
 
+	/** The GameplayAbility to use when pressing the free look key */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UDungeonGameplayAbility> StartFreeLookAbility;
+
+	/** The GameplayAbility to use when releasing the free look key */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UDungeonGameplayAbility> StopFreeLookAbility;
+
 	/** The GameplayTag used to send custom melee hit events to hit actors */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	FGameplayTag UnarmedMeleeHitEventTag;
 
-	/** Represents the index of the ability to use next in the MeleeCombatAbilities array for the current active weapon */
+	/* Represents the index of the ability to use next in the MeleeCombatAbilities array for the current active weapon */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
 	uint8 CurrentMeleeComboState;
 
-	/** Flag to determine if character can begin a new melee combo attack */
+	/* Flag to determine if character can begin a new melee combo attack */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
 	bool bIsMeleeComboReady;
 
-	/** The base movement speed when standing, used to calculate new movement speeds when speed attributes are changed */
+	/* The base movement speed when standing, used to calculate new movement speeds when speed attributes are changed */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
 	float BaseStandingMovementSpeed;
 
-	/** The base movement speed when crouched, used to calculate new movement speeds when speed attributes are changed */
+	/* The base movement speed when crouched, used to calculate new movement speeds when speed attributes are changed */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
 	float BaseCrouchedMovementSpeed;
 
-	/** Flag to determine if character is currently accepting movement input */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Movement")
+	/* Flag to determine if character is currently accepting movement input */
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input\|Movement")
 	bool bIsMovementInputEnabled;
 
-	/** Flag to determine if character is in the middle of a jump, as opposed to just falling */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Movement")
+	/* Flag to determine if character is able to control the camera, typically disabled when in menus */
+	UPROPERTY(BlueprintReadOnly, Category = "Input\|Camera")
+	bool bCanLook;
+	
+	/* Flag to determine if character is currently free looking, affects turning and aim offsets */
+	UPROPERTY(BlueprintReadOnly, Category = "Input\|Camera")
+	bool bIsFreeLooking;
+
+	/* Flag to determine if character is in the middle of a jump, as opposed to just falling */
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Animation\|Movement")
 	bool bIsJumping;
 
-	bool bCanLook;
+	/* The minimum value to clamp the movement direction yaw to */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Movement")
+	float MovementDirectionYawClampMin;
+
+	/* The maximum value to clamp the movement direction yaw to */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Movement")
+	float MovementDirectionYawClampMax;
 
 	// -------------------------------------------- Begin Aim Offset Calculation Variables --------------------------------------------
-	/* Used to determine when to correct body orientation so it is facing the aim direction */
+	/* Flag to determine when to correct body orientation so it is facing the aim direction */
 	UPROPERTY(Replicated)
 	bool bIsReorientingBody;
 
-	/* The delta rotation yaw from the control rotation to the character rotation, used for aim offset blendspaces */
+	/* The delta rotation yaw from the control rotation to the character rotation, used for aim offset blend spaces */
 	UPROPERTY(Replicated)
 	float AimYaw;
 
-	/* The delta rotation pitch from the control rotation to the character rotation, used for aim offset blendspaces */
+	/* The delta rotation pitch from the control rotation to the character rotation, used for aim offset blend spaces */
 	UPROPERTY(Replicated)
 	float AimPitch;
 
 	/** Maximum yaw degrees the character can aim away from where their body is facing before the body will perform a correction turn to face the aim direction */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
 	float AimYawTurnStart;
 
 	/** Minimum yaw degrees the character can be aim away from where their body is facing during a correction turn before the turn will stop */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
 	float AimYawTurnStop;
 
 	/* The minimum value to clamp the aim rotation yaw to */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
 	float AimYawClampMin;
 
 	/* The maximum value to clamp the aim rotation yaw to */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
 	float AimYawClampMax;
 
 	/* The minimum value to clamp the aim rotation pitch to */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
 	float AimPitchClampMin;
 
 	/* The maximum value to clamp the aim rotation pitch to */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
 	float AimPitchClampMax;
 	// -------------------------------------------- End Aim Offset Calculation Variables --------------------------------------------
+
+	/* The name of the socket corresponding to the left waist weapon sheathe */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment\|Sockets")
+	FString SocketNameSheatheWaistLeft;
+
+	/* The name of the socket corresponding to the right waist weapon sheathe */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment\|Sockets")
+	FString SocketNameSheatheWaistRight;
+
+	/* The name of the socket corresponding to the first back sheathe */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment\|Sockets")
+	FString SocketNameSheatheBackOne;
+
+	/* The name of the socket corresponding to the second back sheathe */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment\|Sockets")
+	FString SocketNameSheatheBackTwo;
+
+	/* The name of the socket corresponding to the first hot keyed consumable */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment\|Sockets")
+	FString SocketNameConsumableOne;
+
+	/* The name of the socket corresponding to the second hot keyed consumable */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment\|Sockets")
+	FString SocketNameConsumableTwo;
 
 private:
 	/** Needed for removing and restoring deceleration during rolls */
@@ -331,6 +378,13 @@ public:
 	 * @param CanLook Can the character look around?
 	 */
 	void SetCanLook(bool CanLook);
+
+	/**
+	 * Set if the character can free look
+	 * @param CanLook Can the character free look?
+	 */
+	UFUNCTION(BlueprintCallable)
+	void SetIsFreeLooking(bool IsFreeLooking);
 
 	/**
 	 * Adds an ability to the characters ability list
@@ -447,7 +501,21 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void UseControllerDesiredRotation(bool UseRotation);
 
-	void UpdateMeshSegments(TMap<EMeshSegment, USkeletalMesh*> MeshMap);
+	/**
+	 * Server side function for updating a character's mesh segments when armor equipment changes
+	 *
+	 * @param Armor The piece of armor to update meshes with
+	 */
+	UFUNCTION(Server, Unreliable, WithValidation)
+	void Server_UpdateMeshSegments(AArmor* Armor);
+
+	/**
+	 * RPC function for updating a character's mesh segments when armor equipment changes; called on all clients
+	 *
+	 * @param Armor The piece of armor to update meshes with
+	 */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_UpdateMeshSegments(AArmor* Armor);
 
 protected:
 	/** Apply initial acitve and passive gameplay abilities to player. */
@@ -539,6 +607,12 @@ protected:
 
 	UFUNCTION()
 	void OnSprintKeyReleased();
+
+	UFUNCTION()
+	void OnFreeLookKeyPressed();
+
+	UFUNCTION()
+	void OnFreeLookKeyReleased();
 
 	UFUNCTION()
 	void OnCrouchKeyPressed();

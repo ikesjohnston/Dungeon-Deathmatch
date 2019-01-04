@@ -27,13 +27,31 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Locomotion")
 	bool bIsReorientingBody;
 
-	/* The delta rotation yaw from the control rotation to the character rotation, used for aim offset blendspaces */
+	/* The yaw of the delta between the control rotation and character rotation, target value to lerp to, used for aim offset blendspaces */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Locomotion")
+	float AimYawTarget;
+
+	/* The actual yaw value being plugged into animations. Is lerped towards AimYawTarget. */
+	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	float AimYaw;
 
-	/* The delta rotation pitch from the control rotation to the character rotation, used for aim offset blendspaces */
+	/* The pitch of the delta between the control rotation and character rotation, used for aim offset blendspaces */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Locomotion")
 	float AimPitch;
+
+	/* The threshold the delta value of yaw targets between frames must exceed to trigger a aim lerp */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Locomotion")
+	float AimYawDeltaLerpStart;
+
+	bool bIsLerpingAim;
+
+	/* The threshold the delta value of yaw targets between frames must be under to stop an ongoing aim lerp */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Locomotion")
+	float AimYawDeltaLerpStop;
+
+	/* The alpha value to use for lerp calculations to aim targets .*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Locomotion")
+	float AimLerpAlpha;
 
 public:
 	UDungeonCharacterAnimInstance(const FObjectInitializer& ObjectInitializer);

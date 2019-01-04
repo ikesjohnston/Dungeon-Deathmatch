@@ -40,3 +40,8 @@ EWeaponState AWeapon::GetWeaponState()
 	return WeaponState;
 }
 
+void AWeapon::OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)
+{
+
+}
+

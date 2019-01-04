@@ -19,6 +19,7 @@
 #include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
 #include <Private/KismetTraceUtils.h>
+#include "Armor.h"
 
 // Console command for logging melee combo states
 static int32 LogCombos = 0;
@@ -147,13 +148,22 @@ ADungeonCharacter::ADungeonCharacter()
 	bIsMovementInputEnabled = true;
 	bCanLook = true;
 
+	MovementDirectionYawClampMin = -179.0f;
+	MovementDirectionYawClampMax = 180.0f;
+
 	AimYawTurnStart = 60;
 	AimYawTurnStop = 5;
-	AimYawClampMin = -90;
-	AimYawClampMax = 90;
+	AimYawClampMin = -120;
+	AimYawClampMax = 120;
 	AimPitchClampMin = -90;
 	AimPitchClampMax = 90;
 
+	SocketNameSheatheWaistLeft = "SheatheWaistL";
+	SocketNameSheatheWaistRight = "SheatheWaistR";
+	SocketNameSheatheBackOne = "SheatheBackOne";
+	SocketNameSheatheBackTwo = "SheatheBackTwo";
+	SocketNameConsumableOne = "ConsumableOne";
+	SocketNameConsumableTwo = "ConsumableTwo";
 }
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -210,6 +220,14 @@ void ADungeonCharacter::BeginPlay()
 			{
 				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(RollAbility.GetDefaultObject()), 1, 0));
 			}
+			if (StartFreeLookAbility)
+			{
+				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(StartFreeLookAbility.GetDefaultObject()), 1, 0));
+			}
+			if (StopFreeLookAbility)
+			{
+				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(StopFreeLookAbility.GetDefaultObject()), 1, 0));
+			}
 		}
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 		AddStartupGameplayAbilities();
@@ -238,6 +256,8 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAxis("MoveRight", this, &ADungeonCharacter::MoveRight);
 	PlayerInputComponent->BindAxis("LookUp", this, &ADungeonCharacter::LookUp);
 	PlayerInputComponent->BindAxis("Turn", this, &ADungeonCharacter::LookRight);
+	PlayerInputComponent->BindAction("FreeLook", IE_Pressed, this, &ADungeonCharacter::OnFreeLookKeyPressed);
+	PlayerInputComponent->BindAction("FreeLook", IE_Released, this, &ADungeonCharacter::OnFreeLookKeyReleased);
 	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &ADungeonCharacter::OnSprintKeyPressed);
 	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &ADungeonCharacter::OnSprintKeyReleased);
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ADungeonCharacter::OnCrouchKeyPressed);
@@ -313,10 +333,21 @@ FVector ADungeonCharacter::GetMovementVelocity()
 
 float ADungeonCharacter::GetMovementDirection()
 {	
+	float MovementDirection = 0.0f;
+
 	FVector Velocity = GetMovementVelocity();
-	FRotator ActorRotation = GetActorRotation();
-	FVector LocalVelocity = ActorRotation.UnrotateVector(Velocity);
-	float MovementDirection = FMath::RadiansToDegrees(FMath::Atan2(LocalVelocity.Y, LocalVelocity.X));
+	if (Velocity.Size() > 0)
+	{
+		FRotator ActorRotation = GetActorRotation();
+		FVector LocalVelocity = ActorRotation.UnrotateVector(Velocity);
+		MovementDirection = FMath::RadiansToDegrees(FMath::Atan2(LocalVelocity.Y, LocalVelocity.X));
+	}
+	else
+	{
+		// If standing still, the aim direction should act as the move direction, this is used for rolling
+		FRotator DeltaRotation = GetControlRotation() - GetActorRotation();
+		MovementDirection = FMath::ClampAngle(DeltaRotation.Yaw, MovementDirectionYawClampMin, MovementDirectionYawClampMax);
+	}
 
 	return MovementDirection;
 }
@@ -678,6 +709,11 @@ void ADungeonCharacter::SetCanLook(bool CanLook)
 	bCanLook = CanLook;
 }
 
+void ADungeonCharacter::SetIsFreeLooking(bool IsFreeLooking)
+{
+	bIsFreeLooking = IsFreeLooking;
+}
+
 void ADungeonCharacter::OnSprintKeyPressed()
 {
 	if (StartSprintAbility)
@@ -691,6 +727,22 @@ void ADungeonCharacter::OnSprintKeyReleased()
 	if (StopSprintAbility)
 	{
 		AbilitySystemComponent->TryActivateAbilityByClass(StopSprintAbility);
+	}
+}
+
+void ADungeonCharacter::OnFreeLookKeyPressed()
+{
+	if (StartFreeLookAbility)
+	{
+		AbilitySystemComponent->TryActivateAbilityByClass(StartFreeLookAbility);
+	}
+}
+
+void ADungeonCharacter::OnFreeLookKeyReleased()
+{
+	if (StopFreeLookAbility)
+	{
+		AbilitySystemComponent->TryActivateAbilityByClass(StopFreeLookAbility);
 	}
 }
 
@@ -746,18 +798,6 @@ void ADungeonCharacter::Server_Interact_Implementation()
 			{
 				InteractableInterface->Execute_OnInteract(FocusedInteractable, this);
 			}
-			else
-			{
-				AItem* Item = Cast<AItem>(FocusedInteractable);
-				if (Item)
-				{
-					Server_TryPickUpItem(Item);
-				}
-				else
-				{
-					//FocusedInteractable->Server_OnInteract(this);
-				}
-			}
 		}
 	}
 }
@@ -770,6 +810,14 @@ bool ADungeonCharacter::Server_Interact_Validate()
 void ADungeonCharacter::Server_TryPickUpItem_Implementation(AItem* Item)
 {
 	bool WasPickedUp = InventoryComponent->TryAddItem(Item);
+	if (WasPickedUp)
+	{
+		AEquippable* Equippable = Cast<AEquippable>(Item);
+		if (Equippable)
+		{
+			Equippable->OnEquip_Implementation(this);
+		}
+	}
 }
 
 bool ADungeonCharacter::Server_TryPickUpItem_Validate(AItem* Item)
@@ -1041,8 +1089,20 @@ float ADungeonCharacter::GetAimPitch()
 	return AimPitch;
 }
 
-void ADungeonCharacter::UpdateMeshSegments(TMap<EMeshSegment, USkeletalMesh*> MeshMap)
+void ADungeonCharacter::Server_UpdateMeshSegments_Implementation(AArmor* Armor)
 {
+	Multicast_UpdateMeshSegments(Armor);
+}
+
+bool ADungeonCharacter::Server_UpdateMeshSegments_Validate(AArmor* Armor)
+{
+	return true;
+}
+
+void ADungeonCharacter::Multicast_UpdateMeshSegments_Implementation(AArmor* Armor)
+{
+	TMap<EMeshSegment, USkeletalMesh*> MeshMap = Armor->GetArmorMeshMap();
+
 	for (TPair<EMeshSegment, USkeletalMesh*> MeshPair : MeshMap)
 	{
 		switch (MeshPair.Key)
@@ -1097,9 +1157,9 @@ void ADungeonCharacter::CalculateAimRotation()
 	{
 		FVector Velocity = MovementComp->Velocity;
 
-		if (Velocity.Size() > 0)
+		if (Velocity.Size() > 0 && !bIsFreeLooking)
 		{
-			// No aim offsets when moving unless aiming a bow/spell
+			// No aim offsets when moving unless aiming a bow/spell or free looking
 			bIsReorientingBody = false;
 			UseControllerDesiredRotation(true);
 		}
@@ -1107,7 +1167,7 @@ void ADungeonCharacter::CalculateAimRotation()
 		{
 			if (!bIsReorientingBody)
 			{
-				if (FMath::Abs(AimYaw) >= AimYawTurnStart)
+				if (FMath::Abs(AimYaw) >= AimYawTurnStart && !bIsFreeLooking)
 				{
 					bIsReorientingBody = true;
 					UseControllerDesiredRotation(true);

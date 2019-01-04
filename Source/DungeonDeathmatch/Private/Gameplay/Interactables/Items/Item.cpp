@@ -14,8 +14,7 @@
 AItem::AItem(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
 	bReplicates = true;
 	bReplicateMovement = true;
@@ -61,6 +60,7 @@ void AItem::BeginPlay()
 	UInteractTooltipWidget* InteractTooltip = Cast<UInteractTooltipWidget>(WidgetComponent->GetUserWidgetObject());
 	if (InteractTooltip)
 	{
+		InteractTooltip->SetInteractable(this);
 		UItemTooltipWidget* ItemTooltip = Cast<UItemTooltipWidget>(InteractTooltip->GetItemTooltip());
 		if (ItemTooltip)
 		{
@@ -70,41 +70,45 @@ void AItem::BeginPlay()
 	}
 }
 
-// Called every frame
-void AItem::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
 
+void AItem::SetMeshStencilValue()
+{
+	switch (QualityTier)
+	{
+	case EItemQualityTier::Normal:
+		QualityTierStencilValue = STENCIL_ITEM_DEFAULT;
+		break;
+	case EItemQualityTier::Uncommon:
+		QualityTierStencilValue = STENCIL_ITEM_UNCOMMON;
+		break;
+	case EItemQualityTier::Rare:
+		QualityTierStencilValue = STENCIL_ITEM_RARE;
+		break;
+	case EItemQualityTier::Epic:
+		QualityTierStencilValue = STENCIL_ITEM_EPIC;
+		break;
+	case EItemQualityTier::Legendary:
+		QualityTierStencilValue = STENCIL_ITEM_LEGENDARY;
+		break;
+	default:
+		break;
+	}
+
+	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
+	for (int i = 0; i < MeshComponents.Num(); i++)
+	{
+		UMeshComponent* MeshComp = Cast<UMeshComponent>(MeshComponents[i]);
+		if (MeshComp)
+		{
+			MeshComp->SetCustomDepthStencilValue(QualityTierStencilValue);
+		}
+	}
 }
 
 UStaticMeshComponent* AItem::GetMeshComponent()
 {
 	return MeshComponent;
 }
-
-//void AItem::SetMeshStencilValue()
-//{
-//	switch (QualityTier)
-//	{
-//	case EItemQualityTier::Normal:
-//		QualityTierStencilValue = STENCIL_ITEM_DEFAULT;
-//		break;
-//	case EItemQualityTier::Uncommon:
-//		QualityTierStencilValue = STENCIL_ITEM_UNCOMMON;
-//		break;
-//	case EItemQualityTier::Rare:
-//		QualityTierStencilValue = STENCIL_ITEM_RARE;
-//		break;
-//	case EItemQualityTier::Epic:
-//		QualityTierStencilValue = STENCIL_ITEM_EPIC;
-//		break;
-//	case EItemQualityTier::Legendary:
-//		QualityTierStencilValue = STENCIL_ITEM_LEGENDARY;
-//		break;
-//	default:
-//		break;
-//	}
-//}
 
 FText AItem::GetItemName()
 {
@@ -167,7 +171,10 @@ bool AItem::TryInventoryUse()
 // ------------------------ BEGIN INTERACTABLE INTERFACE FUNCTIONS ------------------------
 void AItem::OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
 {
-	UE_LOG(LogTemp, Log, TEXT("AItem::OnInteract_Implementation - Interacted with %s!"), *GetName());
+	if (Role == ROLE_Authority)
+	{
+		InteractingCharacter->Server_TryPickUpItem(this);
+	}
 }
 
 void AItem::OnFocused_Implementation()
@@ -233,19 +240,6 @@ FText AItem::GetInteractableName_Implementation()
 //	Server_SetCanInteract(CanInteract);
 //}
 
-void AItem::SetMeshStencilValue()
-{
-	// Render custom depth on all mesh components. Certain interactables (like chests or special weapons) may have multiple mesh components.
-	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
-	for (int i = 0; i < MeshComponents.Num(); i++)
-	{
-		UMeshComponent* MeshComp = Cast<UMeshComponent>(MeshComponents[i]);
-		if (MeshComp)
-		{
-			MeshComp->SetCustomDepthStencilValue(QualityTierStencilValue);
-		}
-	}
-}
 
 //bool AItem::GetCanInteract()
 //{

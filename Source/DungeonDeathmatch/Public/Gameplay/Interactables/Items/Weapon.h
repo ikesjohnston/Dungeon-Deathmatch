@@ -66,4 +66,7 @@ public:
 
 	EWeaponState GetWeaponState();
 
+	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
+	virtual void OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter) override;
+	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
 };

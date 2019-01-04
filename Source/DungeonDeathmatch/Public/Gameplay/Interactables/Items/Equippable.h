@@ -16,6 +16,8 @@ enum class EEquipmentSlot : uint8
 	Legs			UMETA(DisplayName = "Legs"),
 	Feet			UMETA(DisplayName = "Feet"),
 	Hands			UMETA(DisplayName = "Hands"),
+	Weapon			UMETA(DisplayName = "Weapon"),
+	Consumable		UMETA(DisplayName = "Consumable"),
 
 	NUM_EQUIPMENT_SLOTS
 };

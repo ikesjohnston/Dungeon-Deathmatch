@@ -87,7 +87,7 @@ protected:
 	virtual void BeginPlay() override;
 
 	/**
-	 * Sets the mesh stencil value based on item type and quality.
+	 * Sets the mesh stencil value based on item type and quality; used for drawing post process item outlines
 	 */
 	void SetMeshStencilValue();
 
@@ -100,8 +100,6 @@ protected:
 	//virtual void NativeOnInteract(ADungeonCharacter* InteractingCharacter);
 
 public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
 
 	/**
 	 * Gets the mesh component for the item
@@ -133,7 +131,7 @@ public:
 	UTexture2D* GetIcon();
 
 	/**
-	 * Gets the quality color of the item
+	 * Gets the quality color of the item; used by UI elements
 	 */
 	UFUNCTION(BlueprintPure, Category = "Item")
 	FLinearColor GetQualityTierColor();

@@ -35,7 +35,8 @@ FText AEquippable::GetInventoryUseTooltipText()
 
 void AEquippable::OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
 {
-	OnEquip(InteractingCharacter);
+	Super::OnInteract_Implementation(InteractingCharacter);
+	
 }
 
 void AEquippable::OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)

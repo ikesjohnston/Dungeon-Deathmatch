@@ -52,7 +52,12 @@ public:
 
 	virtual ~AArmor();
 
+protected:
+	virtual void BeginPlay() override;
+
+public:
 	EArmorSlot GetArmorSlot();
 
 	TMap<EMeshSegment, USkeletalMesh*> GetArmorMeshMap();
+
 };
