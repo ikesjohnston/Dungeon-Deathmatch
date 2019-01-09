@@ -13,16 +13,6 @@ AEquippable::~AEquippable()
 
 }
 
-TArray<EEquipmentSlot> AEquippable::GetValidEquipmentSlots()
-{
-	return TArray<EEquipmentSlot>();
-}
-
-TArray<EEquipmentSlot> AEquippable::GetLockedEquipmentSlots()
-{
-	return TArray<EEquipmentSlot>();
-}
-
 FText AEquippable::GetInventoryUseTooltipText()
 {
 	if (EquippingCharacter)
@@ -35,8 +25,10 @@ FText AEquippable::GetInventoryUseTooltipText()
 
 void AEquippable::OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
 {
-	Super::OnInteract_Implementation(InteractingCharacter);
-	
+	if (Role == ROLE_Authority)
+	{
+		InteractingCharacter->Server_TryEquipItem(this);
+	}
 }
 
 void AEquippable::OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)

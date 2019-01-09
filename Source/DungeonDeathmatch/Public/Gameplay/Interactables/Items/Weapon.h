@@ -4,22 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Equippable.h"
-#include "WeaponGlobals.h"
+#include "EquipmentEnums.h"
 #include "Weapon.generated.h"
 
 class UCapsuleComponent;
-class UWeaponData;
-
-/*  Used in combat logic to determine if a weapon is available for use. */
-UENUM(BlueprintType)
-enum class EWeaponState : uint8
-{
-	Sheathed			UMETA(DisplayName = "Weapon Sheathed"),
-	Unsheathing			UMETA(DisplayName = "Unsheathing Weapon"),
-	Sheathing			UMETA(DisplayName = "Sheathing Weapon"),
-	ReadyToUse			UMETA(DisplayName = "WeaponReady"),
-	AttackInProgress	UMETA(DisplayName = "Attacking")
-};
 
 /**
  * The base class for all weapons in the game. Stores damaging effects and generates hit events for melee weapons when they are set in an attacking state.
@@ -30,18 +18,29 @@ class DUNGEONDEATHMATCH_API AWeapon : public AEquippable
 	GENERATED_BODY()
 	
 public:
-	/* The volume that generates overlap events stating that a weapon can damage a target. */
+	/* The volume that generates overlap events, allowing a weapon to damage a target. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	UCapsuleComponent* DamagingVolume;
 
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
-	UWeaponData* WeaponData;
 
+	/** What hand(s) the weapon requires to use. Determines where the weapon is stored on the character and loadout validity. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	EWeaponHand WeaponHand;
+
+	/** The weapon's type. Determines base animations and loadout validity. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	EWeaponType WeaponType;
 
 	EWeaponState WeaponState;
+
+	/** The socket on the equipping character's mesh to attach the weapon to when sheathed */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Attachment")
+	FName SheathedAttachSocketName;
+
+	/** The socket on the equipping character's mesh to attach the weapon to unsheathed */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Attachment")
+	FName UnsheathedSocketName;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	int32 BaseDamageMin;
@@ -60,13 +59,29 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
-	UWeaponData* GetWeaponData();
+	/**
+	 * Gets the hand(s) required to use this weapon
+	 *
+	 * @return The required hand(s) enum
+	 */
+	EWeaponHand GetWeaponHand();
 
+	/**
+	 * Gets the type of the weapon
+	 *
+	 * @return The weapon type enum
+	 */
 	EWeaponType GetWeaponType();
 
 	EWeaponState GetWeaponState();
 
-	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
+	/**
+	 * Calls character equipment logic. Can be overridden in BP.
+	 */
 	virtual void OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter) override;
-	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
+
+	/**
+	 * Calls character unequip logic. Can be overridden in BP.
+	 */
+	virtual void OnUnequip_Implementation() override;
 };

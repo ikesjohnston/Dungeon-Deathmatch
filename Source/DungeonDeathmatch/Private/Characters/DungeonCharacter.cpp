@@ -20,6 +20,7 @@
 #include "Kismet/GameplayStatics.h"
 #include <Private/KismetTraceUtils.h>
 #include "Armor.h"
+#include "Weapon.h"
 
 // Console command for logging melee combo states
 static int32 LogCombos = 0;
@@ -45,15 +46,23 @@ ADungeonCharacter::ADungeonCharacter()
 	SpringArm->bUsePawnControlRotation = true;
 	SpringArm->SetupAttachment(RootComponent);
 
-	//GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
-
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm);
 
-	// --------------- Begin Mesh Segment Setup ---------------
+	VitalsPlateWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("VitalsPlateWidget"));
+	VitalsPlateWidget->SetupAttachment(GetCapsuleComponent());
+	VitalsPlateWidget->SetWidgetSpace(EWidgetSpace::Screen);
+	VitalsPlateWidget->bOwnerNoSee = true;
+	VitalsPlateWidget->bOnlyOwnerSee = false;
+
+	// Initialize all mesh segments
 	MeshComponentHelm = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHelm"));
 	MeshComponentHelm->SetupAttachment(GetMesh());
 	MeshComponentHelm->SetMasterPoseComponent(GetMesh());
+
+	MeshComponentHair = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHair"));
+	MeshComponentHair->SetupAttachment(GetMesh());
+	MeshComponentHair->SetMasterPoseComponent(GetMesh());
 
 	MeshComponentHead = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHead"));
 	MeshComponentHead->SetupAttachment(GetMesh());
@@ -102,7 +111,22 @@ ADungeonCharacter::ADungeonCharacter()
 	MeshComponentFootRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentFootRight"));
 	MeshComponentFootRight->SetupAttachment(GetMesh());
 	MeshComponentFootRight->SetMasterPoseComponent(GetMesh());
-	// --------------- End Mesh Segment Setup -----------------
+
+	// Initialize movement systems
+	BaseStandingMovementSpeed = 400.0f;
+	GetCharacterMovement()->MaxWalkSpeed = BaseStandingMovementSpeed;
+	BaseCrouchedMovementSpeed = 200.0f;
+	GetCharacterMovement()->MaxWalkSpeedCrouched = BaseCrouchedMovementSpeed;
+	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
+
+	// Create ability system component, and set it to be explicitly replicated
+	AbilitySystemComponent = CreateDefaultSubobject<UDungeonAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent->SetIsReplicated(true);
+
+	// Create the attribute set, this replicates by default
+	AttributeSet = CreateDefaultSubobject<UDungeonAttributeSet>(TEXT("AttributeSet"));
+
+	bAbilitiesInitialized = false;
 
 	// Set up fist colliders and overlap events for unarmed combat. 
 	// Collision should be off by default, it will get toggled on and off during animations.
@@ -115,38 +139,25 @@ ADungeonCharacter::ADungeonCharacter()
 	FistColliderRight->SetupAttachment(GetMesh(), "HandRight");
 	FistColliderRight->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	FistColliderRight->OnComponentBeginOverlap.AddDynamic(this, &ADungeonCharacter::OnFistColliderRightBeginOverlap);
-
-	//DungeonCharMovementComponent = CreateDefaultSubobject<UDungeonCharMovementComponent>(TEXT("DungeonCharMovementComponent"));
 	
-	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
-	EquipmentComponent = CreateDefaultSubobject<UEquipmentComponent>(TEXT("Equipment"));
-
-	// Initialize Health Plate widget.
-	HealthPlateWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("Health Plate Widget"));
-	HealthPlateWidget->SetupAttachment(GetCapsuleComponent());
-	HealthPlateWidget->SetWidgetSpace(EWidgetSpace::Screen);
-	HealthPlateWidget->bOwnerNoSee = true;
-	HealthPlateWidget->bOnlyOwnerSee = false;
-
-	// Create ability system component, and set it to be explicitly replicated
-	AbilitySystemComponent = CreateDefaultSubobject<UDungeonAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
-	AbilitySystemComponent->SetIsReplicated(true);
-
-	// Create the attribute set, this replicates by default
-	AttributeSet = CreateDefaultSubobject<UDungeonAttributeSet>(TEXT("AttributeSet"));
-
-	bAbilitiesInitialized = false;
 
 	bIsMeleeComboReady = true;
 	CurrentMeleeComboState = -1;
 
-	BaseStandingMovementSpeed = 400.0f;
-	GetCharacterMovement()->MaxWalkSpeed = BaseStandingMovementSpeed;
-	BaseCrouchedMovementSpeed = 200.0f;
-	GetCharacterMovement()->MaxWalkSpeedCrouched = BaseCrouchedMovementSpeed;
+	// Initialize Inventory & Equipment systems
+	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
+
+	EquipmentComponent = CreateDefaultSubobject<UEquipmentComponent>(TEXT("Equipment"));
+
+	SocketNameSheatheWaistLeft = "SheatheWaistL";
+	SocketNameSheatheWaistRight = "SheatheWaistR";
+	SocketNameSheatheBackOne = "SheatheBackOne";
+	SocketNameSheatheBackTwo = "SheatheBackTwo";
+	SocketNameConsumableOne = "ConsumableOne";
+	SocketNameConsumableTwo = "ConsumableTwo";
 
 	bIsMovementInputEnabled = true;
-	bCanLook = true;
+	bIsCameraInputEnabled = true;
 
 	MovementDirectionYawClampMin = -179.0f;
 	MovementDirectionYawClampMax = 180.0f;
@@ -158,12 +169,6 @@ ADungeonCharacter::ADungeonCharacter()
 	AimPitchClampMin = -90;
 	AimPitchClampMax = 90;
 
-	SocketNameSheatheWaistLeft = "SheatheWaistL";
-	SocketNameSheatheWaistRight = "SheatheWaistR";
-	SocketNameSheatheBackOne = "SheatheBackOne";
-	SocketNameSheatheBackTwo = "SheatheBackTwo";
-	SocketNameConsumableOne = "ConsumableOne";
-	SocketNameConsumableTwo = "ConsumableTwo";
 }
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -176,6 +181,8 @@ void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(ADungeonCharacter, AimYaw);
 	DOREPLIFETIME(ADungeonCharacter, AimPitch);
 	DOREPLIFETIME(ADungeonCharacter, bIsReorientingBody);
+	DOREPLIFETIME(ADungeonCharacter, bIsManuallyFreeLooking);
+	DOREPLIFETIME(ADungeonCharacter, bIsAutoFreeLooking);
 	DOREPLIFETIME(ADungeonCharacter, bIsMovementInputEnabled);
 	DOREPLIFETIME(ADungeonCharacter, bIsJumping);
 }
@@ -236,7 +243,7 @@ void ADungeonCharacter::BeginPlay()
 	// Only show health plates on enemy characters
 	if (IsLocallyControlled())
 	{
-		HealthPlateWidget->SetVisibility(false);
+		VitalsPlateWidget->SetVisibility(false);
 	}
 }
 
@@ -278,7 +285,6 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAction("DropInventoryItem", IE_Pressed, this, &ADungeonCharacter::OnDropInventoryItemKeyPressed);
 
 	//AbilitySystemComponent->BindAbilityActivationToInputComponent(PlayerInputComponent, FGameplayAbilityInputBinds("ConfirmInput", "CancelInput", "AbilityInput"));
-
 }
 
 void ADungeonCharacter::Tick(float DeltaSeconds)
@@ -299,116 +305,9 @@ void ADungeonCharacter::Tick(float DeltaSeconds)
 	}
 }
 
-UInventoryComponent* ADungeonCharacter::GetInventoryComponent()
-{
-	return InventoryComponent;
-}
-
-UEquipmentComponent* ADungeonCharacter::GetEquipmentComponent()
-{
-	return EquipmentComponent;
-}
-
 UAbilitySystemComponent* ADungeonCharacter::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
-}
-
-FVector ADungeonCharacter::GetMovementVelocity()
-{
-	FVector Velocity;
-
-	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-	if (MovementComp)
-	{
-		Velocity = MovementComp->Velocity;
-	}
-	else
-	{
-		Velocity = FVector(0, 0, 0);
-	}
-	
-	return Velocity;
-}
-
-float ADungeonCharacter::GetMovementDirection()
-{	
-	float MovementDirection = 0.0f;
-
-	FVector Velocity = GetMovementVelocity();
-	if (Velocity.Size() > 0)
-	{
-		FRotator ActorRotation = GetActorRotation();
-		FVector LocalVelocity = ActorRotation.UnrotateVector(Velocity);
-		MovementDirection = FMath::RadiansToDegrees(FMath::Atan2(LocalVelocity.Y, LocalVelocity.X));
-	}
-	else
-	{
-		// If standing still, the aim direction should act as the move direction, this is used for rolling
-		FRotator DeltaRotation = GetControlRotation() - GetActorRotation();
-		MovementDirection = FMath::ClampAngle(DeltaRotation.Yaw, MovementDirectionYawClampMin, MovementDirectionYawClampMax);
-	}
-
-	return MovementDirection;
-}
-
-ECardinalMovementDirection ADungeonCharacter::GetCardinalMovementDirection()
-{
-	float MovementDirection = GetMovementDirection();
-
-	if (MovementDirection >= -CARDINAL_MOVEMENT_FORWARD_MAX && MovementDirection <= CARDINAL_MOVEMENT_FORWARD_MAX)
-	{
-		return ECardinalMovementDirection::Forward;
-	}
-	else if (MovementDirection > CARDINAL_MOVEMENT_FORWARD_MAX && MovementDirection <= CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX)
-	{
-		return ECardinalMovementDirection::ForwardRight;
-	}
-	else if (MovementDirection > CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX && MovementDirection <= CARDINAL_MOVEMENT_RIGHT_MAX)
-	{
-		return ECardinalMovementDirection::Right;
-	}
-	else if (MovementDirection > CARDINAL_MOVEMENT_RIGHT_MAX && MovementDirection <= CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX)
-	{
-		return ECardinalMovementDirection::BackwardRight;
-	}
-	else if ((MovementDirection > CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX && MovementDirection <= CARDINAL_MOVEMENT_BACKWARD) ||
-		(MovementDirection >= -CARDINAL_MOVEMENT_BACKWARD && MovementDirection < -CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX))
-	{
-		return ECardinalMovementDirection::Backward;
-	}
-	else if (MovementDirection >= -CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX && MovementDirection < -CARDINAL_MOVEMENT_RIGHT_MAX)
-	{
-		return ECardinalMovementDirection::BackwardLeft;
-	}
-	else if (MovementDirection >= -CARDINAL_MOVEMENT_RIGHT_MAX && MovementDirection < -CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX)
-	{
-		return ECardinalMovementDirection::Left;
-	}
-	else
-	{
-		return ECardinalMovementDirection::ForwardLeft;
-	}
-}
-
-bool ADungeonCharacter::GetIsMovementInputEnabled()
-{
-	return bIsMovementInputEnabled;
-}
-
-void ADungeonCharacter::SetIsMovementInputEnabled(bool IsMovementInputEnabled)
-{
-	bIsMovementInputEnabled = IsMovementInputEnabled;
-}
-
-bool ADungeonCharacter::GetIsJumping()
-{
-	return bIsJumping;
-}
-
-void ADungeonCharacter::SetIsJumping(bool IsJumping)
-{
-	bIsJumping = IsJumping;
 }
 
 void ADungeonCharacter::GiveAbility(TSubclassOf<UGameplayAbility> Ability)
@@ -489,6 +388,32 @@ void ADungeonCharacter::RemoveStartupGameplayAbilities()
 
 		bAbilitiesInitialized = false;
 	}
+}
+
+void ADungeonCharacter::Multicast_OnDeath_Implementation()
+{
+	// Stop player input
+	DetachFromControllerPendingDestroy();
+	OnDeath();
+
+	// Ragdoll the character's mesh
+	USkeletalMeshComponent* Mesh = GetMesh();
+	Mesh->SetCollisionObjectType(ECC_PhysicsBody);
+	Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	Mesh->SetAllBodiesSimulatePhysics(true);
+	Mesh->SetSimulatePhysics(true);
+	Mesh->WakeAllRigidBodies();
+
+	// TODO: Add a force to the mesh based on the location and type of hit that killed the character
+
+	// Disable capsule collision so we can walk over ragdoll
+	UCapsuleComponent* Capsule = GetCapsuleComponent();
+	Capsule->SetEnableGravity(false);
+	Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// Disable health plates on dead characters
+	VitalsPlateWidget->Deactivate();
+	VitalsPlateWidget->SetVisibility(false);
 }
 
 float ADungeonCharacter::GetHealth() const
@@ -646,30 +571,31 @@ void ADungeonCharacter::HandleMovementSpeedChanged(float DeltaValue, const struc
 	}
 }
 
-void ADungeonCharacter::Multicast_OnDeath_Implementation()
+void ADungeonCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
 {
-	// Stop player input
-	DetachFromControllerPendingDestroy();
-	OnDeath();
+	AbilitySystemComponent->GetOwnedGameplayTags(TagContainer);
+}
 
-	// Ragdoll the character's mesh
-	USkeletalMeshComponent* Mesh = GetMesh();
-	Mesh->SetCollisionObjectType(ECC_PhysicsBody);
-	Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	Mesh->SetAllBodiesSimulatePhysics(true);
-	Mesh->SetSimulatePhysics(true);
-	Mesh->WakeAllRigidBodies();
+bool ADungeonCharacter::RemoveGameplayTag(FGameplayTag Tag)
+{
+	FGameplayTagContainer TagContainer;
+	GetOwnedGameplayTags(TagContainer);
+	return TagContainer.RemoveTag(Tag);
+}
 
-	// TODO: Add a force to the mesh based on the location and type of hit that killed the character
+bool ADungeonCharacter::GetIsMovementInputEnabled()
+{
+	return bIsMovementInputEnabled;
+}
 
-	// Disable capsule collision so we can walk over ragdoll
-	UCapsuleComponent* Capsule = GetCapsuleComponent();
-	Capsule->SetEnableGravity(false);
-	Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+void ADungeonCharacter::SetIsMovementInputEnabled(bool IsMovementInputEnabled)
+{
+	bIsMovementInputEnabled = IsMovementInputEnabled;
+}
 
-	// Disable health plates on dead characters
-	HealthPlateWidget->Deactivate();
-	HealthPlateWidget->SetVisibility(false);
+void ADungeonCharacter::SetIsCameraInputEnabled(bool CanLook)
+{
+	bIsCameraInputEnabled = CanLook;
 }
 
 void ADungeonCharacter::MoveForward(float Value)
@@ -690,7 +616,7 @@ void ADungeonCharacter::MoveRight(float Value)
 
 void ADungeonCharacter::LookRight(float YawInput)
 {
-	if (bCanLook)
+	if (bIsCameraInputEnabled)
 	{
 		AddControllerYawInput(YawInput);
 	}
@@ -698,20 +624,28 @@ void ADungeonCharacter::LookRight(float YawInput)
 
 void ADungeonCharacter::LookUp(float PitchInput)
 {
-	if (bCanLook)
+	if (bIsCameraInputEnabled)
 	{
 		AddControllerPitchInput(PitchInput);
 	}
 }
 
-void ADungeonCharacter::SetCanLook(bool CanLook)
+void ADungeonCharacter::Jump()
 {
-	bCanLook = CanLook;
+	if (bIsMovementInputEnabled)
+	{
+		Super::Jump();
+
+		SetIsJumping(true);
+	}
 }
 
-void ADungeonCharacter::SetIsFreeLooking(bool IsFreeLooking)
+void ADungeonCharacter::OnJumpKeyPressed()
 {
-	bIsFreeLooking = IsFreeLooking;
+	if (JumpAbility)
+	{
+		AbilitySystemComponent->TryActivateAbilityByClass(JumpAbility);
+	}
 }
 
 void ADungeonCharacter::OnSprintKeyPressed()
@@ -746,24 +680,6 @@ void ADungeonCharacter::OnFreeLookKeyReleased()
 	}
 }
 
-void ADungeonCharacter::OnJumpKeyPressed()
-{
-	if (JumpAbility)
-	{
-		AbilitySystemComponent->TryActivateAbilityByClass(JumpAbility);
-	}
-}
-
-void ADungeonCharacter::Jump()
-{
-	if (bIsMovementInputEnabled)
-	{
-		Super::Jump();
-
-		SetIsJumping(true);
-	}
-}
-
 void ADungeonCharacter::OnCrouchKeyPressed()
 {
 	if (CrouchAbility)
@@ -783,6 +699,67 @@ void ADungeonCharacter::OnRollKeyPressed()
 void ADungeonCharacter::OnInteractKeyPressed()
 {
 	Server_Interact();
+}
+
+void ADungeonCharacter::OnSheatheKeyPressed()
+{
+	/*if (CombatState == ECombatState::WeaponSheathed)
+		UnsheatheWeapon();
+	else if (CombatState == ECombatState::WeaponReady)
+		SheatheWeapon();*/
+}
+
+void ADungeonCharacter::OnAttackKeyPressed()
+{
+	Server_Attack();
+}
+
+void ADungeonCharacter::OnBlockKeyPressed()
+{
+
+}
+
+void ADungeonCharacter::OnBlockKeyReleased()
+{
+
+}
+
+void ADungeonCharacter::OnInventoryKeyPressed()
+{
+	// Pass input to controller for processing
+	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
+	if (PlayerController)
+	{
+		PlayerController->OnInventoryKeyPressed();
+	}
+}
+
+void ADungeonCharacter::OnEscapeKeyPressed()
+{
+	// Pass input to controller for processing
+	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
+	if (PlayerController)
+	{
+		PlayerController->OnEscapeKeyPressed();
+	}
+}
+
+void ADungeonCharacter::OnUseInventoryItemKeyPressed()
+{
+	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
+	if (PlayerController)
+	{
+		PlayerController->OnUseInventoryItemKeyPressed();
+	}
+}
+
+void ADungeonCharacter::OnDropInventoryItemKeyPressed()
+{
+	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
+	if (PlayerController)
+	{
+		PlayerController->OnDropInventoryItemKeyPressed();
+	}
 }
 
 void ADungeonCharacter::Server_Interact_Implementation()
@@ -807,40 +784,175 @@ bool ADungeonCharacter::Server_Interact_Validate()
 	return true;
 }
 
-void ADungeonCharacter::Server_TryPickUpItem_Implementation(AItem* Item)
+FVector ADungeonCharacter::GetMovementVelocity()
 {
-	bool WasPickedUp = InventoryComponent->TryAddItem(Item);
-	if (WasPickedUp)
+	FVector Velocity;
+
+	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
+	if (MovementComp)
 	{
-		AEquippable* Equippable = Cast<AEquippable>(Item);
-		if (Equippable)
+		Velocity = MovementComp->Velocity;
+	}
+	else
+	{
+		Velocity = FVector(0, 0, 0);
+	}
+
+	return Velocity;
+}
+
+float ADungeonCharacter::GetMovementDirection()
+{
+	float MovementDirection = 0.0f;
+
+	FVector Velocity = GetMovementVelocity();
+	if (Velocity.Size() > 0)
+	{
+		FRotator ActorRotation = GetActorRotation();
+		FVector LocalVelocity = ActorRotation.UnrotateVector(Velocity);
+		MovementDirection = FMath::RadiansToDegrees(FMath::Atan2(LocalVelocity.Y, LocalVelocity.X));
+	}
+	else
+	{
+		// If standing still, the aim direction should act as the move direction, this is used for rolling
+		// If free aiming, however, move direction should be forward
+		if (GetIsFreeLooking())
 		{
-			Equippable->OnEquip_Implementation(this);
+			MovementDirection = 0;
 		}
+		else
+		{
+			FRotator DeltaRotation = GetControlRotation() - GetActorRotation();
+			MovementDirection = FMath::ClampAngle(DeltaRotation.Yaw, MovementDirectionYawClampMin, MovementDirectionYawClampMax);
+		}
+	}
+
+	return MovementDirection;
+}
+
+ECardinalMovementDirection ADungeonCharacter::GetCardinalMovementDirection()
+{
+	float MovementDirection = GetMovementDirection();
+
+	if (MovementDirection >= -CARDINAL_MOVEMENT_FORWARD_MAX && MovementDirection <= CARDINAL_MOVEMENT_FORWARD_MAX)
+	{
+		return ECardinalMovementDirection::Forward;
+	}
+	else if (MovementDirection > CARDINAL_MOVEMENT_FORWARD_MAX && MovementDirection <= CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX)
+	{
+		return ECardinalMovementDirection::ForwardRight;
+	}
+	else if (MovementDirection > CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX && MovementDirection <= CARDINAL_MOVEMENT_RIGHT_MAX)
+	{
+		return ECardinalMovementDirection::Right;
+	}
+	else if (MovementDirection > CARDINAL_MOVEMENT_RIGHT_MAX && MovementDirection <= CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX)
+	{
+		return ECardinalMovementDirection::BackwardRight;
+	}
+	else if ((MovementDirection > CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX && MovementDirection <= CARDINAL_MOVEMENT_BACKWARD) ||
+		(MovementDirection >= -CARDINAL_MOVEMENT_BACKWARD && MovementDirection < -CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX))
+	{
+		return ECardinalMovementDirection::Backward;
+	}
+	else if (MovementDirection >= -CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX && MovementDirection < -CARDINAL_MOVEMENT_RIGHT_MAX)
+	{
+		return ECardinalMovementDirection::BackwardLeft;
+	}
+	else if (MovementDirection >= -CARDINAL_MOVEMENT_RIGHT_MAX && MovementDirection < -CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX)
+	{
+		return ECardinalMovementDirection::Left;
+	}
+	else
+	{
+		return ECardinalMovementDirection::ForwardLeft;
 	}
 }
 
-bool ADungeonCharacter::Server_TryPickUpItem_Validate(AItem* Item)
+bool ADungeonCharacter::GetIsJumping()
 {
-	return true;
+	return bIsJumping;
 }
 
-void ADungeonCharacter::Server_TryDropItem_Implementation(AItem* Item)
+void ADungeonCharacter::SetIsJumping(bool IsJumping)
 {
-	bool WasDropped = InventoryComponent->TryRemoveItem(Item);
+	bIsJumping = IsJumping;
 }
 
-bool ADungeonCharacter::Server_TryDropItem_Validate(AItem* Item)
+bool ADungeonCharacter::GetIsFreeLooking()
 {
-	return true;
+	bool IsFreeLooking = (bIsManuallyFreeLooking || bIsAutoFreeLooking);
+	return IsFreeLooking;
 }
 
-void ADungeonCharacter::OnSheatheKeyPressed()
+void ADungeonCharacter::SetIsManuallyFreeLooking(bool IsManuallyFreeLooking)
 {
-	/*if (CombatState == ECombatState::WeaponSheathed)
-		UnsheatheWeapon();
-	else if (CombatState == ECombatState::WeaponReady)
-		SheatheWeapon();*/
+	bIsManuallyFreeLooking = IsManuallyFreeLooking;
+	UseControllerDesiredRotation(!(bIsManuallyFreeLooking || bIsAutoFreeLooking));
+}
+
+void ADungeonCharacter::SetIsAutoFreeLooking(bool IsAutoFreeLooking)
+{
+	bIsAutoFreeLooking = IsAutoFreeLooking;
+	UseControllerDesiredRotation(!(bIsManuallyFreeLooking || bIsAutoFreeLooking));
+}
+
+bool ADungeonCharacter::GetIsReorientingBody()
+{
+	return bIsReorientingBody;
+}
+
+float ADungeonCharacter::GetAimYaw()
+{
+	return AimYaw;
+}
+
+float ADungeonCharacter::GetAimPitch()
+{
+	return AimPitch;
+}
+
+void ADungeonCharacter::CalculateAimRotation()
+{
+	FRotator ControlRotation = GetControlRotation();
+	FRotator ActorRotation = GetActorRotation();
+
+	FRotator DeltaRotation = ControlRotation - ActorRotation;
+	AimYaw = FMath::ClampAngle(DeltaRotation.Yaw, AimYawClampMin, AimYawClampMax);
+	AimPitch = FMath::ClampAngle(DeltaRotation.Pitch, AimPitchClampMin, AimPitchClampMax);
+
+	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
+	if (MovementComp)
+	{
+		FVector Velocity = MovementComp->Velocity;
+
+		if (Velocity.Size() > 0 && !GetIsFreeLooking())
+		{
+			// No aim offsets when moving unless aiming a bow/spell or free looking
+			bIsReorientingBody = false;
+			UseControllerDesiredRotation(true);
+		}
+		else
+		{
+			if (!bIsReorientingBody)
+			{
+				if (FMath::Abs(AimYaw) >= AimYawTurnStart && !GetIsFreeLooking())
+				{
+					bIsReorientingBody = true;
+					UseControllerDesiredRotation(true);
+				}
+				else
+				{
+					// Allow aim offsets when not moving
+					UseControllerDesiredRotation(false);
+				}
+			}
+			else if (bIsReorientingBody && FMath::Abs(AimYaw) <= AimYawTurnStop)
+			{
+				bIsReorientingBody = false;
+			}
+		}
+	}
 }
 
 void ADungeonCharacter::Server_SheatheWeapon_Implementation()
@@ -871,11 +983,6 @@ void ADungeonCharacter::Server_UnsheatheWeapon_Implementation()
 bool ADungeonCharacter::Server_UnsheatheWeapon_Validate()
 {
 	return true;
-}
-
-void ADungeonCharacter::OnAttackKeyPressed()
-{
-	Server_Attack();
 }
 
 bool ADungeonCharacter::CanAttack()
@@ -974,11 +1081,6 @@ bool ADungeonCharacter::Server_CancelAttack_Validate()
 	return true;
 }
 
-UAnimationProfile* ADungeonCharacter::GetAnimationProfile()
-{
-	return AnimationProfile;
-}
-
 USphereComponent* ADungeonCharacter::GetLeftFistCollider()
 {
 	return FistColliderLeft;
@@ -1026,67 +1128,85 @@ void ADungeonCharacter::SendUnarmedMeleeHitEvent(AActor* HitActor)
 	}
 }
 
-void ADungeonCharacter::OnBlockKeyPressed()
+UInventoryComponent* ADungeonCharacter::GetInventoryComponent()
 {
-
+	return InventoryComponent;
 }
 
-void ADungeonCharacter::OnBlockKeyReleased()
+UEquipmentComponent* ADungeonCharacter::GetEquipmentComponent()
 {
-
+	return EquipmentComponent;
 }
 
-void ADungeonCharacter::OnInventoryKeyPressed()
+bool ADungeonCharacter::TryAddItemToInventory(AItem* Item)
 {
-	// Pass input to controller for processing
-	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
-	if (PlayerController)
+	bool WasPickedUp = false;
+	
+	if (Role == ROLE_Authority) {
+		WasPickedUp = InventoryComponent->TryAddItem(Item);
+	}
+
+	return WasPickedUp;
+}
+
+void ADungeonCharacter::Server_TryPickUpItem_Implementation(AItem* Item)
+{
+	bool WasEquipped = false;
+	AEquippable* Equippable = Cast<AEquippable>(Item);
+	if (Equippable)
 	{
-		PlayerController->OnInventoryKeyPressed();
+		WasEquipped = TryEquipItem(Equippable);
+	}
+
+	if (!WasEquipped)
+	{
+		bool WasPickedUp = InventoryComponent->TryAddItem(Item);
+		if (WasPickedUp)
+		{
+
+		}
 	}
 }
 
-void ADungeonCharacter::OnEscapeKeyPressed()
+bool ADungeonCharacter::Server_TryPickUpItem_Validate(AItem* Item)
 {
-	// Pass input to controller for processing
-	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
-	if (PlayerController)
+	return true;
+}
+
+void ADungeonCharacter::Server_TryDropItem_Implementation(AItem* Item)
+{
+	bool WasDropped = InventoryComponent->TryRemoveItem(Item);
+}
+
+bool ADungeonCharacter::Server_TryDropItem_Validate(AItem* Item)
+{
+	return true;
+}
+
+void ADungeonCharacter::Server_TryEquipItem_Implementation(AEquippable* Equippable)
+{
+	bool WasEquipped = TryEquipItem(Equippable);
+	if (!WasEquipped)
 	{
-		PlayerController->OnEscapeKeyPressed();
+		Server_TryPickUpItem(Equippable);
 	}
 }
 
-void ADungeonCharacter::OnUseInventoryItemKeyPressed()
+bool ADungeonCharacter::Server_TryEquipItem_Validate(AEquippable* Equippable)
 {
-	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
-	if (PlayerController)
+	return true;
+}
+
+bool ADungeonCharacter::TryEquipItem(AEquippable* Equippable)
+{
+	bool WasItemEquipped = false;
+
+	if (Role == ROLE_Authority)
 	{
-		PlayerController->OnUseInventoryItemKeyPressed();
+		WasItemEquipped = EquipmentComponent->TryEquipItem(Equippable);
 	}
-}
 
-void ADungeonCharacter::OnDropInventoryItemKeyPressed()
-{
-	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
-	if (PlayerController)
-	{
-		PlayerController->OnDropInventoryItemKeyPressed();
-	}
-}
-
-bool ADungeonCharacter::GetIsReorientingBody()
-{
-	return bIsReorientingBody;
-}
-
-float ADungeonCharacter::GetAimYaw()
-{
-	return AimYaw;
-}
-
-float ADungeonCharacter::GetAimPitch()
-{
-	return AimPitch;
+	return WasItemEquipped;
 }
 
 void ADungeonCharacter::Server_UpdateMeshSegments_Implementation(AArmor* Armor)
@@ -1107,8 +1227,14 @@ void ADungeonCharacter::Multicast_UpdateMeshSegments_Implementation(AArmor* Armo
 	{
 		switch (MeshPair.Key)
 		{
-		case EMeshSegment::Head:
+		case EMeshSegment::Helm:
 			MeshComponentHelm->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::Hair:
+			MeshComponentHair->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::Head:
+			MeshComponentHead->SetSkeletalMesh(MeshPair.Value);
 			break;
 		case EMeshSegment::LeftShoulder:
 			MeshComponentShoulderLeft->SetSkeletalMesh(MeshPair.Value);
@@ -1116,13 +1242,25 @@ void ADungeonCharacter::Multicast_UpdateMeshSegments_Implementation(AArmor* Armo
 		case EMeshSegment::RightShoulder:
 			MeshComponentShoulderRight->SetSkeletalMesh(MeshPair.Value);
 			break;
-		case EMeshSegment::Chest:
+		case EMeshSegment::Torso:
 			MeshComponentTorso->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::ChestArmor:
+			MeshComponentChestArmor->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::LeftHand:
+			MeshComponentHandLeft->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::RightHand:
+			MeshComponentHandRight->SetSkeletalMesh(MeshPair.Value);
 			break;
 		case EMeshSegment::Waist:
 			MeshComponentBelt->SetSkeletalMesh(MeshPair.Value);
 			break;
 		case EMeshSegment::Legs:
+			MeshComponentLegs->SetSkeletalMesh(MeshPair.Value);
+			break;
+		case EMeshSegment::LegArmor:
 			MeshComponentLegArmor->SetSkeletalMesh(MeshPair.Value);
 			break;
 		case EMeshSegment::LeftFoot:
@@ -1131,57 +1269,13 @@ void ADungeonCharacter::Multicast_UpdateMeshSegments_Implementation(AArmor* Armo
 		case EMeshSegment::RightFoot:
 			MeshComponentFootRight->SetSkeletalMesh(MeshPair.Value);
 			break;
-		case EMeshSegment::LeftHand:
-			MeshComponentHandLeft->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::RightHand:
-			MeshComponentHandRight->SetSkeletalMesh(MeshPair.Value);
-			break;
 		default:
 			break;
 		}
 	}
 }
 
-void ADungeonCharacter::CalculateAimRotation()
+void ADungeonCharacter::Multicast_UpdateLoadout_Implementation(const FWeaponLoadout& Loadout)
 {
-	FRotator ControlRotation = GetControlRotation();
-	FRotator ActorRotation = GetActorRotation();
 
-	FRotator DeltaRotation = ControlRotation - ActorRotation;
-	AimYaw = FMath::ClampAngle(DeltaRotation.Yaw, AimYawClampMin, AimYawClampMax);
-	AimPitch = FMath::ClampAngle(DeltaRotation.Pitch, AimPitchClampMin, AimPitchClampMax);
-
-	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-	if (MovementComp)
-	{
-		FVector Velocity = MovementComp->Velocity;
-
-		if (Velocity.Size() > 0 && !bIsFreeLooking)
-		{
-			// No aim offsets when moving unless aiming a bow/spell or free looking
-			bIsReorientingBody = false;
-			UseControllerDesiredRotation(true);
-		}
-		else
-		{
-			if (!bIsReorientingBody)
-			{
-				if (FMath::Abs(AimYaw) >= AimYawTurnStart && !bIsFreeLooking)
-				{
-					bIsReorientingBody = true;
-					UseControllerDesiredRotation(true);
-				}
-				else
-				{
-					// Allow aim offsets when not moving
-					UseControllerDesiredRotation(false);
-				}
-			}
-			else if (bIsReorientingBody && FMath::Abs(AimYaw) <= AimYawTurnStop)
-			{
-				bIsReorientingBody = false;
-			}
-		}
-	}
 }

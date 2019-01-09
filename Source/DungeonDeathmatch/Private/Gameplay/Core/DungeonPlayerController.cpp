@@ -121,7 +121,7 @@ void ADungeonPlayerController::SetPawnCanLook(bool bCanLook)
 	ADungeonCharacter* DungeonPawn = Cast<ADungeonCharacter>(GetPawn());
 	if (DungeonPawn)
 	{
-		DungeonPawn->SetCanLook(bCanLook);
+		DungeonPawn->SetIsCameraInputEnabled(bCanLook);
 	}
 }
 

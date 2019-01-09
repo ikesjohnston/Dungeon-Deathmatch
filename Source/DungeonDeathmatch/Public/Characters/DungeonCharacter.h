@@ -6,36 +6,32 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include <GameplayTagContainer.h>
+#include "EquipmentComponent.h"
+#include <GameplayTagAssetInterface.h>
 #include "DungeonCharacter.generated.h"
 
 class UCameraComponent;
 class USpringArmComponent;
 class USkeletalMeshComponent;
-class UAnimationProfile;
+class UWidgetComponent;
+class USphereComponent;
+
 class UDungeonAbilitySystemComponent;
 class UDungeonAttributeSet;
 class UDungeonGameplayAbility;
+class UGameplayEffect;
+
 class UInventoryComponent;
 class UEquipmentComponent;
-class USphereComponent;
-class UWidgetComponent;
-class UGameplayEffect;
+
 class AInteractableActor;
 class AArmor;
 
 /**
- * Enum that maps gameplay abilities to the action mappings defined in project settings. The enum index corresponds to the
- * ability input ID, and the enum name corresponds to the action mapping name.
- */  
-UENUM(BlueprintType) enum class AbilityInput : uint8 {
-	Sprint		UMETA(DisplayName = "Sprint Ability"),
-	Roll		UMETA(DisplayName = "Roll Ability"),
-};
-
-/**
- * Enum for movement direction used for implementing certain gaeplay abilities in blueprint.
+ * Enum for movement direction used for implementing certain gameplay abilities in blueprint
  */
-UENUM(BlueprintType) enum class ECardinalMovementDirection : uint8 {
+UENUM(BlueprintType)
+enum class ECardinalMovementDirection : uint8 {
 	Forward			UMETA(DisplayName = "Forward"),
 	ForwardLeft		UMETA(DisplayName = "Forward Left"),
 	ForwardRight	UMETA(DisplayName = "Forward Right"),
@@ -43,27 +39,36 @@ UENUM(BlueprintType) enum class ECardinalMovementDirection : uint8 {
 	Right			UMETA(DisplayName = "Right"),
 	Backward		UMETA(DisplayName = "Backward"),
 	BackwardLeft	UMETA(DisplayName = "BackwardLeft"),
-	BackwardRight	UMETA(DisplayName = "BackwardRight"),
+	BackwardRight	UMETA(DisplayName = "BackwardRight")
 };
 
+/**
+ * Enum representation of all available mesh segments for a character
+ */
 UENUM(BlueprintType)
 enum class EMeshSegment : uint8
 {
+	Helm						UMETA(DisplayName = "Helm"),
+	Hair						UMETA(DisplayName = "Hair"),
 	Head						UMETA(DisplayName = "Head"),
 	LeftShoulder				UMETA(DisplayName = "Left Shoulder"),
 	RightShoulder				UMETA(DisplayName = "Right Shoulder"),
-	Chest						UMETA(DisplayName = "Chest"),
+	Torso						UMETA(DisplayName = "Torso"),
+	ChestArmor					UMETA(DisplayName = "ChestArmor"),
+	LeftHand					UMETA(DisplayName = "LeftHand"),
+	RightHand					UMETA(DisplayName = "RightHand"),
 	Waist						UMETA(DisplayName = "Waist"),
 	Legs						UMETA(DisplayName = "Legs"),
+	LegArmor					UMETA(DisplayName = "LegArmor"),
 	LeftFoot					UMETA(DisplayName = "LeftFoot"),
-	RightFoot					UMETA(DisplayName = "RightFoot"),
-	LeftHand					UMETA(DisplayName = "LeftHand"),
-	RightHand					UMETA(DisplayName = "RightHand")
+	RightFoot					UMETA(DisplayName = "RightFoot")
 };
 
-/** Character class that encapsulates player input and attribute change processing. */
+/**
+ * Character class that encapsulates player input and attribute change processing.
+ */
 UCLASS()
-class DUNGEONDEATHMATCH_API ADungeonCharacter : public ACharacter, public IAbilitySystemInterface
+class DUNGEONDEATHMATCH_API ADungeonCharacter : public ACharacter, public IAbilitySystemInterface, public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
 
@@ -72,68 +77,89 @@ public:
 	friend class UDungeonAttributeSet;
 
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	/** The player camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	UCameraComponent* Camera;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	/** The spring arm that the player camera is attached to; checks for camera collisions */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	USpringArmComponent* SpringArm;
 
-	// -------------------- Begin Character Mesh Segments --------------------
+	/** Widget for displaying vitals to other players */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	UWidgetComponent* VitalsPlateWidget;
+
+	/********************************************************* BEGIN CHARACTER MESH SEGMENT VARIABLES *********************************************************/
+
+	/** The skeletal mesh component that stores the helm mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentHelm;
 
+	/** The skeletal mesh component that stores the hair mesh segment */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
+	USkeletalMeshComponent* MeshComponentHair;
+
+	/** The skeletal mesh component that stores the head mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentHead;
 
+	/** The skeletal mesh component that stores the left shoulder mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentShoulderLeft;
 
+	/** The skeletal mesh component that stores the right shoulder mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentShoulderRight;
 
+	/** The skeletal mesh component that stores the torso mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentTorso;
 
+	/** The skeletal mesh component that stores the chest armor mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentChestArmor;
 
+	/** The skeletal mesh component that stores the left hand mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentHandLeft;
 
+	/** The skeletal mesh component that stores the right hand mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentHandRight;
 
+	/** The skeletal mesh component that stores the belt mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentBelt;
 
+	/** The skeletal mesh component that stores the legs mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentLegs;
 
+	/** The skeletal mesh component that stores the leg armor mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentLegArmor;
 
+	/** The skeletal mesh component that stores the left mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentFootLeft;
 
+	/** The skeletal mesh component that stores the right foot mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentFootRight;
-	// -------------------- End Character Mesh Segments ----------------------
+
+	/********************************************************* END CHARACTER MESH SEGMENTS VARIABLES **********************************************************/
+
+	/********************************************************* BEGIN GAMEPLAY ABILITY SYSTEM VARIABLES ********************************************************/
 
 	/** The component used to handle gameplay ability system interactions */
 	UPROPERTY()
 	UDungeonAbilitySystemComponent* AbilitySystemComponent;
 
-	UPROPERTY(EditAnywhere, Category = "Inventory & Equipment")
-	UInventoryComponent* InventoryComponent;
-
-	UPROPERTY(EditAnywhere, Category = "Inventory & Equipment")
-	UEquipmentComponent* EquipmentComponent;
-
 	/** List of attributes modified by the ability system */
 	UPROPERTY()
 	UDungeonAttributeSet* AttributeSet;
 
-	/** If true we have initialized our abilities */
+	/** Whether a character's abilities have been initialized */
 	UPROPERTY()
 	bool bAbilitiesInitialized;
 
@@ -145,8 +171,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Abilities")
 	TArray<TSubclassOf<UDungeonGameplayAbility>> GameplayAbilities;
 
-	/** Abilities to grant to this character on creation for melee combos.
-	 *  These will be activated based on the current combo state.
+	/** 
+	 * Abilities to grant to this character on creation for melee combos.
+	 * These will be activated based on the current combo state.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Abilities")
 	TArray<TSubclassOf<UDungeonGameplayAbility>> UnarmedMeleeComboAbilities;
@@ -154,22 +181,6 @@ protected:
 	/** Passive gameplay effects applied on creation */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TArray<TSubclassOf<UGameplayEffect>> StartingGameplayEffects;
-
-	/** Volume for detecting unarmed attack hits with left fist */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
-	USphereComponent* FistColliderLeft;
-
-	/** Volume for detecting unarmed attack hits with right fist */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
-	USphereComponent* FistColliderRight;
-
-	/** 3D Widget for displaying enemy health */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
-	UWidgetComponent* HealthPlateWidget;
-
-	/** Defines all animation montages a player uses in a given situation. This should be updated based on equipment */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
-	UAnimationProfile* AnimationProfile;
 
 	/** The GameplayAbility to use when pressing the sprint key */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
@@ -203,56 +214,63 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	FGameplayTag UnarmedMeleeHitEventTag;
 
-	/* Represents the index of the ability to use next in the MeleeCombatAbilities array for the current active weapon */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
-	uint8 CurrentMeleeComboState;
+	/********************************************************* END GAMEPLAY ABILITY SYSTEM VARIABLES **********************************************************/
 
-	/* Flag to determine if character can begin a new melee combo attack */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
-	bool bIsMeleeComboReady;
+	/********************************************************* BEGIN INPUT VARIABLES **************************************************************************/
 
-	/* The base movement speed when standing, used to calculate new movement speeds when speed attributes are changed */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
-	float BaseStandingMovementSpeed;
-
-	/* The base movement speed when crouched, used to calculate new movement speeds when speed attributes are changed */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
-	float BaseCrouchedMovementSpeed;
-
-	/* Flag to determine if character is currently accepting movement input */
+	/** Flag to determine if character is currently accepting movement input */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input\|Movement")
 	bool bIsMovementInputEnabled;
 
-	/* Flag to determine if character is able to control the camera, typically disabled when in menus */
+	/** Flag to determine if character is able to control the camera, typically disabled when in menus */
 	UPROPERTY(BlueprintReadOnly, Category = "Input\|Camera")
-	bool bCanLook;
-	
-	/* Flag to determine if character is currently free looking, affects turning and aim offsets */
-	UPROPERTY(BlueprintReadOnly, Category = "Input\|Camera")
-	bool bIsFreeLooking;
+	bool bIsCameraInputEnabled;
 
-	/* Flag to determine if character is in the middle of a jump, as opposed to just falling */
+	/********************************************************* END INPUT VARIABLES ****************************************************************************/
+
+	/********************************************************* BEGIN MOVEMENT VARIABLES ***********************************************************************/
+
+	/** The base movement speed when standing, used to calculate new movement speeds when speed attributes are changed */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
+	float BaseStandingMovementSpeed;
+
+	/** The base movement speed when crouched, used to calculate new movement speeds when speed attributes are changed */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
+	float BaseCrouchedMovementSpeed;
+
+	/********************************************************* END MOVEMENT VARIABLES *************************************************************************/
+
+	/********************************************************* BEGIN ANIMATION VARIABLES **********************************************************************/
+
+	/** Flag to determine if character is in the middle of a jump, as opposed to just falling */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Animation\|Movement")
 	bool bIsJumping;
 
-	/* The minimum value to clamp the movement direction yaw to */
+	/** The minimum value to clamp the movement direction yaw to for blend spaces */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Movement")
 	float MovementDirectionYawClampMin;
 
-	/* The maximum value to clamp the movement direction yaw to */
+	/** The maximum value to clamp the movement direction yaw to for blend spaces */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Movement")
 	float MovementDirectionYawClampMax;
 
-	// -------------------------------------------- Begin Aim Offset Calculation Variables --------------------------------------------
-	/* Flag to determine when to correct body orientation so it is facing the aim direction */
+	/** Flag to determine when to correct body orientation so it is facing the aim direction */
 	UPROPERTY(Replicated)
 	bool bIsReorientingBody;
 
-	/* The delta rotation yaw from the control rotation to the character rotation, used for aim offset blend spaces */
+	/** Flag to determine if character is currently manually free looking, affects turning and aim offsets */
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Animation\|Aim")
+	bool bIsManuallyFreeLooking;
+
+	/** Flag to determine if character is currently auto free looking from an ability, affects turning and aim offsets */
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Animation\|Aim")
+	bool bIsAutoFreeLooking;
+
+	/** The delta rotation yaw from the control rotation to the character rotation, used for aim offset blend spaces */
 	UPROPERTY(Replicated)
 	float AimYaw;
 
-	/* The delta rotation pitch from the control rotation to the character rotation, used for aim offset blend spaces */
+	/** The delta rotation pitch from the control rotation to the character rotation, used for aim offset blend spaces */
 	UPROPERTY(Replicated)
 	float AimPitch;
 
@@ -264,46 +282,79 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
 	float AimYawTurnStop;
 
-	/* The minimum value to clamp the aim rotation yaw to */
+	/** The minimum value to clamp the aim rotation yaw to */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
 	float AimYawClampMin;
 
-	/* The maximum value to clamp the aim rotation yaw to */
+	/** The maximum value to clamp the aim rotation yaw to */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
 	float AimYawClampMax;
 
-	/* The minimum value to clamp the aim rotation pitch to */
+	/** The minimum value to clamp the aim rotation pitch to */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
 	float AimPitchClampMin;
 
-	/* The maximum value to clamp the aim rotation pitch to */
+	/** The maximum value to clamp the aim rotation pitch to */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
 	float AimPitchClampMax;
-	// -------------------------------------------- End Aim Offset Calculation Variables --------------------------------------------
 
-	/* The name of the socket corresponding to the left waist weapon sheathe */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment\|Sockets")
+	/********************************************************* END ANIMATION VARIABLES ************************************************************************/
+
+	/********************************************************* BEGIN INVENTORY & EQUIPMENT VARIABLES **********************************************************/
+
+	/** Component that stores a character currently has in their inventory */
+	UPROPERTY(EditAnywhere, Category = "Inventory & Equipment")
+	UInventoryComponent* InventoryComponent;
+
+	/** Component that stores what a character currently has equipped */
+	UPROPERTY(EditAnywhere, Category = "Inventory & Equipment")
+	UEquipmentComponent* EquipmentComponent;
+
+	/** The name of the socket corresponding to the left waist weapon sheathe */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
 	FString SocketNameSheatheWaistLeft;
 
-	/* The name of the socket corresponding to the right waist weapon sheathe */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment\|Sockets")
+	/** The name of the socket corresponding to the right waist weapon sheathe */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
 	FString SocketNameSheatheWaistRight;
 
-	/* The name of the socket corresponding to the first back sheathe */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment\|Sockets")
+	/** The name of the socket corresponding to the first back sheathe */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
 	FString SocketNameSheatheBackOne;
 
-	/* The name of the socket corresponding to the second back sheathe */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment\|Sockets")
+	/** The name of the socket corresponding to the second back sheathe */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
 	FString SocketNameSheatheBackTwo;
 
-	/* The name of the socket corresponding to the first hot keyed consumable */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment\|Sockets")
+	/** The name of the socket corresponding to the first hot keyed consumable */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
 	FString SocketNameConsumableOne;
 
-	/* The name of the socket corresponding to the second hot keyed consumable */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment\|Sockets")
+	/** The name of the socket corresponding to the second hot keyed consumable */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
 	FString SocketNameConsumableTwo;
+
+	/********************************************************* END INVENTORY & EQUIPMENT VARIABLES ************************************************************/
+
+	/********************************************************* BEGIN COMBAT VARIABLES *************************************************************************/
+
+	/** Volume for detecting unarmed attack hits with left fist */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	USphereComponent* FistColliderLeft;
+
+	/** Volume for detecting unarmed attack hits with right fist */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	USphereComponent* FistColliderRight;
+
+	/** Represents the index of the ability to use next in the MeleeCombatAbilities array for the current active weapon */
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
+	uint8 CurrentMeleeComboState;
+
+	/** Flag to determine if character can begin a new melee combo attack */
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
+	bool bIsMeleeComboReady;
+
+	/********************************************************* END COMBAT VARIABLES ***************************************************************************/
 
 private:
 	/** Needed for removing and restoring deceleration during rolls */
@@ -331,60 +382,14 @@ public:
 
 	virtual void Tick(float DeltaSeconds) override;
 
-	UFUNCTION(BlueprintPure)
-	UInventoryComponent* GetInventoryComponent();
-
-	UFUNCTION(BlueprintPure)
-	UEquipmentComponent* GetEquipmentComponent();
-
-	// Implement IAbilitySystemInterface
+	/********************************************************* BEGIN PUBLIC ABILITY SYSTEM FUNCTIONS **********************************************************/
+ 
+	/**
+	 * Gets the character's AbilitySystemComponent, required by IAbilitySystemInterface
+	 *
+	 * @return The character's AbilitySystemComponent
+	 */
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-
-	UFUNCTION(BlueprintPure)
-	FVector GetMovementVelocity();
-
-	UFUNCTION(BlueprintPure)
-	float GetMovementDirection();
-
-	UFUNCTION(BlueprintPure)
-	ECardinalMovementDirection GetCardinalMovementDirection();
-
-	/**
-	 * Get if the character is currently accepting movement input
-	 */
-	UFUNCTION(BlueprintCallable)
-	bool GetIsMovementInputEnabled();
-
-	/**
-	 * Set if the character is currently accepting movement input
-	 * @param IsJumping Is the character accepting movement input?
-	 */
-	UFUNCTION(BlueprintCallable)
-	void SetIsMovementInputEnabled(bool IsMovementInputEnabled);
-
-	/**
-	 * Get if the character is currently jumping, as opposed to just falling.
-	 */
-	bool GetIsJumping();
-
-	/**
-	 * Set if the character is currently jumping, as opposed to just falling.
-	 * @param IsJumping Is the character jumping?
-	 */
-	void SetIsJumping(bool IsJumping);
-
-	/**
-	 * Set if the character can control the camera. Typically used to disable camera input while in menus.
-	 * @param CanLook Can the character look around?
-	 */
-	void SetCanLook(bool CanLook);
-
-	/**
-	 * Set if the character can free look
-	 * @param CanLook Can the character free look?
-	 */
-	UFUNCTION(BlueprintCallable)
-	void SetIsFreeLooking(bool IsFreeLooking);
 
 	/**
 	 * Adds an ability to the characters ability list
@@ -394,71 +399,349 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Abilities")
 	void GiveAbility(TSubclassOf<UGameplayAbility> Ability);
 
-	/** Returns current health, will be 0 if dead */
+	/**
+	 * Gets current health, will be 0 if dead
+	 *
+	 * @return The current health of this character
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual float GetHealth() const;
 
-	/** Returns maximum health, health will never be greater than this */
+	/**
+	 * Gets maximum health, health will never be greater than this
+	 *
+	 * @return The max health of this character
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual float GetMaxHealth() const;
 
-	/** Returns current mana */
+	/**
+	 * Gets current mana
+	 *
+	 * @return The current mana of this character
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual float GetMana() const;
 
-	/** Returns maximum mana, mana will never be greater than this */
+	/**
+	 *  Gets maximum mana, mana will never be greater than this
+	 *
+	 * @return The max mana of this character
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual float GetMaxMana() const;
 
-	/** Returns current stamina */
+	/**
+	 * Gets current stamina
+	 *
+	 * @return The current stamina of this character
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual float GetStamina() const;
 
-	/** Returns maximum stamina, stamina will never be greater than this */
+	/**
+	 * Gets maximum stamina, stamina will never be greater than this
+	 *
+	 * @return The max stamina of this character
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual float GetMaxStamina() const;
 
-	/** Returns current stamina regen rate*/
+	/**
+	 * Gets the amount of stamina regenerated per second
+	 *
+	 * @return The stamina regen rate of this character
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual float GetStaminaRegen() const;
 
-	/** Returns current movement speed */
+	/**
+	 * Gets current movement speed. Each point of movement speed corresponds to a 1% increase in character walk, run, and crouch speed.
+	 *
+	 * @return The movement speed of this character
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual float GetMovementSpeed() const;
 
-	/** Returns current movement speed multiplier*/
+	/**
+	 * Gets current movement speed multiplier. This is applied to a character's movement speed during things like sprinting and rolls, for temporary speed boosts.
+	 *
+	 * @return The current movement speed multiplier of this character
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual float GetMovementSpeedMultiplier() const;
 
-	/** Returns the character level that is passed to the ability system */
+	/**
+	 * Gets the character level that is passed to the ability system
+	 *
+	 * @return The level of this character
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual int32 GetCharacterLevel() const;
 
-	/** Modifies the character level, this may change abilities. Returns true on success */
+	/**
+	 * Modifies the character level, this may change abilities. Returns true on success
+	 *
+	 * @param NewLevel The new character level
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	virtual bool SetCharacterLevel(int32 NewLevel);
 
-	/** 
+	/********************************************************* END PUBLIC ABILITY SYSTEM FUNCTIONS *************************************************************/
+
+	/********************************************************* END PUBLIC GAMEPLAY TAG ASSET FUNCTIONS *************************************************************/
+
+	/**
+	 * Populates a gameplay tag container with tags added to this object.
+	 *
+	 * @param TagContainer The reference to the tag container to populate
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Tags")
+	virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override;
+
+	/**
+	 * Removes a gameplay tag from the character's tag container.
+	 *
+	 * @param Tag The gameplay tag to remove
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Tags")
+	bool RemoveGameplayTag(FGameplayTag Tag);
+
+	/********************************************************* END PUBLIC GAMEPLAY TAG ASSET FUNCTIONS *************************************************************/
+
+	/********************************************************* BEGIN PUBLIC INPUT FUNCTIONS *******************************************************************/
+
+	/**
+	 * Get if the character is currently accepting movement input
+	 *
+	 * @return Whether movement input is currently enabled
+	 */
+	UFUNCTION(BlueprintCallable)
+	bool GetIsMovementInputEnabled();
+
+	/**
+	 * Set if the character is currently accepting movement input
+	 *
+	 * @param IsJumping Is the character accepting movement input?
+	 */
+	UFUNCTION(BlueprintCallable)
+	void SetIsMovementInputEnabled(bool IsMovementInputEnabled);
+
+	/**
+	 * Set if the character can control the camera. Typically used to disable camera input while in menus.
+	 *
+	 * @param CanLook Can the character control the camera?
+	 */
+	void SetIsCameraInputEnabled(bool IsCameraInputEnabled);
+
+	/********************************************************* END PUBLIC INPUT FUNCTIONS *********************************************************************/
+
+	/********************************************************* BEGIN PUBLIC ANIMATION FUNCTIONS ***************************************************************/
+
+	/**
+	 * Gets the character's currently movement velocity, used for animation blend spaces
+	 *
+	 * @return The current movement velocity vector of this character
+	 */
+	UFUNCTION(BlueprintPure, Category = "Animation|\Movement")
+	FVector GetMovementVelocity();
+
+	/**
+	 * Gets the character's current movement direction, used for animation blend spaces
+	 *
+	 * @return The angle of the character's movement direction, in degrees, from -180 to 180
+	 */
+	UFUNCTION(BlueprintPure, Category = "Animation|\Movement")
+	float GetMovementDirection();
+
+	/**
+	 * Gets the enum representation of the current movement direction, a less specific value used for playing specific directional animation montages
+	 *
+	 * @return The enum representation of the closest cardinal movement direction
+	 */
+	UFUNCTION(BlueprintPure)
+	ECardinalMovementDirection GetCardinalMovementDirection();
+
+	/**
+	 * Get if the character is currently jumping, as opposed to just falling.
+	 *
+	 * @return Whether the character is in the middle of a jump
+	 */
+	bool GetIsJumping();
+
+	/**
+	 * Set if the character is currently jumping, as opposed to just falling.
+	 *
+	 * @param IsJumping Is the character jumping?
+	 */
+	void SetIsJumping(bool IsJumping);
+
+	/**
+	 * Get the yaw of the character aim rotation
+	 *
+	 * @return The character's aim yaw
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Animation|\Aim")
+	float GetAimYaw();
+
+	/**
+	 * Get the pitch of the character aim rotation
+	 *
+	 * @return The character's aim pitch
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Animation|\Aim")
+	float GetAimPitch();
+
+	/**
+	 * Gets if free look is currently enabled for the character
+	 *
+	 * @return Is free look currently enabled for the character?
+	 */
+	UFUNCTION(BlueprintPure)
+	bool GetIsFreeLooking();
+
+	/**
+	 * Sets if the character is manually free looking, as opposed to automatically through an ability
+	 *
+	 * @param IsManuallyFreeLooking Is the character manually free looking?
+	 */
+	UFUNCTION(BlueprintCallable)
+	void SetIsManuallyFreeLooking(bool IsManuallyFreeLooking);
+
+	/**
+	 * Sets if the character is automatically free looking through an ability, as opposed to manually through direct input
+	 *
+	 * @param IsAutoFreeLooking Is the character auto free looking?
+	 */
+	UFUNCTION(BlueprintCallable)
+	void SetIsAutoFreeLooking(bool IsAutoFreeLooking);
+
+	/**
+	 * Get if the character is currently reorienting its body. This happens when the character's aim yaw exceeds a given threshold.
+	 *
+	 * @return Whether the character is currently reorienting their body
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Animation|\Aim")
+	bool GetIsReorientingBody();
+
+	/**
+	 * BP Event for toggling the matching of actor rotation to controller rotation. Used for orienting the character body back towards the looking direction.
+	 * This function only seems to be exposed in blueprint, so it needs to be overridden there.
+	 *
+	 * @param UseRotation Whether or not to use controller desired rotation
+	 */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Animation|\Aim")
+	void UseControllerDesiredRotation(bool UseRotation);
+
+	/********************************************************* END PUBLIC ANIMATION FUNCTIONS ********************************************************************/
+
+	/********************************************************* BEGIN PUBLIC INVENTORY & EQUIPMENT FUNCTIONS ******************************************************/
+	/**
+	 * Gets the character's InventoryComponent
+	 *
+	 * @return The character's InventoryComponent
+	 */
+	UFUNCTION(BlueprintPure, Category = "Inventory & Equipment")
+	UInventoryComponent* GetInventoryComponent();
+
+	/**
+	 * Gets the character's EquipmentComponent
+	 *
+	 * @return The character's EquipmentComponent
+	 */
+	UFUNCTION(BlueprintPure, Category = "Inventory & Equipment")
+	UEquipmentComponent* GetEquipmentComponent();
+
+	/**
+	 * Attempts to add an item to the player's inventory. Only runs on the server.
+	 *
+	 * @param Item The item to attempt to add to the inventory
+	 *
+	 * @return Was the item added to the inventory?
+	 */
+	bool TryAddItemToInventory(AItem* Item);
+
+	/**
+	 * Attempts to pick up an item and add it to the player's inventory. Only runs on the server.
+	 *
+	 * @param Item The item to attempt to pick up
+	 */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_TryPickUpItem(AItem* Item);
+
+	/**
+	 * Attempts to remove an item from the player's inventory. Only runs on the server.
+	 *
+	 * @param Item The item to attempt to drop
+	 */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_TryDropItem(AItem* Item);
+
+	/**
+	 * Attempts to equip an item and add it to the player's equipment. Only runs on the server.
+	 *
+	 * @param Equippable The item to attempt to equip
+	 */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_TryEquipItem(AEquippable* Equippable);
+
+	/**
+	 * Updates a character's mesh segments when armor equipment changes. Only called on the server.
+	 *
+	 * @param Armor The piece of armor to update meshes with
+	 */
+	UFUNCTION(Server, Unreliable, WithValidation)
+	void Server_UpdateMeshSegments(AArmor* Armor);
+
+	/**
+	 * Updates a character's mesh segments when armor equipment changes; called on all clients, should only be called by server.
+	 *
+	 * @param Armor The piece of armor to update meshes with
+	 */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_UpdateMeshSegments(AArmor* Armor);
+
+	/**
+	 * Adds a weapon from a loadout slot to a specified sheathe location
+	 *
+	 * @param LoadoutSlot The struct containing the weapon and sheathe slot details
+	 */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_UpdateLoadout(const FWeaponLoadout& Loadout);
+
+	/********************************************************* END PUBLIC INVENTORY & EQUIPMENT FUNCTIONS *****************************************************/
+
+	/********************************************************* BEGIN PUBLIC COMBAT FUNCTIONS ******************************************************************/
+
+	/**
+	 * Get the sphere component used for left fist collisions
+	 *
+	 * @return The left fist sphere component
+	 */
+	USphereComponent* GetLeftFistCollider();
+
+	/**
+	 * Get the sphere component used for right fist collisions
+	 *
+	 * @return The right fist sphere component
+	 */
+	USphereComponent* GetRightFistCollider();
+
+	/**
 	 * Sets flag to allow or disallow the character to perform their next melee combo attack.
 	 * Only runs on the server.
+	 *
 	 * @param ComboReady Can perform next attack?
 	 */
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
 	void Server_SetMeleeComboReady(bool ComboReady);
 
 	/**
-	 * Inreases the melee combo state to determine the next attack ability to use.
+	 * Increases the melee combo state to determine the next attack ability to use.
 	 * Only runs on the server.
 	 */
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
 	void Server_IncreaseMeleeComboState();
-
-	/**
-	 * Starts an internal timer that will disallow the character from performing the next combo attack once expired.
-	 * Only runs on the server.
-	 */
-	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
-	void Server_BeginMeleeComboEndTimer(float TimeToComboEnd);
 
 	/**
 	 * Sets the melee combo state back to zero. This should happen after a full combo has been performed, or after
@@ -468,60 +751,23 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
 	void Server_ResetMeleeComboState();
 
-	UAnimationProfile* GetAnimationProfile();
-
-	USphereComponent* GetLeftFistCollider();
-
-	USphereComponent* GetRightFistCollider();
-
 	/**
-	 * Attempts to pick up an item and add it to the player's inventory
-	 * @param Item The item to attempt to pick up
+	 * Starts an internal timer that will disallow the character from performing the next combo attack once expired.
+	 * Only runs on the server.
+	 * @param TimeToComboEnd The amount of time, in seconds, to set the timer for
 	 */
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_TryPickUpItem(AItem* Item);
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
+	void Server_BeginMeleeComboEndTimer(float TimeToComboEnd);
 
-	/**
-	 * Attempts to remove an item from the player's inventory
-	 * @param Item The item to attempt to drop
-	 */
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_TryDropItem(AItem* Item);
-
-	UFUNCTION(BlueprintCallable)
-	bool GetIsReorientingBody();
-
-	UFUNCTION(BlueprintCallable)
-	float GetAimYaw();
-
-	UFUNCTION(BlueprintCallable)
-	float GetAimPitch();
-
-	/* Event for toggling the matching of actor rotation to controller rotation. Used for orienting the character body back towards the looking direction. */
-	UFUNCTION(BlueprintImplementableEvent)
-	void UseControllerDesiredRotation(bool UseRotation);
-
-	/**
-	 * Server side function for updating a character's mesh segments when armor equipment changes
-	 *
-	 * @param Armor The piece of armor to update meshes with
-	 */
-	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_UpdateMeshSegments(AArmor* Armor);
-
-	/**
-	 * RPC function for updating a character's mesh segments when armor equipment changes; called on all clients
-	 *
-	 * @param Armor The piece of armor to update meshes with
-	 */
-	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_UpdateMeshSegments(AArmor* Armor);
+	/********************************************************* END PUBLIC COMBAT FUNCTIONS ********************************************************************/
 
 protected:
-	/** Apply initial acitve and passive gameplay abilities to player. */
+	/********************************************************* BEGIN PROTECTED ABILITY SYSTEM FUNCTIONS *******************************************************/
+
+	/** Apply initial active and passive gameplay abilities to player. */
 	void AddStartupGameplayAbilities();
 
-	/** Attempts to remove any initial acitve and passive gameplay abilities from player. */
+	/** Attempts to remove any initial active and passive gameplay abilities from player. */
 	void RemoveStartupGameplayAbilities();
 
 	/**
@@ -580,70 +826,177 @@ protected:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnDeath();
 
-	// Called from DungeonAttributeSet, these call BP events above
+	/**
+	 * Native function called from DungeonAttributeSet when character takes damage.
+	 *
+	 * @param DamageAmount Amount of damage that was done, not clamped based on current health
+	 * @param HitInfo The hit info that generated this damage
+	 * @param DamageTags The gameplay tags of the event that did the damage
+	 * @param InstigatorCharacter The character that initiated this damage
+	 * @param DamageCauser The actual actor that did the damage, might be a weapon or projectile
+	 */
 	virtual void HandleDamage(float DamageAmount, const FHitResult& HitInfo, const struct FGameplayTagContainer& DamageTags, ADungeonCharacter* InstigatorCharacter, AActor* DamageCauser);
-	virtual void HandleHealthChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
-	virtual void HandleManaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
-	virtual void HandleStaminaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
-	virtual void HandleMovementSpeedChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
-
-	void MoveForward(float Value);
-
-	void MoveRight(float Value);
-
-	void LookRight(float YawInput);
-	
-	void LookUp(float PitchInput);
-
-	virtual void OnJumpKeyPressed();
 
 	/**
-	 * Makes the character jump on the next update. Also sets bIsJumping to true.
+	 * Native function called from DungeonAttributeSet when health is changed.
+	 *
+	 * @param DeltaValue Change in health value
+	 * @param EventTags The gameplay tags of the event that changed health
 	 */
+	virtual void HandleHealthChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
+
+	/**
+	 * Native function called from DungeonAttributeSet when mana is changed.
+	 *
+	 * @param DeltaValue Change in mana value
+	 * @param EventTags The gameplay tags of the event that changed mana
+	 */
+	virtual void HandleManaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
+
+	/**
+	 * Native function called from DungeonAttributeSet stamina is changed.
+	 *
+	 * @param DeltaValue Change in stamina value
+	 * @param EventTags The gameplay tags of the event that changed stamina
+	 */
+	virtual void HandleStaminaChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
+
+	/**
+	 * Native function called from DungeonAttributeSet movement speed is changed
+	 *
+	 * @param DeltaValue Change in movement speed
+	 * @param EventTags The gameplay tags of the event that changed movement speed
+	 */
+	virtual void HandleMovementSpeedChanged(float DeltaValue, const struct FGameplayTagContainer& EventTags);
+
+	/********************************************************* END PROTECTED ABILITY SYSTEM FUNCTIONS *******************************************************/
+
+	/********************************************************* BEGIN PROTECTED INPUT FUNCTIONS **************************************************************/
+
+	/**
+	 * Adds forward movement input to the character movement component
+	 * 
+	 * @param Value The magnitude of the forward movement input to add, from -1 to 1
+	 */
+	void MoveForward(float Value);
+
+	/**
+	 * Adds right movement input to the character movement component
+	 *
+	 * @param Value The magnitude of the right movement input to add, from -1 to 1
+	 */
+	void MoveRight(float Value);
+
+	/**
+	 * Adds yaw input to the character's camera
+	 *
+	 * @param Value The magnitude of the yaw input to add, from -1 to 1
+	 */
+	void LookRight(float YawInput);
+	
+	/**
+	 * Adds pitch input to the character's camera
+	 *
+	 * @param Value The magnitude of the pitch input to add, from -1 to 1
+	 */
+	void LookUp(float PitchInput);
+
+	/** Makes the character jump on the next update. Also sets bIsJumping to true. */
 	virtual void Jump() override;
 
+	/** Processes Jump key presses */
+	UFUNCTION()
+	virtual void OnJumpKeyPressed();
+
+	/** Processes Sprint key presses */
 	UFUNCTION()
 	void OnSprintKeyPressed();
 
+	/** Processes Sprint key releases */
 	UFUNCTION()
 	void OnSprintKeyReleased();
 
+	/** Processes Free Look key presses */
 	UFUNCTION()
 	void OnFreeLookKeyPressed();
 
+	/** Processes Free Look key releases */
 	UFUNCTION()
 	void OnFreeLookKeyReleased();
 
+	/** Processes Crouch key presses */
 	UFUNCTION()
 	void OnCrouchKeyPressed();
 
+	/** Processes Roll key presses */
 	UFUNCTION()
 	void OnRollKeyPressed();
 
+	/** Processes Interact key presses */
 	UFUNCTION()
 	void OnInteractKeyPressed();
 
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_Interact();
-
+	/** Processes Sheathe key presses */
 	UFUNCTION()
 	void OnSheatheKeyPressed();
 
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_SheatheWeapon();
-
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_UnsheatheWeapon();
-
+	/** Processes Attack key presses */
 	UFUNCTION()
 	void OnAttackKeyPressed();
 
+	/** Processes Block key presses */
+	UFUNCTION()
+	void OnBlockKeyPressed();
+
+	/** Processes Block key releases */
+	UFUNCTION()
+	void OnBlockKeyReleased();
+
+	/** Processes Inventory key presses */
+	UFUNCTION()
+	void OnInventoryKeyPressed();
+
+	/** Processes Escape key presses */
+	UFUNCTION()
+	void OnEscapeKeyPressed();
+
+	/** Processes Use Inventory Item key presses. Only valid when the inventory menu is open. */
+	UFUNCTION()
+	void OnUseInventoryItemKeyPressed();
+
+	/** Processes Drop Inventory Item key presses. Only valid when the inventory menu is open. */
+	UFUNCTION()
+	void OnDropInventoryItemKeyPressed();
+
+	/********************************************************* END PROTECTED INPUT FUNCTIONS **************************************************************/
+
+	/** Interacts with whatever the character is currently focusing. Only runs on the server. */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_Interact();
+
+	/********************************************************* BEGIN PROTECTED COMBAT FUNCTIONS **********************************************************/
+
+	/** Sheathes the character's weapon. Only runs on the server. */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_SheatheWeapon();
+
+	/** Unsheathes the character's weapon. Only runs on the server. */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_UnsheatheWeapon();
+
+	/**
+	 * Gets whether or not the character is able to attack
+	 *
+	 * @return Can the character attack?
+	 */
 	UFUNCTION(BlueprintPure, Category = "Combat")
 	bool CanAttack();
 
+	/** Performs an attack. Only runs on the server. */
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
 	void Server_Attack();
 
+	/** Cancels an attack. Only runs on the server. */
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
 	void Server_CancelAttack();
 
@@ -663,24 +1016,18 @@ protected:
 	UFUNCTION()
 	void SendUnarmedMeleeHitEvent(AActor* HitActor);
 
-	UFUNCTION()
-	void OnBlockKeyPressed();
-
-	UFUNCTION()
-	void OnBlockKeyReleased();
-
-	UFUNCTION()
-	void OnInventoryKeyPressed();
-
-	UFUNCTION()
-	void OnEscapeKeyPressed();
-
-	UFUNCTION()
-	void OnUseInventoryItemKeyPressed();
-
-	UFUNCTION()
-	void OnDropInventoryItemKeyPressed();
+	/********************************************************* END PROTECTED COMBAT FUNCTIONS ************************************************************/
 
 private:
+	/** Calculates the character's aim yaw and pitch for use by aim offsets */
 	void CalculateAimRotation();
+
+	/**
+	 * Attempts to equip an item and add it to the player's equipment. Will only be run on the server.
+	 *
+	 * @param Equippable The item to attempt to equip
+	 *
+	 * @ return Whether the item was successfully equipped
+	 */
+	bool TryEquipItem(AEquippable* Equippable);
 };

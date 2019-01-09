@@ -3,124 +3,314 @@
 #include "EquipmentComponent.h"
 #include "DungeonCharacter.h"
 #include "UnrealNetwork.h"
+#include "Armor.h"
 
 // Sets default values for this component's properties
 UEquipmentComponent::UEquipmentComponent()
 {
 	bReplicates = true;
+
+	bIsPrimaryLoadoutActive = true;
+
+	EquippedArmor = TMap<EArmorSlot, AArmor*>();
 }
 
 // Called when the game starts
 void UEquipmentComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	ADungeonCharacter* DungeonCharacter = Cast<ADungeonCharacter>(GetOwner());
+	if (DungeonCharacter)
+	{
+		OwningCharacter = DungeonCharacter;
+	}
 }
 
 void UEquipmentComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UEquipmentComponent, Equipment);
+	DOREPLIFETIME(UEquipmentComponent, EquippedArmor);
+	DOREPLIFETIME(UEquipmentComponent, PrimaryWeaponLoadout);
+	DOREPLIFETIME(UEquipmentComponent, SecondaryWeaponLoadout);
+
 }
 
-TArray<AEquippable*> UEquipmentComponent::GetEquipment() const
+TMap<EArmorSlot, AArmor*> UEquipmentComponent::GetArmor() const
 {
-	return Equipment;
+	return EquippedArmor;
 }
 
-AEquippable* UEquipmentComponent::GetEquipmentInSlot(EEquipmentSlot Slot) const
+AArmor* UEquipmentComponent::GetArmorInSlot(EArmorSlot Slot)
 {
-	return Equipment[(int32) Slot];
+	return *(EquippedArmor.Find(Slot));
 }
 
-void UEquipmentComponent::Multicast_OnEquipItem_Implementation(AEquippable* Equippable)
+FWeaponLoadout& UEquipmentComponent::GetActiveLoadout()
 {
-	Equippable->GetMeshComponent()->SetVisibility(true);
-
-	FAttachmentTransformRules AttachRules = FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, true);
-	AttachRules.bWeldSimulatedBodies = false;
-
-	ADungeonCharacter* OwningCharacter = Cast<ADungeonCharacter>(GetOwner());
-	if (OwningCharacter)
+	if (bIsPrimaryLoadoutActive)
 	{
-		Equippable->AttachToComponent(OwningCharacter->GetMesh(), AttachRules, "HipSheatheSocket");
+		return PrimaryWeaponLoadout;
 	}
+	return SecondaryWeaponLoadout;
 }
 
-void UEquipmentComponent::Server_EquipItem_Implementation(AEquippable* Equippable)
+FWeaponLoadout& UEquipmentComponent::GetInactiveLoadout()
 {
-//	if (!HasItemEquipped(Equippable))
+	if (bIsPrimaryLoadoutActive)
+	{
+		return SecondaryWeaponLoadout;
+	}
+	return PrimaryWeaponLoadout;
+}
+//
+//void UEquipmentComponent::Multicast_OnEquipItem_Implementation(AEquippable* Equippable)
+//{
+//	Equippable->GetMeshComponent()->SetVisibility(true);
+//
+//	FAttachmentTransformRules AttachRules = FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, true);
+//	AttachRules.bWeldSimulatedBodies = false;
+//
+//	ADungeonCharacter* OwningCharacter = Cast<ADungeonCharacter>(GetOwner());
+//	if (OwningCharacter)
 //	{
-//		Equipment.Insert(Equippable, (int32) EEquipmentSlot::MainHand);
-//		Multicast_OnEquipItem(Equippable);
-//		// test code, to remove 
-//		ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetOwner());
-//		if (Character)
-//		{
-////				Item->Server_OnEquip(Character);
-//		}
+//		Equippable->AttachToComponent(OwningCharacter->GetMesh(), AttachRules, "HipSheatheSocket");
 //	}
-}
+//}
+//
+//void UEquipmentComponent::Server_EquipItem_Implementation(AEquippable* Equippable)
+//{
+////	if (!HasItemEquipped(Equippable))
+////	{
+////		Equipment.Insert(Equippable, (int32) EEquipmentSlot::MainHand);
+////		Multicast_OnEquipItem(Equippable);
+////		// test code, to remove 
+////		ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetOwner());
+////		if (Character)
+////		{
+//////				Item->Server_OnEquip(Character);
+////		}
+////	}
+//}
+//
+//bool UEquipmentComponent::Server_EquipItem_Validate(AEquippable* Equippable)
+//{
+//	return true;
+//}
+//
+//void UEquipmentComponent::Server_UnequipItem_Implementation(AEquippable* Equippable)
+//{
+//	/*if (!HasItemEquipped(Equippable))
+//	{
+//		Equipment.RemoveSwap(Equippable);
+//		Multicast_OnUnequipItem(Equippable);
+//		OnItemUnequipped.ExecuteIfBound(Equippable);
+//	}*/
+//}
+//
+//bool UEquipmentComponent::Server_UnequipItem_Validate(AEquippable* Equippable)
+//{
+//	return true;
+//}
+//
+//void UEquipmentComponent::Multicast_OnUnequipItem_Implementation(AEquippable* Equippable)
+//{
+//	FDetachmentTransformRules DetachRules = FDetachmentTransformRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, false);
+//	Equippable->DetachFromActor(DetachRules);
+//}
+//
+//void UEquipmentComponent::Server_UnequipAll_Implementation()
+//{
+//	/*while (Equipment.Num() > 0)
+//	{
+//		Server_UnequipItem(Equipment[0]);
+//	}*/
+//}
+//
+//bool UEquipmentComponent::Server_UnequipAll_Validate()
+//{
+//	return true;
+//}
 
-bool UEquipmentComponent::Server_EquipItem_Validate(AEquippable* Equippable)
+bool UEquipmentComponent::TryEquipItem(AEquippable* Equippable, bool CanReplaceEquipment /*= false*/)
 {
-	return true;
-}
+	bool WasItemEquipped = false;
 
-void UEquipmentComponent::Server_UnequipItem_Implementation(AEquippable* Equippable)
-{
-	if (!HasItemEquipped(Equippable))
+	if (GetOwner()->Role == ROLE_Authority)
 	{
-		Equipment.RemoveSwap(Equippable);
-		Multicast_OnUnequipItem(Equippable);
-		OnItemUnequipped.ExecuteIfBound(Equippable);
-	}
-}
-
-bool UEquipmentComponent::Server_UnequipItem_Validate(AEquippable* Equippable)
-{
-	return true;
-}
-
-void UEquipmentComponent::Multicast_OnUnequipItem_Implementation(AEquippable* Equippable)
-{
-	FDetachmentTransformRules DetachRules = FDetachmentTransformRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, false);
-	Equippable->DetachFromActor(DetachRules);
-}
-
-void UEquipmentComponent::Server_UnequipAll_Implementation()
-{
-	while (Equipment.Num() > 0)
-	{
-		Server_UnequipItem(Equipment[0]);
-	}
-}
-
-bool UEquipmentComponent::Server_UnequipAll_Validate()
-{
-	return true;
-}
-
-bool UEquipmentComponent::HasItemEquipped(AEquippable* Equippable) const
-{
-	for (AEquippable* EquippedItem : Equipment)
-	{
-		if (EquippedItem == Equippable)
+		// First, determine what kind of item is being requested to equip
+		AWeapon* Weapon = Cast<AWeapon>(Equippable);
+		if (Weapon)
 		{
-			return true;
+			WasItemEquipped = TryEquipWeapon(Weapon, CanReplaceEquipment);
+		}
+		AArmor* Armor = Cast<AArmor>(Equippable);
+		if (Armor)
+		{
+			EArmorSlot ArmorSlot = Armor->GetArmorSlot();
+			AArmor* ArmorInSlot = GetArmorInSlot(ArmorSlot);
+			if (!ArmorInSlot)
+			{
+				TPair<EArmorSlot, AArmor*> Pair = TPair<EArmorSlot, AArmor*>(ArmorSlot, Armor);
+				EquippedArmor.Add(Pair);
+				WasItemEquipped = true;
+			}
 		}
 	}
 
-	return false;
+	if (WasItemEquipped)
+	{
+		Equippable->OnEquip(OwningCharacter);
+	}
+
+	return WasItemEquipped;
 }
 
-bool UEquipmentComponent::TryEquipItem(AEquippable* Equippable)
+bool UEquipmentComponent::TryEquipWeapon(AWeapon* Weapon, bool CanReplaceEquipment /*= false*/)
 {
-	return true;
+	bool WasWeaponEquipped = false;
+
+	FWeaponLoadout& ActiveLoadout = GetActiveLoadout();
+	FWeaponLoadout& InactiveLoadout = GetInactiveLoadout();
+
+	if (GetOwner()->Role == ROLE_Authority)
+	{
+		switch (Weapon->GetWeaponHand())
+		{
+		case EWeaponHand::OneHand:
+			// First, try to find an open slot
+			if (!ActiveLoadout.MainHandWeapon)
+			{
+				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::MainHand);
+			}
+			else if (!ActiveLoadout.OffHandWeapon)
+			{
+				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::OffHand);
+			}
+			else if(!InactiveLoadout.MainHandWeapon)
+			{
+				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, InactiveLoadout, ERequestedHand::MainHand);
+			}
+			else if (!InactiveLoadout.OffHandWeapon)
+			{
+				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, InactiveLoadout, ERequestedHand::OffHand);
+			}
+			// If no slots are open, just replace the main hand of the active loadout
+			if (!WasWeaponEquipped)
+			{
+				RemoveWeaponFromLoadout(ActiveLoadout, ERequestedHand::MainHand);
+				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::MainHand);
+			}
+			break;
+		case EWeaponHand::TwoHand:
+			// First, try to find an open slot
+			if (!ActiveLoadout.MainHandWeapon)
+			{
+				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::MainHand);
+			}
+			else if (!InactiveLoadout.MainHandWeapon)
+			{
+				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, InactiveLoadout, ERequestedHand::MainHand);
+			}
+			// If no slots are open, just replace the main hand of the active loadout
+			if (!WasWeaponEquipped)
+			{
+				RemoveWeaponFromLoadout(ActiveLoadout, ERequestedHand::MainHand);
+				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::MainHand);
+			}
+			break;
+		case EWeaponHand::OffHand:
+			// First, try to find an open slot
+			 if (!ActiveLoadout.OffHandWeapon)
+			{
+				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::OffHand);
+			}
+			else if (!InactiveLoadout.OffHandWeapon)
+			{
+				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, InactiveLoadout, ERequestedHand::OffHand);
+			}
+			// If no slots are open, just replace the off hand of the active loadout
+			if (!WasWeaponEquipped)
+			{
+				RemoveWeaponFromLoadout(ActiveLoadout, ERequestedHand::OffHand);
+				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::OffHand);
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	return WasWeaponEquipped;
 }
 
-bool UEquipmentComponent::TryUnequipItem(AEquippable* Equippable)
+bool UEquipmentComponent::TryAddWeaponToLoadout(AWeapon* Weapon, FWeaponLoadout& Loadout, ERequestedHand RequestedHand)
 {
-	return true;
+	bool WasWeaponAdded = false;
+
+	if (GetOwner()->Role == ROLE_Authority)
+	{
+		switch (Weapon->GetWeaponHand())
+		{
+		case EWeaponHand::OneHand:
+			break;
+		case EWeaponHand::TwoHand:
+			break;
+		case EWeaponHand::OffHand:
+			break;
+		default:
+			break;
+		}
+	}
+
+	return WasWeaponAdded;
 }
 
+void UEquipmentComponent::UnequipItem(AEquippable* Equippable)
+{
+
+}
+
+void UEquipmentComponent::RemoveWeaponFromLoadout(FWeaponLoadout& Loadout, ERequestedHand RequestedHand)
+{
+	if (GetOwner()->Role == ROLE_Authority)
+	{
+		AWeapon* WeaponToRemove = nullptr;
+		switch (RequestedHand)
+		{
+		case ERequestedHand::MainHand:
+			WeaponToRemove = Loadout.MainHandWeapon;
+			if (WeaponToRemove)
+			{
+				WeaponToRemove->OnUnequip();
+				Loadout.MainHandWeapon = nullptr;
+			}
+			break;
+		case ERequestedHand::OffHand:
+			WeaponToRemove = Loadout.OffHandWeapon;
+			if (WeaponToRemove)
+			{
+				WeaponToRemove->OnUnequip();
+				Loadout.OffHandWeapon = nullptr;
+			}
+			break;
+		case ERequestedHand::Both:
+			WeaponToRemove = Loadout.MainHandWeapon;
+			if (WeaponToRemove)
+			{
+				WeaponToRemove->OnUnequip();
+				Loadout.MainHandWeapon = nullptr;
+			}
+			WeaponToRemove = Loadout.OffHandWeapon;
+			if (WeaponToRemove)
+			{
+				WeaponToRemove->OnUnequip();
+				Loadout.OffHandWeapon = nullptr;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+}

@@ -3,24 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Gameplay/Interactables/Items/Item.h"
+#include "Item.h"
+#include "EquipmentEnums.h"
 #include "Equippable.generated.h"
-
-UENUM(BlueprintType)
-enum class EEquipmentSlot : uint8
-{
-	Head			UMETA(DisplayName = "Head"),
-	Shoulders		UMETA(DisplayName = "Shoulders"),
-	Chest			UMETA(DisplayName = "Chest"),
-	Waist			UMETA(DisplayName = "Waist"),
-	Legs			UMETA(DisplayName = "Legs"),
-	Feet			UMETA(DisplayName = "Feet"),
-	Hands			UMETA(DisplayName = "Hands"),
-	Weapon			UMETA(DisplayName = "Weapon"),
-	Consumable		UMETA(DisplayName = "Consumable"),
-
-	NUM_EQUIPMENT_SLOTS
-};
 
 /**
  * Base class for all equippable items in the game.
@@ -43,11 +28,11 @@ public:
 
 	virtual ~AEquippable();
 
-	/* Returns an array of EEquipmentSlots that it is valid to place this item into when equipping it. */
-	virtual TArray<EEquipmentSlot> GetValidEquipmentSlots();
+	///* Returns an array of EEquipmentSlots that it is valid to place this item into when equipping it. */
+	//virtual TArray<EEquipmentSlot> GetValidEquipmentSlots();
 
-	/* Returns an array of EEquipmentSlots that are locked and can't have items equipped in them while this item is equipped. */
-	virtual TArray<EEquipmentSlot> GetLockedEquipmentSlots();
+	///* Returns an array of EEquipmentSlots that are locked and can't have items equipped in them while this item is equipped. */
+	//virtual TArray<EEquipmentSlot> GetLockedEquipmentSlots();
 
 	virtual FText GetInventoryUseTooltipText() override;
 	

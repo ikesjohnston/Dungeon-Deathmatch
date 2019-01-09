@@ -106,7 +106,7 @@ void UInventoryEquipmentMenuWidget::EquipItem(AEquippable* Equippable)
 {
 	if (Equippable)
 	{
-		TArray<EEquipmentSlot> ValidEquipmentSlots = Equippable->GetValidEquipmentSlots();
+		//TArray<EEquipmentSlot> ValidEquipmentSlots = Equippable->GetValidEquipmentSlots();
 		
 	}
 }

@@ -9,7 +9,8 @@
 UDungeonGameplayAbility::UDungeonGameplayAbility(const FObjectInitializer& ObjectInitializer) 
 	: Super(ObjectInitializer)
 {
-
+	// Most abilities will only need to be instanced per actor
+	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 }
 
 FDungeonGameplayEffectContainerSpec UDungeonGameplayAbility::MakeEffectContainerSpecFromContainer(const FDungeonGameplayEffectContainer& Container, const FGameplayEventData& EventData, int32 OverrideGameplayLevel)

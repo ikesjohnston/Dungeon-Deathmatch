@@ -63,14 +63,14 @@ UBlendSpace* UDungeonCharacterAnimInstance::GetMovementBlendSpace()
 {
 	UBlendSpace* BlendSpace = nullptr;
 
-	if (OwningCharacter)
+	/*if (OwningCharacter)
 	{
 		UAnimationProfile* AnimProfile = OwningCharacter->GetAnimationProfile();
 		if (AnimProfile)
 		{
 			BlendSpace = AnimProfile->GetMovementBlendSpace();
 		}
-	}
+	}*/
 
 	return BlendSpace;
 }

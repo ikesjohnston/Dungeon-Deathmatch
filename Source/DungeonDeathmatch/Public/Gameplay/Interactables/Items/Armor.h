@@ -3,23 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Gameplay/Interactables/Items/Equippable.h"
+#include "Equippable.h"
 #include "DungeonCharacter.h"
+#include "EquipmentEnums.h"
 #include "Armor.generated.h"
-
-UENUM(BlueprintType)
-enum class EArmorSlot : uint8
-{
-	Head			UMETA(DisplayName = "Head"),
-	Shoulders		UMETA(DisplayName = "Shoulders"),
-	Chest			UMETA(DisplayName = "Chest"),
-	Waist			UMETA(DisplayName = "Waist"),
-	Legs			UMETA(DisplayName = "Legs"),
-	Feet			UMETA(DisplayName = "Feet"),
-	Hands			UMETA(DisplayName = "Hands"),
-
-	NUM_ARMOR_SLOTS UMETA(Hidden)
-};
 
 /**
  * 
