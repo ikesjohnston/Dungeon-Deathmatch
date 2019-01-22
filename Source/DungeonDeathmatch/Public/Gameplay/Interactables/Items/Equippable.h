@@ -28,17 +28,7 @@ public:
 
 	virtual ~AEquippable();
 
-	///* Returns an array of EEquipmentSlots that it is valid to place this item into when equipping it. */
-	//virtual TArray<EEquipmentSlot> GetValidEquipmentSlots();
-
-	///* Returns an array of EEquipmentSlots that are locked and can't have items equipped in them while this item is equipped. */
-	//virtual TArray<EEquipmentSlot> GetLockedEquipmentSlots();
-
 	virtual FText GetInventoryUseTooltipText() override;
-	
-	// ------------------------ BEGIN INTERACTABLE INTERFACE OVERRIDES ------------------------
-	virtual void OnInteract_Implementation(ADungeonCharacter* InteractingCharacter) override;
-	// ------------------------ END INTERACTABLE INTERFACE OVERRIDES ------------------------
 
 protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "Equipment")

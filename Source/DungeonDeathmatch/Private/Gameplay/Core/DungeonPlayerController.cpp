@@ -10,7 +10,7 @@
 #include "DungeonCharacter.h"
 #include <GameFramework/PlayerController.h>
 #include "Item.h"
-#include "InventoryEquipmentSlotWidget.h"
+#include "DraggableItemWidget.h"
 
 // Console command for drawing interaction cast debug shapes
 static int32 DebugInteraction = 0;
@@ -41,16 +41,6 @@ AActor* ADungeonPlayerController::GetFocusedInteractable()
 	return FocusedInteractable;
 }
 
-UInventoryEquipmentSlotWidget* ADungeonPlayerController::GetHoveringInventoryEquipmentSlot()
-{
-	return HoveringInventoryEquipmentSlot;
-}
-
-void ADungeonPlayerController::SetHoveringInventoryEquipmientSlot(UInventoryEquipmentSlotWidget* InventoryEquipmentSlot)
-{
-	HoveringInventoryEquipmentSlot = InventoryEquipmentSlot;
-}
-
 void ADungeonPlayerController::OnInventoryKeyPressed()
 {
 	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
@@ -59,14 +49,25 @@ void ADungeonPlayerController::OnInventoryKeyPressed()
 		if (DungeonHUD->IsCharacterMenuVisible())
 		{
 			DungeonHUD->HideCharacterMenu();
+			DungeonHUD->HideInventoryMenu();
+			DungeonHUD->ShowReticle();
 			bShowMouseCursor = false;
+			bEnableClickEvents = false;
+			bEnableMouseOverEvents = false;
 			SetPawnCanLook(true);
+			StopDraggingItem();
+			FocusGame();
 		}
 		else
 		{
 			DungeonHUD->ShowCharacterMenu();
+			DungeonHUD->ShowInventoryMenu();
+			DungeonHUD->HideReticle();
 			bShowMouseCursor = true;
+			bEnableClickEvents = true;
+			bEnableMouseOverEvents = true;
 			SetPawnCanLook(false);
+			FocusUIAndGame();
 		}
 	}
 }
@@ -79,6 +80,8 @@ void ADungeonPlayerController::OnEscapeKeyPressed()
 		DungeonHUD->HideCharacterMenu();
 		bShowMouseCursor = false;
 		SetPawnCanLook(false);	
+		StopDraggingItem();
+		FocusGame();
 	}
 }
 
@@ -89,7 +92,7 @@ void ADungeonPlayerController::OnUseInventoryItemKeyPressed()
 
 void ADungeonPlayerController::OnDropInventoryItemKeyPressed()
 {
-	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
+	/*ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
 	if (DungeonHUD && DungeonHUD->IsCharacterMenuVisible() && HoveringInventoryEquipmentSlot)
 	{
 		AItem* SlottedItem = HoveringInventoryEquipmentSlot->GetItem();
@@ -98,12 +101,98 @@ void ADungeonPlayerController::OnDropInventoryItemKeyPressed()
 		{
 			DungeonPawn->Server_TryDropItem(SlottedItem);
 		}
-	}
+	}*/
 }
 
 TArray<FInputActionKeyMapping> ADungeonPlayerController::GetKeyForAction(FName ActionName)
 {
 	return PlayerInput->GetKeysForAction(ActionName);
+}
+
+void ADungeonPlayerController::FocusUIAndGame()
+{
+	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
+	if (DungeonHUD)
+	{
+		FInputModeGameAndUI InputMode = FInputModeGameAndUI();
+		TSharedPtr<SWidget> WidgetPtr = DungeonHUD->GetInGameOverlay()->TakeWidget();
+		InputMode.SetWidgetToFocus(WidgetPtr);
+		InputMode.SetHideCursorDuringCapture(false);
+		SetInputMode(InputMode);
+	}
+}
+
+void ADungeonPlayerController::FocusGame()
+{
+	FInputModeGameOnly InputMode = FInputModeGameOnly();
+	SetInputMode(InputMode);
+}
+
+UDungeonCursorWidget* ADungeonPlayerController::GetCursor()
+{
+	return Cursor;
+}
+
+void ADungeonPlayerController::SetCursor(UDungeonCursorWidget* NewCursor)
+{
+	Cursor = NewCursor;
+}
+
+UDraggableItemWidget* ADungeonPlayerController::GetDraggedItem()
+{
+	return DraggedItem;
+}
+
+void ADungeonPlayerController::StartDraggingItem(UDraggableItemWidget* DraggableItemWidget)
+{
+	if (Cursor)
+	{
+		Cursor->Hide();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ADungeonPlayerController::StartDraggingItem - No cursor bound to %s"), *GetName());
+	}
+	
+	if (DraggedItem)
+	{
+		OnEndItemDrag.Broadcast(DraggedItem->GetItem());
+	}
+	
+	DraggedItem = DraggableItemWidget;
+	if (DraggedItem)
+	{
+		OnBeginItemDrag.Broadcast(DraggedItem->GetItem());
+	}
+
+	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
+	if (DungeonHUD)
+	{
+		DungeonHUD->StartDragAndDropOperation(DraggableItemWidget->GetItem());
+	}
+}
+
+void ADungeonPlayerController::StopDraggingItem()
+{
+	if (Cursor)
+	{
+		Cursor->Show();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ADungeonPlayerController::StopDraggingItem - No cursor bound to %s"), *GetName());
+	}
+
+	if (DraggedItem)
+	{
+		OnEndItemDrag.Broadcast(DraggedItem->GetItem());
+	}
+
+	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
+	if (DungeonHUD)
+	{
+		DungeonHUD->StopDragAndDropOperation();
+	}
 }
 
 void ADungeonPlayerController::Server_SetFocusedInteractable_Implementation(AActor* Interactable)

@@ -12,6 +12,7 @@ void ADungeonHUD::BeginPlay()
 		{
 			InGameOverlay->AddToViewport();
 			HideCharacterMenu();
+			ShowReticle();
 		}
 	}
 }
@@ -44,4 +45,40 @@ bool ADungeonHUD::IsCharacterMenuVisible()
 		return InGameOverlay->IsCharacterMenuVisible();
 	}
 	return false;
+}
+
+void ADungeonHUD::ShowInventoryMenu()
+{
+	if (InGameOverlay)
+	{
+		InGameOverlay->ShowInventoryMenu();
+	}
+}
+
+void ADungeonHUD::HideInventoryMenu()
+{
+	if (InGameOverlay)
+	{
+		InGameOverlay->HideInventoryMenu();
+	}
+}
+
+void ADungeonHUD::ShowReticle()
+{
+	InGameOverlay->ShowReticle();
+}
+
+void ADungeonHUD::HideReticle()
+{
+	InGameOverlay->HideReticle();
+}
+
+void ADungeonHUD::StartDragAndDropOperation(AItem* Item)
+{
+	InGameOverlay->StartDragAndDropOperation(Item);
+}
+
+void ADungeonHUD::StopDragAndDropOperation()
+{
+	InGameOverlay->StopDragAndDropOperation();
 }

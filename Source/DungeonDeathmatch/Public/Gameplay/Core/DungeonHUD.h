@@ -38,4 +38,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	bool IsCharacterMenuVisible();
 
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ShowInventoryMenu();
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void HideInventoryMenu();
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ShowReticle();
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void HideReticle();
+
+	void StartDragAndDropOperation(AItem* Item);
+
+	void StopDragAndDropOperation();
 };

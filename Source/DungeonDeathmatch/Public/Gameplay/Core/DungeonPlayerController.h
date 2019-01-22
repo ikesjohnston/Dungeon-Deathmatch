@@ -5,14 +5,19 @@
 #include "DungeonDeathmatch.h"
 #include "GameFramework/PlayerController.h"
 #include <GameFramework/PlayerInput.h>
+#include "DungeonCursorWidget.h"
 #include "DungeonPlayerController.generated.h"
 
 class UInteractable;
 class AItem;
-class UInventoryEquipmentSlotWidget;
+class UDungeonCursorWidget;
+class UDraggableItemWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractableFocusedSignature, class UInteractable*, Interactable);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInteractableUnfocusedSignature);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBeginItemDragSignature, class AItem*, Item);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEndItemDragSignature, class AItem*, Item);
 
 /**
  * Controller class for the player, handles much of the UI and interaction logic.
@@ -24,13 +29,21 @@ class DUNGEONDEATHMATCH_API ADungeonPlayerController : public APlayerController
 	GENERATED_BODY()
 	
 public:
-	UPROPERTY(BlueprintAssignable, Category = "Interaction")
 	/* Delegate called when interactable is focused by player. For UI updates. */
+	UPROPERTY(BlueprintAssignable, Category = "Interaction")
 	FOnInteractableFocusedSignature OnInteractableFocused;
 
-	UPROPERTY(BlueprintAssignable, Category = "Interaction")
 	/* Delegate called when interactable is unfocused by player. For UI updates. */
+	UPROPERTY(BlueprintAssignable, Category = "Interaction")
 	FOnInteractableUnfocusedSignature OnInteractableUnfocused;
+
+	/* Delegate called when an item drag operation starts. For UI updates. */
+	UPROPERTY(BlueprintAssignable, Category = "Inventory")
+	FOnBeginItemDragSignature OnBeginItemDrag;
+
+	/* Delegate called when an item drag operation end. For UI updates. */
+	UPROPERTY(BlueprintAssignable, Category = "Inventory")
+	FOnEndItemDragSignature OnEndItemDrag;
 
 protected:
 	/* The interactable actor that is currently focused by the player. It is assumed that this actor implements IInteractable. */
@@ -55,9 +68,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction")
 	float MaxInteractionDistance;
 
-	/* The InventoryEquipmentSlotWidget that the player is currently mousing over. */
+	/* The cursor widget being controlled by this player */
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
-	UInventoryEquipmentSlotWidget* HoveringInventoryEquipmentSlot;
+	UDungeonCursorWidget* Cursor;
+
+	/* The DraggableItemWidget associated with the current drag and drop operation, if any */
+	UPROPERTY(BlueprintReadOnly, Category = "UI")
+	UDraggableItemWidget* DraggedItem;
 
 public:
 	ADungeonPlayerController();
@@ -68,20 +85,6 @@ public:
 	 * Get the interactable actor that the player currently has focused, if any
 	 */
 	AActor* GetFocusedInteractable();
-
-	/**
-	 * Get the InventoryEquipmentSlot UI object that the player is currently hovering over with their cursor, if any
-	 */
-	UFUNCTION(BlueprintCallable, Category = "UI")
-	UInventoryEquipmentSlotWidget* GetHoveringInventoryEquipmentSlot();
-
-	/**
-	 * Set the InventoryEquipmentSlot UI object that the player is currently hovering over with their cursor
-	 * 
-	 * @param InventoryEquipmentSlot The slot object being hovered
-	 */
-	UFUNCTION(BlueprintCallable, Category = "UI")
-	void SetHoveringInventoryEquipmientSlot(UInventoryEquipmentSlotWidget* InventoryEquipmentSlot);
 
 	/**
 	 * Processes UI updates from the inventory key being pressed 
@@ -110,6 +113,37 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable)
 	TArray<FInputActionKeyMapping> GetKeyForAction(FName ActionName);
+
+	/**
+	 * Sets the input focus to the UI and Game, used to refresh input focus in the event that an individual widget takes the focus
+	 */
+	UFUNCTION(BlueprintCallable)
+	void FocusUIAndGame();
+
+	/**
+	 * Sets the input focus to the Game only, used to relinquish mouse cursor input
+	 */
+	void FocusGame();
+
+	/** Gets the mouse cursor widget being controlled by this player */
+	UFUNCTION(BlueprintCallable)
+	UDungeonCursorWidget* GetCursor();
+
+	/** Sets the mouse cursor widget being controlled by this player */
+	UFUNCTION(BlueprintCallable)
+	void SetCursor(UDungeonCursorWidget* NewCursor);
+
+	/** Gets the DraggableItemWidget associated with the current drag and drop operation, if any */
+	UFUNCTION(BlueprintPure)
+	UDraggableItemWidget* GetDraggedItem();
+
+	/** Sets the DraggableItemWidget associated with the current drag and drop operation. Updates the mouse cursor with the image of any item being dragged */
+	UFUNCTION(BlueprintCallable)
+	void StartDraggingItem(UDraggableItemWidget* DraggableItemWidget);
+
+	/** Stops the current drag and drop operation. */
+	UFUNCTION(BlueprintCallable)
+	void StopDraggingItem();
 
 protected:
 	/**

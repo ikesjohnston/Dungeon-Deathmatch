@@ -27,6 +27,8 @@ class UEquipmentComponent;
 class AInteractableActor;
 class AArmor;
 
+class ACharacterRenderCapture2D;
+
 /**
  * Enum for movement direction used for implementing certain gameplay abilities in blueprint
  */
@@ -64,6 +66,9 @@ enum class EMeshSegment : uint8
 	RightFoot					UMETA(DisplayName = "RightFoot")
 };
 
+// OnArmorEquipped event, currently just being used for UI
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnArmorEquippedSignature, AArmor*, Armor);
+
 /**
  * Character class that encapsulates player input and attribute change processing.
  */
@@ -75,6 +80,9 @@ class DUNGEONDEATHMATCH_API ADungeonCharacter : public ACharacter, public IAbili
 public:
 	// Friended to allow access to attribute modification handlers below
 	friend class UDungeonAttributeSet;
+
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnArmorEquippedSignature OnArmorEquipped;
 
 protected:
 	/** The player camera */
@@ -146,6 +154,9 @@ protected:
 	/** The skeletal mesh component that stores the right foot mesh segment */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentFootRight;
+
+	/** Mapping of mesh segment to mesh component, for updating the character mesh with new equipment */
+	TMap<EMeshSegment, USkeletalMeshComponent*> MeshComponentMap;
 
 	/********************************************************* END CHARACTER MESH SEGMENTS VARIABLES **********************************************************/
 
@@ -310,6 +321,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Inventory & Equipment")
 	UEquipmentComponent* EquipmentComponent;
 
+	/** The relative location to drop items */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment")
+	USceneComponent* ItemDropLocation;
+
+	/** The force to apply to items when dropping them */
+	UPROPERTY(EditAnywhere, Category = "Inventory & Equipment")
+	float DropEjectionForce;
+
 	/** The name of the socket corresponding to the left waist weapon sheathe */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
 	FString SocketNameSheatheWaistLeft;
@@ -355,6 +374,13 @@ protected:
 	bool bIsMeleeComboReady;
 
 	/********************************************************* END COMBAT VARIABLES ***************************************************************************/
+
+	/** The 2DRenderCapture class for displaying the character mesh in the UI */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<ACharacterRenderCapture2D> RenderCaptureClass;
+
+	/** The 2DRenderCapture actor for displaying the character mesh in the UI */
+	ACharacterRenderCapture2D* RenderCaptureActor;
 
 private:
 	/** Needed for removing and restoring deceleration during rolls */
@@ -675,7 +701,7 @@ public:
 	 * @param Item The item to attempt to drop
 	 */
 	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_TryDropItem(AItem* Item);
+	void Server_TryDropItem(AItem* Item, FVector EjectionVector = FVector::ZeroVector);
 
 	/**
 	 * Attempts to equip an item and add it to the player's equipment. Only runs on the server.
@@ -760,6 +786,20 @@ public:
 	void Server_BeginMeleeComboEndTimer(float TimeToComboEnd);
 
 	/********************************************************* END PUBLIC COMBAT FUNCTIONS ********************************************************************/
+
+	/** 
+	 * Gets the mapping of mesh segment to character's mesh component
+	 * @return The mesh segment to component map
+	 */
+	TMap<EMeshSegment, USkeletalMeshComponent*> GetMeshComponentMap();
+
+	/**
+	 * Gets the 2DRenderCapture Actor for use by the UI
+	 *
+	 * @return The character's 2D RenderCapture Actor
+	 */
+	UFUNCTION(BlueprintCallable)
+	ACharacterRenderCapture2D* GetRenderCaptureActor();
 
 protected:
 	/********************************************************* BEGIN PROTECTED ABILITY SYSTEM FUNCTIONS *******************************************************/

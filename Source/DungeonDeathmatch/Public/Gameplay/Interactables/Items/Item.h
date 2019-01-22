@@ -8,6 +8,32 @@
 #include "Item.generated.h"
 
 class ADungeonCharacter;
+class UImage;
+
+/** Struct that stores an inventory grid row column pair */
+USTRUCT(BlueprintType)
+struct FInventoryGridPair
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	uint8 Column;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	uint8 Row;
+
+	FInventoryGridPair()
+	{
+		Row = 0;
+		Column = 0;
+	}
+
+	FInventoryGridPair(uint8 GridColumn, uint8 GridRow)
+	{
+		Column = GridColumn;
+		Row = GridRow;
+	}
+};
 
 /**
  * Enum representation of the different quality levels for items. Higher quality items are generally more rare and valuable.
@@ -30,32 +56,25 @@ class DUNGEONDEATHMATCH_API AItem : public AActor, public IInteractable
 	GENERATED_BODY()
 
 protected:
-	/* The visual representation of the item */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
-	UStaticMeshComponent* MeshComponent;
+	/* The root mesh component for this item that all physics simulation operations are performed on */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mesh")
+	UStaticMeshComponent* RootMeshComponent;
 
 	/* Widget used to display tooltips on interact focus. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
 	UWidgetComponent* WidgetComponent;
 
-	/* Flag for toggling ability to interact. Replicated to all clients. */
-	UPROPERTY(Replicated, EditAnywhere, Category = "Interaction")
-	bool bCanInteract;
-
-	/* The prompt text that should appear on screen when this item is focused by the player */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interaction")
-	FText InteractionPromptText;
-
-	/* The stencil value to use when rendering the post process outline for this item, based on its quality */
-	uint8 QualityTierStencilValue;
-
 	/* The name of this item. Used by UI classes. */
 	UPROPERTY(EditDefaultsOnly, Category = "Item")
 	FText ItemName;
 
-	/* How much gold is this item worth? */
+	/* The amount of slots this item occupies in an inventory grid. */
 	UPROPERTY(EditDefaultsOnly, Category = "Item")
-	float Value;
+	FInventoryGridPair GridSize;
+
+	/* The quality of this item. Higher quality items are generally more rare and valuable.*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
+	EItemQualityTier QualityTier;
 
 	/* Optional descriptive text about the item */
 	UPROPERTY(EditDefaultsOnly, Category = "Item")
@@ -65,12 +84,22 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
 	UTexture2D* Icon;
 
-	/* The quality of this item. Higher quality items are generally more rare and valuable.*/
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
-	EItemQualityTier QualityTier;
-
 	/* The color corresponding to the quality of the item that is used for UI and post process elements */
 	FLinearColor QualityTierColor;
+
+	/* The color corresponding to the quality of the item that is used for UI Text */
+	FLinearColor QualityTierTextColor;
+
+	/* The stencil value to use when rendering the post process outline for this item, based on its quality */
+	uint8 QualityTierStencilValue;
+
+	/* Flag for toggling ability to interact. Replicated to all clients. */
+	UPROPERTY(Replicated, EditAnywhere, Category = "Interaction")
+	bool bCanInteract;
+
+	/* The prompt text that should appear on screen when this item is focused by the player */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interaction")
+	FText InteractionPromptText;
 
 	/* The text to display for the use prompt on the item tooltip. Ex. "Use", "Equip", etc. */
 	UPROPERTY(EditDefaultsOnly, Category = "Item")
@@ -83,6 +112,8 @@ public:
 	virtual ~AItem();
 
 protected:
+	virtual void PreInitializeComponents() override;
+
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
@@ -91,32 +122,29 @@ protected:
 	 */
 	void SetMeshStencilValue();
 
-	/**
-	 * Native implementation of interaction event. Can be overridden by subclasses.
-	 * Should only be called internally by the item during a server side interaction event.
-	 *
-	 * @param InteractingCharacter The character that is interacting with this item
-	 */
-	//virtual void NativeOnInteract(ADungeonCharacter* InteractingCharacter);
-
 public:	
-
 	/**
-	 * Gets the mesh component for the item
+	 * Gets the root mesh component for the item, item subclasses may have additional meshes, but all root physics simulation operations should be applied to this mesh.
 	 */
-	UStaticMeshComponent* GetMeshComponent();
+	UStaticMeshComponent* GetRootMeshComponent();
 
 	/**
-	 * Gets the name of the item
+	 * Gets the display name of the item; different from the name of the instanced object
 	 */
 	UFUNCTION(BlueprintPure, Category = "Item")
 	FText GetItemName();
 
 	/**
-	 * Gets the value of the item
+	 * Gets the grid size of the item
 	 */
 	UFUNCTION(BlueprintPure, Category = "Item")
-	float GetValue();
+	FInventoryGridPair GetGridSize();
+
+	/**
+	 * Gets the grid size vector of the item, used for setting the size of items in the UI
+	 */
+	UFUNCTION(BlueprintPure, Category = "Item")
+	FVector2D GetGridSizeVector();
 
 	/**
 	 * Gets the optional descriptive text for the item, if any
@@ -137,13 +165,19 @@ public:
 	FLinearColor GetQualityTierColor();
 
 	/**
+	 * Gets the quality text color of the item; used by UI elements
+	 */
+	UFUNCTION(BlueprintPure, Category = "Item")
+	FLinearColor GetQualityTierTextColor();
+
+	/**
 	 * Gets the tooltip text for the item to use for interaction prompts
 	 */
 	UFUNCTION(BlueprintPure, Category = "Item")
 	virtual FText GetInventoryUseTooltipText();
 
 	/**
-	 * Attempts to use the item if it is currently in the player's inventory
+	 * Attempts to use the item if it is currently in the player's inventory. Will only run on the server.
 	 */
 	UFUNCTION()
 	bool TryInventoryUse();
@@ -171,4 +205,12 @@ public:
 
 	virtual FText GetInteractableName_Implementation() override;
 	// ------------------------ END INTERACTABLE INTERFACE FUNCTIONS ------------------------
+
+	/** Multicast function that prepares the item for pickup my hiding the mesh and disabling physics and collision */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_PrepareForPickup();
+
+	/** Multicast function that drops the item at the specified location with an optional ejection force vector, which may be desired for things like ejecting loot from a chest */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_DropAtLocation(const FVector Location, const FVector EjectionForce = FVector(0, 0, 0));
 };

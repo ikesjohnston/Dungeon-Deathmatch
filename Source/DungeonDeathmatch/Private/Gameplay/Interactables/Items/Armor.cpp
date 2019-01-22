@@ -1,15 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Armor.h"
+#include <Components/SkeletalMeshComponent.h>
+#include <WidgetComponent.h>
 
 AArmor::AArmor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	ArmorMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ArmorMeshComponent"));
-	ArmorMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	ArmorMeshComponent->SetCollisionObjectType(TRACE_INTERACTABLE);
-	ArmorMeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
-	ArmorMeshComponent->SetupAttachment(GetMeshComponent());
+	PrimaryActorTick.bCanEverTick = false;
 }
 
 AArmor::~AArmor()

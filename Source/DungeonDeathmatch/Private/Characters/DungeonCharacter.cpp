@@ -21,6 +21,7 @@
 #include <Private/KismetTraceUtils.h>
 #include "Armor.h"
 #include "Weapon.h"
+#include "CharacterRenderCapture2D.h"
 
 // Console command for logging melee combo states
 static int32 LogCombos = 0;
@@ -59,58 +60,75 @@ ADungeonCharacter::ADungeonCharacter()
 	MeshComponentHelm = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHelm"));
 	MeshComponentHelm->SetupAttachment(GetMesh());
 	MeshComponentHelm->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Helm, MeshComponentHelm));
 
 	MeshComponentHair = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHair"));
 	MeshComponentHair->SetupAttachment(GetMesh());
 	MeshComponentHair->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Hair, MeshComponentHair));
 
 	MeshComponentHead = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHead"));
 	MeshComponentHead->SetupAttachment(GetMesh());
 	MeshComponentHead->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Head, MeshComponentHead));
 
 	MeshComponentShoulderLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentShoulderLeft"));
 	MeshComponentShoulderLeft->SetupAttachment(GetMesh());
 	MeshComponentShoulderLeft->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LeftShoulder, MeshComponentShoulderLeft));
 
 	MeshComponentShoulderRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentShoulderRight"));
 	MeshComponentShoulderRight->SetupAttachment(GetMesh());
 	MeshComponentShoulderRight->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::RightShoulder, MeshComponentShoulderRight));
 
 	MeshComponentTorso = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentTorso"));
 	MeshComponentTorso->SetupAttachment(GetMesh());
 	MeshComponentTorso->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Torso, MeshComponentTorso));
 
 	MeshComponentChestArmor = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentChestArmor"));
 	MeshComponentChestArmor->SetupAttachment(GetMesh());
 	MeshComponentChestArmor->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::ChestArmor, MeshComponentChestArmor));
 
 	MeshComponentHandLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHandLeft"));
 	MeshComponentHandLeft->SetupAttachment(GetMesh());
 	MeshComponentHandLeft->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LeftHand, MeshComponentHandLeft));
 
 	MeshComponentHandRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHandRight"));
 	MeshComponentHandRight->SetupAttachment(GetMesh());
 	MeshComponentHandRight->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::RightHand, MeshComponentHandRight));
 
 	MeshComponentBelt = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentBelt"));
 	MeshComponentBelt->SetupAttachment(GetMesh());
 	MeshComponentBelt->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Waist, MeshComponentBelt));
 
 	MeshComponentLegs = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentLegs"));
 	MeshComponentLegs->SetupAttachment(GetMesh());
 	MeshComponentLegs->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Legs, MeshComponentLegs));
 
 	MeshComponentLegArmor = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentLegArmor"));
 	MeshComponentLegArmor->SetupAttachment(GetMesh());
 	MeshComponentLegArmor->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LegArmor, MeshComponentLegArmor));
 
 	MeshComponentFootLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentFootLeft"));
 	MeshComponentFootLeft->SetupAttachment(GetMesh());
 	MeshComponentFootLeft->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LeftFoot, MeshComponentFootLeft));
 
 	MeshComponentFootRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentFootRight"));
 	MeshComponentFootRight->SetupAttachment(GetMesh());
 	MeshComponentFootRight->SetMasterPoseComponent(GetMesh());
+	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::RightFoot, MeshComponentFootRight));
+
+	ItemDropLocation = CreateDefaultSubobject<USceneComponent>(TEXT("ItemDropLocation"));
+	ItemDropLocation->SetupAttachment(GetMesh());
 
 	// Initialize movement systems
 	BaseStandingMovementSpeed = 400.0f;
@@ -169,6 +187,7 @@ ADungeonCharacter::ADungeonCharacter()
 	AimPitchClampMin = -90;
 	AimPitchClampMax = 90;
 
+	DropEjectionForce = 20000;
 }
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -238,6 +257,20 @@ void ADungeonCharacter::BeginPlay()
 		}
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 		AddStartupGameplayAbilities();
+
+		// Initialize the render capture actor, only do this on the local client
+		if (IsLocallyControlled())
+		{
+			if (RenderCaptureClass)
+			{
+				RenderCaptureActor = Cast<ACharacterRenderCapture2D>(GetWorld()->SpawnActor(RenderCaptureClass));
+				if (RenderCaptureActor)
+				{
+					RenderCaptureActor->InitializeCharacter(this);
+					RenderCaptureActor->SetActorLocation(FVector(0, 0, -10000));
+				}
+			}
+		}
 	}
 
 	// Only show health plates on enemy characters
@@ -1091,6 +1124,16 @@ USphereComponent* ADungeonCharacter::GetRightFistCollider()
 	return FistColliderRight;
 }
 
+TMap<EMeshSegment, USkeletalMeshComponent*> ADungeonCharacter::GetMeshComponentMap()
+{
+	return MeshComponentMap;
+}
+
+ACharacterRenderCapture2D* ADungeonCharacter::GetRenderCaptureActor()
+{
+	return RenderCaptureActor;
+}
+
 void ADungeonCharacter::OnFistColliderLeftBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
 {
 	if (Role == ROLE_Authority)
@@ -1140,32 +1183,31 @@ UEquipmentComponent* ADungeonCharacter::GetEquipmentComponent()
 
 bool ADungeonCharacter::TryAddItemToInventory(AItem* Item)
 {
-	bool WasPickedUp = false;
+	bool WasItemAdded = false;
 	
 	if (Role == ROLE_Authority) {
-		WasPickedUp = InventoryComponent->TryAddItem(Item);
+		WasItemAdded = InventoryComponent->TryAddItem(Item);
 	}
-
-	return WasPickedUp;
+	return WasItemAdded;
 }
 
 void ADungeonCharacter::Server_TryPickUpItem_Implementation(AItem* Item)
 {
-	bool WasEquipped = false;
+	/*bool WasEquipped = false;
 	AEquippable* Equippable = Cast<AEquippable>(Item);
 	if (Equippable)
 	{
 		WasEquipped = TryEquipItem(Equippable);
-	}
+	}*/
 
-	if (!WasEquipped)
-	{
+	//if (!WasEquipped)
+	//{
 		bool WasPickedUp = InventoryComponent->TryAddItem(Item);
 		if (WasPickedUp)
 		{
-
+			Item->Multicast_PrepareForPickup();
 		}
-	}
+	//}
 }
 
 bool ADungeonCharacter::Server_TryPickUpItem_Validate(AItem* Item)
@@ -1173,12 +1215,17 @@ bool ADungeonCharacter::Server_TryPickUpItem_Validate(AItem* Item)
 	return true;
 }
 
-void ADungeonCharacter::Server_TryDropItem_Implementation(AItem* Item)
+void ADungeonCharacter::Server_TryDropItem_Implementation(AItem* Item, FVector EjectionVector /*= FVector::ZeroVector*/)
 {
 	bool WasDropped = InventoryComponent->TryRemoveItem(Item);
+	if (WasDropped)
+	{
+		FVector EjectionForce = (ItemDropLocation->GetForwardVector() * DropEjectionForce) + FVector(0, 0, DropEjectionForce);
+		Item->Multicast_DropAtLocation(ItemDropLocation->GetComponentLocation(), EjectionVector);
+	}
 }
 
-bool ADungeonCharacter::Server_TryDropItem_Validate(AItem* Item)
+bool ADungeonCharacter::Server_TryDropItem_Validate(AItem* Item, FVector EjectionVector /*= FVector::ZeroVector*/)
 {
 	return true;
 }
@@ -1203,7 +1250,7 @@ bool ADungeonCharacter::TryEquipItem(AEquippable* Equippable)
 
 	if (Role == ROLE_Authority)
 	{
-		WasItemEquipped = EquipmentComponent->TryEquipItem(Equippable);
+		//WasItemEquipped = EquipmentComponent->TryEquipItem(Equippable);
 	}
 
 	return WasItemEquipped;
@@ -1225,52 +1272,18 @@ void ADungeonCharacter::Multicast_UpdateMeshSegments_Implementation(AArmor* Armo
 
 	for (TPair<EMeshSegment, USkeletalMesh*> MeshPair : MeshMap)
 	{
-		switch (MeshPair.Key)
+		EMeshSegment MeshSegment = MeshPair.Key;
+		USkeletalMesh* Mesh = MeshPair.Value;
+
+		USkeletalMeshComponent* MeshComponent = *MeshComponentMap.Find(MeshSegment);
+		if (MeshComponent)
 		{
-		case EMeshSegment::Helm:
-			MeshComponentHelm->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::Hair:
-			MeshComponentHair->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::Head:
-			MeshComponentHead->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::LeftShoulder:
-			MeshComponentShoulderLeft->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::RightShoulder:
-			MeshComponentShoulderRight->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::Torso:
-			MeshComponentTorso->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::ChestArmor:
-			MeshComponentChestArmor->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::LeftHand:
-			MeshComponentHandLeft->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::RightHand:
-			MeshComponentHandRight->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::Waist:
-			MeshComponentBelt->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::Legs:
-			MeshComponentLegs->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::LegArmor:
-			MeshComponentLegArmor->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::LeftFoot:
-			MeshComponentFootLeft->SetSkeletalMesh(MeshPair.Value);
-			break;
-		case EMeshSegment::RightFoot:
-			MeshComponentFootRight->SetSkeletalMesh(MeshPair.Value);
-			break;
-		default:
-			break;
+			MeshComponent->SetSkeletalMesh(Mesh);
+		}
+
+		if (IsLocallyControlled())
+		{
+			OnArmorEquipped.Broadcast(Armor);
 		}
 	}
 }

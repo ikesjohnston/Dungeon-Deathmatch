@@ -4,14 +4,48 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Item.h"
 #include "InventoryComponent.generated.h"
 
 /* Event delegate for when an item is added to the inventory */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnItemAddedSignature, class AItem*, Item);
-/* Event delegate for when an item is removed from the inventory */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnItemRemovedSignature, class AItem*, Item);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemAddedSignature, class AItem*, Item, FInventoryGridPair, OriginGridSlot);
 
-class AItem;
+/* Event delegate for when an item is removed from the inventory */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemRemovedSignature, class AItem*, Item, FInventoryGridPair, OriginGridSlot);
+
+/* Event delegate for when the size of the inventory changes */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInventorySizeChangedSignature, uint8, GridRows, uint8, GridColumns);
+
+/** Struct that stores inventory grid slot information */
+USTRUCT(BlueprintType)
+struct FInventoryGridSlot
+{
+	GENERATED_BODY()
+
+	/** The item that is currently occupying this grid slot. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	AItem* Item;
+
+	/** The coordinates of the origin slot for the item occupying this slot. Used to efficiently void out slots if the item is moved or removed. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	FInventoryGridPair StartingGridLocation;
+
+	/** The number of slots to the right of this slot before reaching an occupied slot, updated whenever an item is added or removed from the grid. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	uint8 NumberOfOpenSlotsRight;
+
+	/** The number of slots below this slot before reaching an occupied slot, updated whenever an item is added or removed from the grid. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	uint8 NumberOfOpenSlotsBelow;
+
+	FInventoryGridSlot()
+	{
+		Item = nullptr;
+		StartingGridLocation = FInventoryGridPair();
+		NumberOfOpenSlotsRight = 0;
+		NumberOfOpenSlotsBelow = 0;
+	}
+};
 
 /**
  * Component class for storing Item Actors on another actor.
@@ -22,26 +56,30 @@ class DUNGEONDEATHMATCH_API UInventoryComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(BlueprintAssignable, Category = "Inventory")
 	/* Delegate called when item is added. For UI updates. */
+	UPROPERTY(BlueprintAssignable, Category = "Inventory")
 	FOnItemAddedSignature OnItemAdded;
 
-	UPROPERTY(BlueprintAssignable, Category = "Inventory")
 	/* Delegate called when item is removed. For UI updates. */
+	UPROPERTY(BlueprintAssignable, Category = "Inventory")
 	FOnItemRemovedSignature OnItemRemoved;
 
+	/* Delegate called when the inventory size changes. For UI updates. */
+	UPROPERTY(BlueprintAssignable, Category = "Inventory")
+	FOnInventorySizeChangedSignature OnInventorySizeChanged;
+
 protected:
-	/* Internal data representation of the items in the inventory */
+	/* The list of items in the inventory */
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-	TArray<AItem*> Inventory;
+	TArray<AItem*> InventoryItems;
 
-	/* The number of items that can be held in this inventory. Used for UI elements and to determine if new items can be stored. */
+	/* The grid representation of items in the inventory and their placement */
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-	uint8 InventoryCapactiy;
+	TArray<FInventoryGridSlot> InventoryGrid;
 
-	/* The amount of gold in this inventory. */
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (ClampMin = 0))
-	int32 Gold;
+	/* The number of rows and columns that make up the inventory grid. */
+	UPROPERTY(Replicated, EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory")
+	FInventoryGridPair InventoryGridSize;
 
 public:	
 	// Sets default values for this component's properties
@@ -51,21 +89,28 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-	/** 
-	 * Adds an item to the inventory. Only called on the server.
+	/**
+	 * Initializes the grid array, called at game start or whenever the inventory size changes
+	 */
+	void InitializeGrid();
+
+	/**
+	 * Adds an item to the inventory at the specified grid location. Only called on the server.
 	 *
 	 * @param Item The item to be added to the inventory
+	 * @param OriginSlot The upper left most grid slot where the item should be placed
 	 */
 	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Inventory")
-	void Server_AddItem(AItem* Item);
+	void Server_AddItem(AItem* Item, FInventoryGridPair OriginSlot);
 
 	/** 
-	 * Performs physics and rendering updates for an added item. Called on server and all clients.
+	 * Broadcasts OnItemAdded event for UI updates
 	 *
 	 * @param Item The item that was added to the inventory
+	 * @param OriginSlot The upper left most slot that this item occupies in the inventory grid
 	 */
 	UFUNCTION(NetMulticast, Unreliable, Category = "Inventory")
-	void Multicast_OnItemAdd(AItem* Item);
+	void Multicast_OnItemAdd(AItem* Item, FInventoryGridPair OriginSlot);
 
 	/** 
 	 * Removes an item from the inventory. Only called on the server.
@@ -76,20 +121,35 @@ protected:
 	void Server_RemoveItem(int32 InventoryIndex);
 
 	/**
-	 * Performs physics and rendering updates for a dropped item. Called on server and all clients.
+	 * Broadcasts OnItemRemoved event for UI updates
 	 *
 	 * @param Item The item that was removed from the inventory
-	 */ 
+	 * @param OriginSlot The upper left most slot that this item occupies in the inventory grid
+	 */
 	UFUNCTION(NetMulticast, Unreliable, Category = "Inventory")
-	void Multicast_OnItemRemove(AItem* Item);
+	void Multicast_OnItemRemove(AItem* Item, FInventoryGridPair OriginSlot);
 
+	/**
+	 * Changes the size of the inventory grid. Only called on the server.
+	 *
+	 * @param Rows The new amount of rows for the inventory grid
+	 * @param Columns The new amount of columns for the inventory grid
+	 */
+	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Inventory")
+	void Server_ChangeInventorySize(uint8 Rows, uint8 Columns);
 
 public:	
+	/**
+	 * Returns the list of inventory items
+	 */
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	TArray<AItem*> GetInventory();
 
+	/**
+	 * Returns the size of the inventory grid
+	 */
 	UFUNCTION(BlueprintPure, Category = "Inventory")
-	uint8 GetInventoryCapacity();
+	FInventoryGridPair GetInventoryGridSize();
 
 	/**
 	 * Local function that checks if it is valid to add an item to the inventory, and makes a server call to do so if valid.
@@ -99,9 +159,26 @@ public:
 	bool TryAddItem(AItem* Item);
 
 	/**
+	 * Local function that checks if it is valid to add an item to the inventory at the specified grid location, and makes a server call to do so if valid.
+	 *
+	 * @param Item The item to be added to the inventory
+	 * @param OriginSlot The upper left most grid slot where the item should be placed
+	 */
+	bool TryAddItem(AItem* Item, FInventoryGridPair OriginSlot);
+
+	/**
 	 * Local function that checks if it is valid to remove an item from the inventory, and makes a server call to do so if valid.
 	 *
 	 * @param Item The item to be added to the inventory
 	 */
 	bool TryRemoveItem(AItem* Item);
+
+	/**
+	 * Local function that makes a server call to change the size of the inventory grid and then broadcasts and event for UI updates.
+	 *
+	 * @param Rows The new amount of rows for the inventory grid
+	 * @param Columns The new amount of columns for the inventory grid
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void ChangeInventorySize(uint8 Rows, uint8 Columns);
 };

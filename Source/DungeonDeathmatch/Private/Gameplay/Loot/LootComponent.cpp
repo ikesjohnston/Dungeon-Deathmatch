@@ -81,9 +81,12 @@ void ULootComponent::EjectLoot()
 			if (GameInstance)
 			{
 				// Just apply a global force vector for ejection, no need to use temporary actor components
-				SpawnedItem->GetMeshComponent()->AddForce(GameInstance->GetRandomLootEjectionForce());
+				SpawnedItem->GetRootMeshComponent()->AddForce(GameInstance->GetRandomLootEjectionForce());
 			}
-
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("ULootComponent::EjectLoot - Failed to get game instance."));
+			}
 			// Call eject loot again until we run out of items
 			Owner->GetWorldTimerManager().SetTimer(LootEjectionHandle, this, &ULootComponent::EjectLoot, LootEjectionDelay, false);
 		}

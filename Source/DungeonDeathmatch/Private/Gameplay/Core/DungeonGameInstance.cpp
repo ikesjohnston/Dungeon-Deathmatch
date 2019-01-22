@@ -5,7 +5,7 @@
 UDungeonGameInstance::UDungeonGameInstance(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-
+	InventoryGridSlotSize = 40.0f;
 }
 
 FStreamableManager& UDungeonGameInstance::GetAssetLoader()
@@ -18,9 +18,19 @@ TMap<EItemQualityTier, FLinearColor> UDungeonGameInstance::GetItemQualityTierCol
 	return ItemQualityTierColors;
 }
 
-TMap<EEquipmentSlot, UTexture2D*> UDungeonGameInstance::GetEmptyEquipmentSlotIcons()
+TMap<EItemQualityTier, FLinearColor> UDungeonGameInstance::GetItemQualityTierTextColors()
 {
-	return EmptyEquipmentSlotIcons;
+	return ItemQualityTierTextColors;
+}
+
+TSubclassOf<UDraggableItemWidget> UDungeonGameInstance::GetDragAndDropItemWidgetClass()
+{
+	return DragAndDropItemWidgetClass;
+}
+
+float UDungeonGameInstance::GetInventoryGridSlotSize()
+{
+	return InventoryGridSlotSize;
 }
 
 FVector UDungeonGameInstance::GetRandomLootEjectionForce()

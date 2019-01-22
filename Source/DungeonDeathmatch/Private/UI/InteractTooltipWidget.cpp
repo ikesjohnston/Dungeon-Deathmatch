@@ -5,6 +5,7 @@
 #include "ItemTooltipWidget.h"
 #include <UserWidget.h>
 #include "Item.h"
+#include <WidgetTree.h>
 
 #define LOCTEXT_NAMESPACE "Interactions" 
 

@@ -8,6 +8,8 @@
 #include "EquipmentEnums.h"
 #include "Armor.generated.h"
 
+class USkeletalMeshComponent;
+
 /**
  * 
  */
@@ -17,10 +19,6 @@ class DUNGEONDEATHMATCH_API AArmor : public AEquippable
 	GENERATED_BODY()
 
 protected:
-	/* The visual representation of this item when it isn't equipped, which may be different from when it is equipped*/
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* ArmorMeshComponent;
-
 	/* The slot that this piece of armor should go in when equipped */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Armor")
 	EArmorSlot ArmorSlot;

@@ -6,7 +6,12 @@
 #include "Blueprint/UserWidget.h"
 #include "InGameOverlayWidget.generated.h"
 
+class UImage;
+class UButton;
 class UCharacterMenuWidget;
+class UInventoryMenuWidget;
+class AItem;
+class UDragAndDropItemWidget;
 
 /**
  * The main UI widget that contains all other menu widgets that the player can see while in a game.
@@ -18,14 +23,29 @@ class DUNGEONDEATHMATCH_API UInGameOverlayWidget : public UUserWidget
 	GENERATED_BODY()
 	
 protected:
-	/** 
-	 * The name of the CharacterMenuWidget that is contained in this widget in the editor. 
-	 * Used to find the widget from the WidgetTree.
-	 */
-	UPROPERTY(EditAnywhere, Category = "UI")
-	FName CharacterMenuWidgetName;
+	/** The character menu widget that displays character stats */
+	UPROPERTY(meta = (BindWidget))
+	UCharacterMenuWidget* CharacterMenu;
+
+	/** The inventory menu widget that displays the character inventory and equipment */
+	UPROPERTY(meta = (BindWidget))
+	UInventoryMenuWidget* InventoryMenu;
+
+	/** The drag and drop item operation display */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI", meta = (BindWidget))
+	UDragAndDropItemWidget* DragAndDropItem;
+
+	/** The image used for the aiming reticle during gameplay */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI", meta = (BindWidget))
+	UImage* ReticleImage;
+
+	/** The button taking up all screen space not already covered in UI elements, for dropping items that are being dragged on click */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI", meta = (BindWidget))
+	UButton* DropItemScreenButton;
 
 public:
+	virtual bool Initialize() override;
+
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	UCharacterMenuWidget* GetCharacterMenu();
 
@@ -36,5 +56,31 @@ public:
 	void HideCharacterMenu();
 
 	UFUNCTION(BlueprintCallable, Category = "UI")
+	UInventoryMenuWidget* GetInventoryMenu();
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ShowInventoryMenu();
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void HideInventoryMenu();
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
 	bool IsCharacterMenuVisible();
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ShowReticle();
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void HideReticle();
+
+	/** Renders an item icon over the cursor and activates the item drop screen area */
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void StartDragAndDropOperation(AItem* Item);
+
+	/** Stops rendering an item icon over the cursor and deactivates the item drop screen area */
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void StopDragAndDropOperation();
+
+	UFUNCTION()
+	void OnDropItemScreenButtonPressed();
 };

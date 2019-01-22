@@ -2,30 +2,39 @@
 
 #include "CoreMinimal.h"
 
+/* All equipment slots available to a character */
 UENUM(BlueprintType)
 enum class EEquipmentSlot : uint8
 {
-	Head			UMETA(DisplayName = "Head"),
-	Shoulders		UMETA(DisplayName = "Shoulders"),
-	Chest			UMETA(DisplayName = "Chest"),
-	Hands			UMETA(DisplayName = "Hands"),
-	Waist			UMETA(DisplayName = "Waist"),
-	Legs			UMETA(DisplayName = "Legs"),
-	Feet			UMETA(DisplayName = "Feet"),
+	Head				UMETA(DisplayName = "Head"),
+	Neck				UMETA(DisplayName = "Neck"),
+	Shoulders			UMETA(DisplayName = "Shoulders"),
+	Chest				UMETA(DisplayName = "Chest"),
+	Hands				UMETA(DisplayName = "Hands"),
+	FingerOne			UMETA(DisplayName = "Finger One"),
+	FingerTwo			UMETA(DisplayName = "Finger Two"),
+	Waist				UMETA(DisplayName = "Waist"),
+	Legs				UMETA(DisplayName = "Legs"),
+	Feet				UMETA(DisplayName = "Feet"),
+	WeaponMainHand		UMETA(DisplayName = "WeaponMainHand"),
+	WeaponOffHand		UMETA(DisplayName = "WeaponOffHand"),
 
 	NUM_EQUIPMENT_SLOTS
 };
 
+/* Used to determine what equipment slot a piece of armor can go into when equipping an item. */
 UENUM(BlueprintType)
 enum class EArmorSlot : uint8
 {
 	Head			UMETA(DisplayName = "Head"),
+	Neck			UMETA(DisplayName = "Neck"),
 	Shoulders		UMETA(DisplayName = "Shoulders"),
 	Chest			UMETA(DisplayName = "Chest"),
+	Hands			UMETA(DisplayName = "Hands"),
+	Finger			UMETA(DisplayName = "Finger"),
 	Waist			UMETA(DisplayName = "Waist"),
 	Legs			UMETA(DisplayName = "Legs"),
 	Feet			UMETA(DisplayName = "Feet"),
-	Hands			UMETA(DisplayName = "Hands"),
 
 	NUM_ARMOR_SLOTS UMETA(Hidden)
 };
@@ -44,12 +53,10 @@ UENUM(BlueprintType)
 enum class EWeaponType : uint8
 {
 	FistWeapon		UMETA(DisplayName = "Fist Weapon"),
-	OneHandedSword	UMETA(DisplayName = "One Handed Sword"),
-	OneHandedAxe	UMETA(DisplayName = "One Handed Axe"),
-	OneHandedMace	UMETA(DisplayName = "One Handed Mace"),
-	TwoHandedSword	UMETA(DisplayName = "Two Handed Sword"),
-	TwoHandedAxe	UMETA(DisplayName = "Two Handed Axe"),
-	TwoHandedMace	UMETA(DisplayName = "Two Handed Mace"),
+	Dagger			UMETA(DisplayName = "Dagger"),
+	Sword			UMETA(DisplayName = "Sword"),
+	Axe				UMETA(DisplayName = "Axe"),
+	Mace			UMETA(DisplayName = "Mace"),
 	Staff			UMETA(DisplayName = "Staff"),
 	Polearm			UMETA(DisplayName = "Polearm"),
 	Bow				UMETA(DisplayName = "Bow"),

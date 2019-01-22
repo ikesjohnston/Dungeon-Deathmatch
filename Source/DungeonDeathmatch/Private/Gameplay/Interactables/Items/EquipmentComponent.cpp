@@ -149,13 +149,13 @@ bool UEquipmentComponent::TryEquipItem(AEquippable* Equippable, bool CanReplaceE
 		if (Armor)
 		{
 			EArmorSlot ArmorSlot = Armor->GetArmorSlot();
-			AArmor* ArmorInSlot = GetArmorInSlot(ArmorSlot);
-			if (!ArmorInSlot)
-			{
+			//AArmor* ArmorInSlot = GetArmorInSlot(ArmorSlot);
+			//if (!ArmorInSlot)
+			//{
 				TPair<EArmorSlot, AArmor*> Pair = TPair<EArmorSlot, AArmor*>(ArmorSlot, Armor);
 				EquippedArmor.Add(Pair);
 				WasItemEquipped = true;
-			}
+			//}
 		}
 	}
 

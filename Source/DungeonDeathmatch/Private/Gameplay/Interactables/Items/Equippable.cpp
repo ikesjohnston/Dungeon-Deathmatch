@@ -23,14 +23,6 @@ FText AEquippable::GetInventoryUseTooltipText()
 	return FText::FromString("Equip");
 }
 
-void AEquippable::OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
-{
-	if (Role == ROLE_Authority)
-	{
-		InteractingCharacter->Server_TryEquipItem(this);
-	}
-}
-
 void AEquippable::OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)
 {
 	EquippingCharacter = NewEquippingCharacter;
