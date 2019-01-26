@@ -23,8 +23,10 @@ bool UInventoryMenuWidget::Initialize()
 	EquipmentSlots.Add(EEquipmentSlot::Waist, EquipmentSlotWaist);
 	EquipmentSlots.Add(EEquipmentSlot::Legs, EquipmentSlotLegs);
 	EquipmentSlots.Add(EEquipmentSlot::Feet, EquipmentSlotFeet);
-	EquipmentSlots.Add(EEquipmentSlot::WeaponMainHand, EquipmentSlotWeaponMainHand);
-	EquipmentSlots.Add(EEquipmentSlot::WeaponOffHand, EquipmentSlotWeaponOffHand);
+	EquipmentSlots.Add(EEquipmentSlot::WeaponLoadoutOneMainHand, EquipmentSlotLoadoutOneWeaponMainHand);
+	EquipmentSlots.Add(EEquipmentSlot::WeaponLoadoutOneOffHand, EquipmentSlotLoadoutOneWeaponOffHand);
+	EquipmentSlots.Add(EEquipmentSlot::WeaponLoadoutTwoMainHand, EquipmentSlotLoadoutTwoWeaponMainHand);
+	EquipmentSlots.Add(EEquipmentSlot::WeaponLoadoutTwoOffHand, EquipmentSlotLoadoutTwoWeaponOffHand);
 
 	return Result;
 }

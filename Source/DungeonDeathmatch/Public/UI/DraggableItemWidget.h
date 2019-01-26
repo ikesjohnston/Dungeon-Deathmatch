@@ -9,8 +9,6 @@
 
 class UCanvasPanel;
 class UImage;
-class UBorder;
-class UItemTooltipWidget;
 class UButton;
 
 /**
@@ -30,11 +28,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Widgets", meta = (BindWidget))
 	UImage* ItemImage;
 
-	/** The tooltip widget for the draggable item, is displayed when hovering the mouse over the item */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Widgets", meta = (BindWidget))
-	UItemTooltipWidget* ItemTooltip;
-
-	/** The button widget for selecting the draggable item, starts a drag and drop operation when clicked */
+	/** The button widget for selecting the draggable item, currently just used for highlighting on hover */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Widgets", meta = (BindWidget))
 	UButton* ItemSelectButton;
 
@@ -42,52 +36,36 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	AItem* Item;
 
-	/** The grid location of the item */
+	/** The grid location of the item if in an inventory*/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	FInventoryGridPair GridLocation;
 
+	/** Is this widget in a state where it can be dragged. This is used to distinguish mouse clicking drags vs holding drags. */
+	bool bIsReadyForDrag;
 
 public:
 	UDraggableItemWidget(const FObjectInitializer& ObjectInitializer);
 
 	virtual bool Initialize() override;
 
+	/** Sets the item associated with this widget and adjusts the widget size and location to match its location context */
+	void InitializeDraggableItem(AItem* DraggableItem, bool IsEquipment = false, FInventoryGridPair InventoryGridLocation = FInventoryGridPair());
+
 	/**  Gets the item associated with this widget */
 	AItem* GetItem();
 
-	/** Sets the item associated with this widget and adjusts the background colors and widget location to match its grid location */
-	UFUNCTION()
-	void SetItem(AItem* NewItem);
+	/** Is this widget in a state where it can be dragged? */
+	bool IsReadyForDrag();
 
-	/** Sets the grid location for the item represented by this widget */
-	UFUNCTION()
-	void SetItemGridLocation(FInventoryGridPair NewGridLocation);
+	/** Tells the local player controller to start dragging this widget's item. Does NOT remove the item from any inventory or equipment components or widgets. */
+	void StartDragging();
 
 protected:
-	/** Attempts to get the local player controller and bind the widget to it */
-	void BindToController();
+	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
-	/** Event for when the mouse starts hovering over the select item button */
-	UFUNCTION()
-	void OnItemSelectButtonHovered();
+	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
 
-	/** Event for when the mouse stops hovering over the select item button */
-	UFUNCTION()
-	void OnItemSelectButtonUnhovered();
+	virtual FReply NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
-	/** Event for when the select item button is pressed */
-	UFUNCTION()
-	void OnItemSelectButtonPressed();
-
-	/** Event for when the select item button is released */
-	UFUNCTION()
-	void OnItemSelectButtonReleased();
-
-	/** Event called when the player controller starts dragging an item, used to darken the item image if it is the item being dragged */
-	UFUNCTION()
-	void OnBeginItemDrag(AItem* DraggedItem);
-
-	/** Event called when the player controller stops dragging an item, used restore the item tint if it was the item no longer being dragged */
-	UFUNCTION()
-	void OnEndItemDrag(AItem* DraggedItem);
+	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
 };

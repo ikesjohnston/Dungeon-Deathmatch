@@ -22,65 +22,20 @@ void UInventoryComponent::BeginPlay()
 	InventoryGrid = TArray<FInventoryGridSlot>();
 	InventoryGrid.AddDefaulted(InventoryGridSize.Row * InventoryGridSize.Column);
 
-	InitializeGrid();
 }
 
 void UInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UInventoryComponent, InventoryItems);
+	DOREPLIFETIME(UInventoryComponent, Items);
 	DOREPLIFETIME(UInventoryComponent, InventoryGrid);
 	DOREPLIFETIME(UInventoryComponent, InventoryGridSize);
 }
 
-
-void UInventoryComponent::InitializeGrid()
+TArray<AItem*> UInventoryComponent::GetItems()
 {
-	if (GetOwner() && GetOwner()->Role == ROLE_Authority)
-	{
-		uint8 NumberOfGridSlots = InventoryGridSize.Row * InventoryGridSize.Column;
-		for (int GridSlotIndex = 0; GridSlotIndex < NumberOfGridSlots; GridSlotIndex++)
-		{
-			FInventoryGridSlot& GridSlot = InventoryGrid[GridSlotIndex];
-			GridSlot.NumberOfOpenSlotsRight = 0;
-			GridSlot.NumberOfOpenSlotsBelow = 0;
-			uint8 SlotColumnIndex = (GridSlotIndex % InventoryGridSize.Column);
-			uint8 SlotRowIndex = (GridSlotIndex - SlotColumnIndex) / InventoryGridSize.Column;
-
-			// Start search at the next adjacent row and column
-			uint8 AdjacentColumnIndex = SlotColumnIndex + 1;
-			uint8 AdjacentRowIndex = SlotRowIndex + 1;
-
-			// Check slots to the right (on the same row)
-			for (AdjacentColumnIndex; AdjacentColumnIndex < InventoryGridSize.Column; AdjacentColumnIndex++)
-			{
-				FInventoryGridSlot& AdjacentSlot = InventoryGrid[AdjacentColumnIndex + (SlotRowIndex * InventoryGridSize.Column)];
-				if (AdjacentSlot.Item)
-				{
-					break;
-				}
-				GridSlot.NumberOfOpenSlotsRight++;
-			}
-
-			// Check slots below (on the same column)
-			for (AdjacentRowIndex; AdjacentRowIndex < InventoryGridSize.Row; AdjacentRowIndex++)
-			{
-				FInventoryGridSlot& AdjacentSlot = InventoryGrid[SlotColumnIndex + (AdjacentRowIndex * InventoryGridSize.Column)];
-				if (AdjacentSlot.Item)
-				{
-					break;
-				}
-				GridSlot.NumberOfOpenSlotsBelow++;
-			}
-		}
-	}
-}
-
-
-TArray<AItem*> UInventoryComponent::GetInventory()
-{
-	return InventoryItems;
+	return Items;
 }
 
 FInventoryGridPair UInventoryComponent::GetInventoryGridSize()
@@ -88,31 +43,32 @@ FInventoryGridPair UInventoryComponent::GetInventoryGridSize()
 	return InventoryGridSize;
 }
 
-bool UInventoryComponent::TryAddItem(AItem* Item)
+bool UInventoryComponent::RequestAddItem(AItem* Item)
 {
 	bool Result = false;
-	if (Item)
+	
+	if (GetOwner() && GetOwner()->Role == ROLE_Authority)
 	{
-		// Search through the grid until an open space is found or the entire grid has been searched.
-		// Only search columns and rows up to the point where there could still be slots to the right and below in the grid to accommodate the item size.
-		FInventoryGridPair ItemSize = Item->GetGridSize();
-		for (int GridRowIndex = 0; GridRowIndex < InventoryGridSize.Row - (ItemSize.Row - 1); GridRowIndex++)
+			if (Item)
 		{
-			for (int GridColumIndex = 0; GridColumIndex < InventoryGridSize.Column - (ItemSize.Column - 1); GridColumIndex++)
+			// Go through every grid slot and it's surrounding slots to see if the item will fit.
+			// Only search columns and rows up to the point where there could still be slots to the right and below in the grid to accommodate the item size.
+			FInventoryGridPair ItemSize = Item->GetGridSize();
+			for (int GridRowIndex = 0; GridRowIndex < InventoryGridSize.Row; GridRowIndex++)
 			{
-				uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumIndex;
-				FInventoryGridSlot& GridSlot = InventoryGrid[GridSlotIndex];
-				if (!GridSlot.Item && (GridSlot.NumberOfOpenSlotsRight >= ItemSize.Column - 1) && (GridSlot.NumberOfOpenSlotsBelow >= ItemSize.Row - 1))
+				for (int GridColumnIndex = 0; GridColumnIndex < InventoryGridSize.Column; GridColumnIndex++)
 				{
-					FInventoryGridPair OriginSlot = FInventoryGridPair(GridColumIndex, GridRowIndex);
-					Server_AddItem(Item, OriginSlot);
-					Result = true;
+					FInventoryGridPair OriginSlot = FInventoryGridPair(GridRowIndex, GridColumnIndex);
+					Result = RequestAddItem(Item, OriginSlot);
+					if (Result)
+					{
+						break;
+					}
+				}
+				if (Result)
+				{
 					break;
 				}
-			}
-			if (Result)
-			{
-				break;
 			}
 		}
 	}
@@ -120,17 +76,71 @@ bool UInventoryComponent::TryAddItem(AItem* Item)
 	return Result;
 }
 
-bool UInventoryComponent::TryRemoveItem(AItem* Item)
+bool UInventoryComponent::RequestAddItem(AItem* Item, FInventoryGridPair OriginSlot)
 {
-	bool Result = false;
-	for (int32 i = 0; i < InventoryItems.Num(); i++)
+	bool Result = true;
+
+	if (GetOwner() && GetOwner()->Role == ROLE_Authority)
 	{
-		if (InventoryItems[i] == Item)
+		if (Item)
 		{
-			Server_RemoveItem(i);
-			Result = true;
+			FInventoryGridPair ItemSize = Item->GetGridSize();
+			uint8 ItemRowExtent = OriginSlot.Row + ItemSize.Row;
+			uint8 ItemColumnExtent = OriginSlot.Column + ItemSize.Column;
+
+			// Go through the selected grid slots once to determine if there is more than one item in the selection area, and that it is within the grid bounds
+			for (int GridRowIndex = OriginSlot.Row; GridRowIndex < ItemRowExtent; GridRowIndex++)
+			{
+				for (int GridColumnIndex = OriginSlot.Column; GridColumnIndex < ItemColumnExtent; GridColumnIndex++)
+				{
+					uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumnIndex;
+					if (GridSlotIndex >= 0 && GridSlotIndex < InventoryGrid.Num())
+					{
+						FInventoryGridSlot& GridSlot = InventoryGrid[GridSlotIndex];
+						if (GridSlot.Item)
+						{
+							Result = false;
+							break;
+						}
+					}
+					else
+					{
+						Result = false;
+						break;
+					}
+				}
+				if (!Result)
+				{
+					break;
+				}
+			}
+
+			if (Result)
+			{
+				AddItem(Item, OriginSlot);
+			}
 		}
 	}
+
+	return Result;
+}
+
+bool UInventoryComponent::RequestRemoveItem(AItem* Item)
+{
+	bool Result = false;
+
+	if (GetOwner() && GetOwner()->Role == ROLE_Authority)
+	{
+		for (int32 i = 0; i < Items.Num(); i++)
+		{
+			if (Items[i] == Item)
+			{
+				RemoveItem(i);
+				Result = true;
+			}
+		}
+	}
+
 	return Result;
 }
 
@@ -141,72 +151,61 @@ void UInventoryComponent::ChangeInventorySize(uint8 Rows, uint8 Columns)
 	OnInventorySizeChanged.Broadcast(Rows, Columns);
 }
 
-void UInventoryComponent::Server_AddItem_Implementation(AItem* Item, FInventoryGridPair OriginSlot)
+void UInventoryComponent::AddItem(AItem* Item, FInventoryGridPair OriginSlot)
 {
-	InventoryItems.Add(Item);
-	
-	// Update the grid data
-	FInventoryGridPair ItemSize = Item->GetGridSize();
-	uint8 ItemRowExtent = OriginSlot.Row + ItemSize.Row;
-	uint8 ItemColumnExtent = OriginSlot.Column + ItemSize.Column;
-
-	for (int GridRowIndex = OriginSlot.Row; GridRowIndex < ItemRowExtent; GridRowIndex++)
+	if (GetOwner() && GetOwner()->Role == ROLE_Authority)
 	{
-		for (int GridColumIndex = OriginSlot.Column; GridColumIndex < ItemColumnExtent; GridColumIndex++)
+		Items.Add(Item);
+
+		// Update the grid data
+		FInventoryGridPair ItemSize = Item->GetGridSize();
+		uint8 ItemRowExtent = OriginSlot.Row + ItemSize.Row;
+		uint8 ItemColumnExtent = OriginSlot.Column + ItemSize.Column;
+
+		for (int GridRowIndex = OriginSlot.Row; GridRowIndex < ItemRowExtent; GridRowIndex++)
 		{
-			uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumIndex;
-			FInventoryGridSlot& GridSlot = InventoryGrid[GridSlotIndex];
-			GridSlot.Item = Item;
-		}
-	}
-
-	// Refresh adjacent open slot counts
-	InitializeGrid();
-
-	Multicast_OnItemAdd(Item, OriginSlot);
-}
-
-bool UInventoryComponent::Server_AddItem_Validate(AItem* Item, FInventoryGridPair OriginSlot)
-{
-	return true;
-}
-
-void UInventoryComponent::Server_RemoveItem_Implementation(int32 InventoryIndex)
-{
-	AItem* ItemToRemove = InventoryItems[InventoryIndex];
-	InventoryItems.RemoveAtSwap(InventoryIndex);
-
-	// Find first slot containing the item, this will be the origin to broadcast
-	FInventoryGridPair OriginSlot;
-	bool OriginFound = false;
-	for (int GridRowIndex = 0; GridRowIndex < InventoryGridSize.Row; GridRowIndex++)
-	{
-		for (int GridColumIndex = 0; GridColumIndex < InventoryGridSize.Column; GridColumIndex++)
-		{
-			uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumIndex;
-			FInventoryGridSlot& GridSlot = InventoryGrid[GridSlotIndex];
-			if (GridSlot.Item && GridSlot.Item == ItemToRemove)
+			for (int GridColumIndex = OriginSlot.Column; GridColumIndex < ItemColumnExtent; GridColumIndex++)
 			{
-				if (!OriginFound)
-				{
-					OriginSlot = FInventoryGridPair(GridColumIndex, GridRowIndex);
-					OriginFound = true;
-				}
-				GridSlot.Item = nullptr;
-				GridSlot.StartingGridLocation = FInventoryGridPair(GridColumIndex, GridRowIndex);
+				uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumIndex;
+				FInventoryGridSlot& GridSlot = InventoryGrid[GridSlotIndex];
+				GridSlot.Item = Item;
 			}
 		}
+
+		Multicast_OnItemAdd(Item, OriginSlot);
 	}
-
-	// Refresh adjacent open slot counts
-	InitializeGrid();
-
-	Multicast_OnItemRemove(ItemToRemove, OriginSlot);
 }
-
-bool UInventoryComponent::Server_RemoveItem_Validate(int32 InventoryIndex)
+void UInventoryComponent::RemoveItem(int32 InventoryIndex)
 {
-	return true;
+	if (GetOwner() && GetOwner()->Role == ROLE_Authority)
+	{
+		AItem* ItemToRemove = Items[InventoryIndex];
+		Items.RemoveAtSwap(InventoryIndex);
+
+		// Find first slot containing the item, this will be the origin to broadcast
+		FInventoryGridPair OriginSlot;
+		bool OriginFound = false;
+		for (int GridRowIndex = 0; GridRowIndex < InventoryGridSize.Row; GridRowIndex++)
+		{
+			for (int GridColumIndex = 0; GridColumIndex < InventoryGridSize.Column; GridColumIndex++)
+			{
+				uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumIndex;
+				FInventoryGridSlot& GridSlot = InventoryGrid[GridSlotIndex];
+				if (GridSlot.Item && GridSlot.Item == ItemToRemove)
+				{
+					if (!OriginFound)
+					{
+						OriginSlot = FInventoryGridPair(GridColumIndex, GridRowIndex);
+						OriginFound = true;
+					}
+					GridSlot.Item = nullptr;
+					GridSlot.StartingGridLocation = FInventoryGridPair(GridColumIndex, GridRowIndex);
+				}
+			}
+		}
+
+		Multicast_OnItemRemove(ItemToRemove, OriginSlot);
+	}
 }
 
 void UInventoryComponent::Multicast_OnItemAdd_Implementation(AItem* Item, FInventoryGridPair OriginSlot)
@@ -229,7 +228,7 @@ void UInventoryComponent::Multicast_OnItemRemove_Implementation(AItem* Item, FIn
 
 void UInventoryComponent::Server_ChangeInventorySize_Implementation(uint8 Rows, uint8 Columns)
 {
-	InitializeGrid();
+
 }
 
 bool UInventoryComponent::Server_ChangeInventorySize_Validate(uint8 Rows, uint8 Columns)

@@ -38,11 +38,11 @@ void ADungeonHUD::HideCharacterMenu()
 	}
 }
 
-bool ADungeonHUD::IsCharacterMenuVisible()
+bool ADungeonHUD::AreMenusVisible()
 {
 	if (InGameOverlay)
 	{
-		return InGameOverlay->IsCharacterMenuVisible();
+		return InGameOverlay->AreMenusOpen();
 	}
 	return false;
 }
@@ -73,12 +73,32 @@ void ADungeonHUD::HideReticle()
 	InGameOverlay->HideReticle();
 }
 
+void ADungeonHUD::ShowTooltipAtLocation(FVector2D ScreenLocation, AItem* Item)
+{
+	InGameOverlay->ShowTooltipAtLocation(ScreenLocation, Item);
+}
+
+void ADungeonHUD::HideTooltip()
+{
+	InGameOverlay->HideTooltip();
+}
+
 void ADungeonHUD::StartDragAndDropOperation(AItem* Item)
 {
 	InGameOverlay->StartDragAndDropOperation(Item);
 }
 
-void ADungeonHUD::StopDragAndDropOperation()
+void ADungeonHUD::StopDragAndDropOperation(bool WasCanceled)
 {
-	InGameOverlay->StopDragAndDropOperation();
+	InGameOverlay->StopDragAndDropOperation(WasCanceled);
+}
+
+void ADungeonHUD::BlurBackground()
+{
+	InGameOverlay->BlurBackground();
+}
+
+void ADungeonHUD::UnblurBackground()
+{
+	InGameOverlay->UnblurBackground();
 }

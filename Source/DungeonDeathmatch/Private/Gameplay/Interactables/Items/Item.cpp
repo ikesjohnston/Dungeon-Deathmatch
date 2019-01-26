@@ -22,9 +22,7 @@ AItem::AItem(const FObjectInitializer& ObjectInitializer)
 	InventoryUseTooltipText = FText::FromString("Use");
 
 	RootMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RootMeshComponent"));
-	/*RootMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	RootMeshComponent->SetCollisionObjectType(TRACE_INTERACTABLE);
-	RootMeshComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);*/
+	RootMeshComponent->SetSimulatePhysics(true);
 	RootComponent = RootMeshComponent;
 
 	WidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
@@ -243,18 +241,10 @@ FText AItem::GetInventoryUseTooltipText()
 	return InventoryUseTooltipText;
 }
 
-bool AItem::TryInventoryUse()
-{
-	return false;
-}
-
 // ------------------------ BEGIN INTERACTABLE INTERFACE FUNCTIONS ------------------------
 void AItem::OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
 {
-	if (Role == ROLE_Authority)
-	{
-		InteractingCharacter->Server_TryPickUpItem(this);
-	}
+	InteractingCharacter->Server_RequestPickUpItem(this);
 }
 
 void AItem::OnFocused_Implementation()
@@ -309,18 +299,28 @@ FText AItem::GetInteractableName_Implementation()
 	return ItemName;
 }
 
-void AItem::Multicast_PrepareForPickup_Implementation()
+void AItem::Server_Despawn_Implementation()
+{
+	Multicast_Despawn();
+}
+
+bool AItem::Server_Despawn_Validate()
+{
+	return true;
+}
+
+void AItem::Multicast_Despawn_Implementation()
 {
 	WidgetComponent->SetVisibility(false);
 
-	// Disable physics on root mesh only and hide the mesh
+	// Disable physics on root mesh only
 	UMeshComponent* RootMeshComponent = GetRootMeshComponent();
 	if (RootMeshComponent)
 	{
 		RootMeshComponent->SetSimulatePhysics(false);
 	}
 	
-	// Disable collision on all mesh components
+	// Disable collision and rendering on all mesh components
 	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
 	for (int i = 0; i < MeshComponents.Num(); i++)
 	{
@@ -339,9 +339,19 @@ void AItem::Multicast_PrepareForPickup_Implementation()
 	Execute_OnUnfocused(this);
 }
 
-void AItem::Multicast_DropAtLocation_Implementation(const FVector Location, const FVector EjectionForce /*= FVector(0, 0, 0)*/)
+void AItem::Server_SpawnAtLocation_Implementation(const FVector Location, const FVector EjectionForce /*= FVector(0, 0, 0)*/)
 {
-	// Enable collision on all mesh components
+	Multicast_SpawnAtLocation(Location, EjectionForce);
+}
+
+bool AItem::Server_SpawnAtLocation_Validate(const FVector Location, const FVector EjectionForce /*= FVector(0, 0, 0)*/)
+{
+	return true;
+}
+
+void AItem::Multicast_SpawnAtLocation_Implementation(const FVector Location, const FVector EjectionForce /*= FVector(0, 0, 0)*/)
+{
+	// Enable collision and rendering on all mesh components
 	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
 	for (int i = 0; i < MeshComponents.Num(); i++)
 	{
@@ -353,7 +363,7 @@ void AItem::Multicast_DropAtLocation_Implementation(const FVector Location, cons
 		}
 	}
 
-	// Enable physics on root mesh only, set the mesh back to visible, and add any ejection force to the root
+	// Enable physics on root mesh only and add any ejection force to the root
 	UMeshComponent* RootMeshComponent = GetRootMeshComponent();
 	if (RootMeshComponent)
 	{

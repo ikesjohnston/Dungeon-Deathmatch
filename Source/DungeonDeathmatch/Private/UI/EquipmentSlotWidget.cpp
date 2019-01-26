@@ -118,6 +118,50 @@ bool UEquipmentSlotWidget::GetCanFitDraggedItem()
 	return bCanFitDraggedItem;
 }
 
+void UEquipmentSlotWidget::ProcessItemDragAndDrop()
+{
+	if (bCanFitDraggedItem)
+	{
+		ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
+		if (Controller)
+		{
+			ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
+			if (Character)
+			{
+				UDraggableItemWidget* DraggedItemWidget = Controller->GetDraggedItem();
+				UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
+				if (DraggedItemWidget) {
+					if (SelectedItemWidget)
+					{
+						Controller->StopDraggingItem(false);
+						SelectedItemWidget->StartDragging();
+						//Character->Server_RequestRemoveItemFromInventory(SelectedItemWidget->GetItem());
+						//Character->Server_RequestAddItemToInventoryAtLocation(DraggedItemWidget->GetItem(), SelectionOrigin);
+						Controller->SetSelectedItem(nullptr);
+					}
+					else
+					{
+						//Character->Server_RequestAddItemToInventoryAtLocation(DraggedItemWidget->GetItem(), SelectionOrigin);
+						Controller->StopDraggingItem(false);
+						Controller->SetSelectedItem(nullptr);
+					}
+				}
+				else if (SelectedItemWidget)
+				{
+					SelectedItemWidget->StartDragging();
+					//Character->Server_RequestRemoveItemFromInventory(SelectedItemWidget->GetItem());
+				}
+			}
+		}
+
+		// Remove any highlight from the previous drag operation
+		if (SlotHighlight)
+		{
+			SlotHighlight->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+}
+
 void UEquipmentSlotWidget::OnBeginItemDrag(AItem* Item)
 {
 	// Get the equipment type and determine if it can go in this slot. If so, highlight the slot.
@@ -192,19 +236,19 @@ void UEquipmentSlotWidget::OnBeginItemDrag(AItem* Item)
 		switch (Weapon->GetWeaponHand())
 		{
 		case EWeaponHand::OneHand:
-			if (SlotType == EEquipmentSlot::WeaponMainHand || SlotType == EEquipmentSlot::WeaponOffHand)
+			if (SlotType == EEquipmentSlot::WeaponLoadoutOneMainHand || SlotType == EEquipmentSlot::WeaponLoadoutOneOffHand || SlotType == EEquipmentSlot::WeaponLoadoutTwoMainHand || SlotType == EEquipmentSlot::WeaponLoadoutTwoOffHand)
 			{
 				bCanFitDraggedItem = true;
 			}
 			break;
 		case EWeaponHand::TwoHand:
-			if (SlotType == EEquipmentSlot::WeaponMainHand)
+			if (SlotType == EEquipmentSlot::WeaponLoadoutOneMainHand || SlotType == EEquipmentSlot::WeaponLoadoutTwoMainHand)
 			{
 				bCanFitDraggedItem = true;
 			}
 			break;
 		case EWeaponHand::OffHand:
-			if (SlotType == EEquipmentSlot::WeaponOffHand)
+			if (SlotType == EEquipmentSlot::WeaponLoadoutOneOffHand || SlotType == EEquipmentSlot::WeaponLoadoutTwoOffHand)
 			{
 				bCanFitDraggedItem = true;
 			}
@@ -222,9 +266,174 @@ void UEquipmentSlotWidget::OnBeginItemDrag(AItem* Item)
 
 void UEquipmentSlotWidget::OnEndItemDrag(AItem* Item)
 {
-	bCanFitDraggedItem = false;
-	if (bCanFitDraggedItem && SlotBorder)
+	if (SlotBorder)
 	{
 		SlotBorder->SetColorAndOpacity(DefaultBorderColor);
 	}
+}
+
+void UEquipmentSlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	// Get the equipment type and determine if it can go in this slot. If so, highlight the slot.
+	UDraggableItemWidget* DraggedItem = nullptr;
+	bCanFitDraggedItem = false;
+	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+	if (Controller)
+	{
+		DraggedItem = Controller->GetDraggedItem();
+		if (DraggedItem)
+		{
+			AItem* Item = DraggedItem->GetItem();
+			if (Item)
+			{
+				AArmor* Armor = Cast<AArmor>(Item);
+				AWeapon* Weapon = Cast<AWeapon>(Item);
+				if (Armor)
+				{
+					switch (Armor->GetArmorSlot())
+					{
+					case EArmorSlot::Head:
+						if (SlotType == EEquipmentSlot::Head)
+						{
+							bCanFitDraggedItem = true;
+						}
+						break;
+					case EArmorSlot::Neck:
+						if (SlotType == EEquipmentSlot::Neck)
+						{
+							bCanFitDraggedItem = true;
+						}
+						break;
+					case EArmorSlot::Shoulders:
+						if (SlotType == EEquipmentSlot::Shoulders)
+						{
+							bCanFitDraggedItem = true;
+						}
+						break;
+					case EArmorSlot::Chest:
+						if (SlotType == EEquipmentSlot::Chest)
+						{
+							bCanFitDraggedItem = true;
+						}
+						break;
+					case EArmorSlot::Hands:
+						if (SlotType == EEquipmentSlot::Hands)
+						{
+							bCanFitDraggedItem = true;
+						}
+						break;
+					case EArmorSlot::Finger:
+						if (SlotType == EEquipmentSlot::FingerOne || SlotType == EEquipmentSlot::FingerTwo)
+						{
+							bCanFitDraggedItem = true;
+						}
+						break;
+					case EArmorSlot::Waist:
+						if (SlotType == EEquipmentSlot::Waist)
+						{
+							bCanFitDraggedItem = true;
+						}
+						break;
+					case EArmorSlot::Legs:
+						if (SlotType == EEquipmentSlot::Legs)
+						{
+							bCanFitDraggedItem = true;
+						}
+						break;
+					case EArmorSlot::Feet:
+						if (SlotType == EEquipmentSlot::Feet)
+						{
+							bCanFitDraggedItem = true;
+						}
+						break;
+					default:
+						break;
+					}
+				}
+				else if (Weapon)
+				{
+					switch (Weapon->GetWeaponHand())
+					{
+					case EWeaponHand::OneHand:
+						if (SlotType == EEquipmentSlot::WeaponLoadoutOneMainHand || SlotType == EEquipmentSlot::WeaponLoadoutOneOffHand || SlotType == EEquipmentSlot::WeaponLoadoutTwoMainHand || SlotType == EEquipmentSlot::WeaponLoadoutTwoOffHand)
+						{
+							bCanFitDraggedItem = true;
+						}
+						break;
+					case EWeaponHand::TwoHand:
+						if (SlotType == EEquipmentSlot::WeaponLoadoutOneMainHand || SlotType == EEquipmentSlot::WeaponLoadoutTwoMainHand)
+						{
+							bCanFitDraggedItem = true;
+						}
+						break;
+					case EWeaponHand::OffHand:
+						if (SlotType == EEquipmentSlot::WeaponLoadoutOneOffHand || SlotType == EEquipmentSlot::WeaponLoadoutTwoOffHand)
+						{
+							bCanFitDraggedItem = true;
+						}
+						break;
+					default:
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	if (DraggedItem && SlotHighlight)
+	{
+		SlotHighlight->SetVisibility(ESlateVisibility::HitTestInvisible);
+		if (bCanFitDraggedItem)
+		{
+			SlotHighlight->SetColorAndOpacity(ValidOverlapHighlightColor);
+		}
+		else
+		{
+			SlotHighlight->SetColorAndOpacity(InvalidOverlapHighlightColor);
+		}
+	}
+}
+
+void UEquipmentSlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
+{
+	if (SlotHighlight)
+	{
+		SlotHighlight->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+FReply UEquipmentSlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		ProcessItemDragAndDrop();
+	}
+
+	return FReply::Handled();
+}
+
+FReply UEquipmentSlotWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
+		if (Controller)
+		{
+			UDraggableItemWidget* SelectedItem = Controller->GetSelectedItem();
+			UDraggableItemWidget* DraggedItem = Controller->GetDraggedItem();
+			if (DraggedItem)
+			{
+				ProcessItemDragAndDrop();
+			}
+			else if (SelectedItem && SelectedItem->IsReadyForDrag())
+			{
+				if (SelectedItem->GetItem() == EquippedItemWidget->GetItem())
+				{
+					SelectedItem->StartDragging();
+				}
+			}
+		}
+	}
+
+	return FReply::Handled();
 }

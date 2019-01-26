@@ -36,7 +36,7 @@ public:
 	void HideCharacterMenu();
 
 	UFUNCTION(BlueprintCallable, Category = "UI")
-	bool IsCharacterMenuVisible();
+	bool AreMenusVisible();
 
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ShowInventoryMenu();
@@ -50,7 +50,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void HideReticle();
 
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ShowTooltipAtLocation(FVector2D ScreenLocation, AItem* Item);
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void HideTooltip();
+
 	void StartDragAndDropOperation(AItem* Item);
 
-	void StopDragAndDropOperation();
+	void StopDragAndDropOperation(bool WasCanceled);
+
+	// Blurs the game view, used for when menus are opened
+	void BlurBackground();
+
+	// Unblurs the game view, used for when menus are closed
+	void UnblurBackground();
 };

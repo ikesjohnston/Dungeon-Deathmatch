@@ -6,20 +6,22 @@
 UENUM(BlueprintType)
 enum class EEquipmentSlot : uint8
 {
-	Head				UMETA(DisplayName = "Head"),
-	Neck				UMETA(DisplayName = "Neck"),
-	Shoulders			UMETA(DisplayName = "Shoulders"),
-	Chest				UMETA(DisplayName = "Chest"),
-	Hands				UMETA(DisplayName = "Hands"),
-	FingerOne			UMETA(DisplayName = "Finger One"),
-	FingerTwo			UMETA(DisplayName = "Finger Two"),
-	Waist				UMETA(DisplayName = "Waist"),
-	Legs				UMETA(DisplayName = "Legs"),
-	Feet				UMETA(DisplayName = "Feet"),
-	WeaponMainHand		UMETA(DisplayName = "WeaponMainHand"),
-	WeaponOffHand		UMETA(DisplayName = "WeaponOffHand"),
+	Head						UMETA(DisplayName = "Head"),
+	Neck						UMETA(DisplayName = "Neck"),
+	Shoulders					UMETA(DisplayName = "Shoulders"),
+	Chest						UMETA(DisplayName = "Chest"),
+	Hands						UMETA(DisplayName = "Hands"),
+	FingerOne					UMETA(DisplayName = "Finger One"),
+	FingerTwo					UMETA(DisplayName = "Finger Two"),
+	Waist						UMETA(DisplayName = "Waist"),
+	Legs						UMETA(DisplayName = "Legs"),
+	Feet						UMETA(DisplayName = "Feet"),
+	WeaponLoadoutOneMainHand	UMETA(DisplayName = "Weapon Loadout One - Main Hand"),
+	WeaponLoadoutOneOffHand		UMETA(DisplayName = "Weapon Loadout One - Off Hand"),
+	WeaponLoadoutTwoMainHand	UMETA(DisplayName = "Weapon Loadout Two - Main Hand"),
+	WeaponLoadoutTwoOffHand		UMETA(DisplayName = "Weapon Loadout Two - Off Hand"),
 
-	NUM_EQUIPMENT_SLOTS
+	NUM_EQUIPMENT_SLOTS			UMETA(Hidden)
 };
 
 /* Used to determine what equipment slot a piece of armor can go into when equipping an item. */

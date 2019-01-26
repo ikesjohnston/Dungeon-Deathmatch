@@ -7,9 +7,18 @@
 #include "DungeonPlayerController.h"
 #include <Image.h>
 #include <Button.h>
+#include <BackgroundBlur.h>
 #include "DraggableItemWidget.h"
 #include "DragAndDropItemWidget.h"
 #include "Item.h"
+
+UInGameOverlayWidget::UInGameOverlayWidget(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+
+	GameBackgroundBlurStrength = 50.0f;
+	GameBackgroundBlurTime = 0.25f;
+}
 
 bool UInGameOverlayWidget::Initialize()
 {
@@ -26,10 +35,32 @@ bool UInGameOverlayWidget::Initialize()
 	if (DropItemScreenButton)
 	{
 		DropItemScreenButton->OnPressed.AddDynamic(this, &UInGameOverlayWidget::OnDropItemScreenButtonPressed);
+		DropItemScreenButton->OnHovered.AddDynamic(this, &UInGameOverlayWidget::OnDropItemScreenButtonHovered);
+		DropItemScreenButton->OnUnhovered.AddDynamic(this, &UInGameOverlayWidget::OnDropItemScreenButtonUnhovered);
 		DropItemScreenButton->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (GameBackgroundBlur)
+	{
+		GameBackgroundBlur->SetBlurStrength(0);
 	}
 
 	return Result;
+}
+
+void UInGameOverlayWidget::NativeTick(const FGeometry& MyGeometry, float DeltaTime)
+{
+	if (GameBackgroundBlur)
+	{
+		if (bIsBluringBackground && GameBackgroundBlur->BlurStrength < GameBackgroundBlurStrength)
+		{
+			GameBackgroundBlur->SetBlurStrength(GameBackgroundBlur->BlurStrength + (GameBackgroundBlurStrength * (DeltaTime / GameBackgroundBlurTime)));
+		}
+		else if (!bIsBluringBackground && GameBackgroundBlur->BlurStrength > 0)
+		{
+			GameBackgroundBlur->SetBlurStrength(GameBackgroundBlur->BlurStrength - (GameBackgroundBlurStrength * (DeltaTime / GameBackgroundBlurTime)));
+		}
+	}
+
 }
 
 UCharacterMenuWidget* UInGameOverlayWidget::GetCharacterMenu()
@@ -82,17 +113,19 @@ void UInGameOverlayWidget::HideInventoryMenu()
 	}
 }
 
-bool UInGameOverlayWidget::IsCharacterMenuVisible()
+bool UInGameOverlayWidget::AreMenusOpen()
 {
-	bool IsCharacterMenuVisible = false;
-
-	UCharacterMenuWidget* CharacterMenu = GetCharacterMenu();
-	if (CharacterMenu)
+	if (!CharacterMenu || !InventoryMenu)
 	{
-		IsCharacterMenuVisible = CharacterMenu->IsVisible();
+		UE_LOG(LogTemp, Warning, TEXT("UInGameOverlay::AreMenusOpen - No Menu widgets found in %s. Verify that widgets are correctly set."), *GetName());
 	}
 
-	return IsCharacterMenuVisible;
+	if (CharacterMenu->IsVisible() || InventoryMenu->IsVisible())
+	{
+		return true;
+	}
+
+	return false;
 }
 
 void UInGameOverlayWidget::ShowReticle()
@@ -103,6 +136,32 @@ void UInGameOverlayWidget::ShowReticle()
 void UInGameOverlayWidget::HideReticle()
 {
 	ReticleImage->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void UInGameOverlayWidget::ShowTooltipAtLocation(FVector2D ScreenLocation, AItem* Item)
+{
+	if (HoveredItemTooltip)
+	{
+		HoveredItemTooltip->SetRenderTranslation(ScreenLocation);
+		HoveredItemTooltip->SetItem(Item);
+		HoveredItemTooltip->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UInGameOverlayWidget::ShowTooltipAtLocation - No HoveredItemTooltip widget found for %s."), *GetName());
+	}
+}
+
+void UInGameOverlayWidget::HideTooltip()
+{
+	if (HoveredItemTooltip)
+	{
+		HoveredItemTooltip->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UInGameOverlayWidget::HideTooltip - No HoveredItemTooltip widget found for %s."), *GetName());
+	}
 }
 
 void UInGameOverlayWidget::StartDragAndDropOperation(AItem* Item)
@@ -118,12 +177,30 @@ void UInGameOverlayWidget::StartDragAndDropOperation(AItem* Item)
 	}
 }
 
-void UInGameOverlayWidget::StopDragAndDropOperation()
+void UInGameOverlayWidget::StopDragAndDropOperation(bool WasCanceled)
 {
 	DropItemScreenButton->SetVisibility(ESlateVisibility::Collapsed);
+
+	if (WasCanceled)
+	{
+		ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetOwningPlayer());
+		if (PlayerController)
+		{
+			UDraggableItemWidget* DraggedItemWidget = PlayerController->GetDraggedItem();
+			if (DraggedItemWidget && DraggedItemWidget->GetItem())
+			{
+				ADungeonCharacter* Character = Cast<ADungeonCharacter>(PlayerController->GetPawn());
+				if (Character)
+				{
+					Character->Server_RequestDropItem(DraggedItemWidget->GetItem(), false);
+				}
+			}
+		}
+	}
+
 	if (DragAndDropItem)
 	{
-		DragAndDropItem->StopDragAndDropOperation();
+		DragAndDropItem->StopDragAndDropOperation();	
 	}
 	else
 	{
@@ -131,7 +208,7 @@ void UInGameOverlayWidget::StopDragAndDropOperation()
 	}
 }
 
-void UInGameOverlayWidget::OnDropItemScreenButtonPressed()
+void UInGameOverlayWidget::CheckForItemDrop()
 {
 	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetOwningPlayer());
 	if (PlayerController)
@@ -142,9 +219,44 @@ void UInGameOverlayWidget::OnDropItemScreenButtonPressed()
 			ADungeonCharacter* Character = Cast<ADungeonCharacter>(PlayerController->GetPawn());
 			if (Character)
 			{
-				Character->Server_TryDropItem(DraggedItemWidget->GetItem());
+				Character->Server_RequestDropItem(DraggedItemWidget->GetItem(), false);
 			}
-			PlayerController->StopDraggingItem();
+			PlayerController->StopDraggingItem(true);
 		}
 	}
+}
+
+void UInGameOverlayWidget::BlurBackground()
+{
+	bIsBluringBackground = true;
+}
+
+void UInGameOverlayWidget::UnblurBackground()
+{
+	bIsBluringBackground = false;
+}
+
+void UInGameOverlayWidget::OnDropItemScreenButtonPressed()
+{
+	CheckForItemDrop();
+}
+
+void UInGameOverlayWidget::OnDropItemScreenButtonHovered()
+{
+	bIsHoveringDropArea = true;
+}
+
+void UInGameOverlayWidget::OnDropItemScreenButtonUnhovered()
+{
+	bIsHoveringDropArea = false;
+}
+
+FReply UInGameOverlayWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (bIsHoveringDropArea)
+	{
+		CheckForItemDrop();
+	}
+
+	return FReply::Handled();
 }

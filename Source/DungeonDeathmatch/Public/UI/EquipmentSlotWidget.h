@@ -82,11 +82,11 @@ protected:
 
 	/** The color to tint the slot background when the slot can accept an item being dragged over the widget */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment")
-	FLinearColor CanFitItemBackgroundColor;
+	FLinearColor ValidOverlapHighlightColor;
 
 	/** The color to tint the slot background when the slot can not accept an item being dragged over the widget */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment")
-	FLinearColor CanNotFitItemBackgroundColor;
+	FLinearColor InvalidOverlapHighlightColor;
 
 private:
 	/** Has the slot been bound to a player controller yet? */
@@ -110,6 +110,9 @@ protected:
 	/** Can this slot accept the currently dragged item? */
 	bool GetCanFitDraggedItem();
 
+	/** Event for when a draggable item is dropped on top of the slot. Processes the validity of the drop and makes any necessary additions or replacements to equipment. */
+	void ProcessItemDragAndDrop();
+
 	/** Event called when the player controller starts dragging an item, used to highlight the slot if the item can go in it */
 	UFUNCTION()
 	void OnBeginItemDrag(AItem* Item);
@@ -117,4 +120,12 @@ protected:
 	/** Event called when the player controller stops dragging an item, used to remove any active slot highlighting */
 	UFUNCTION()
 	void OnEndItemDrag(AItem* Item);
+
+	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
+
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 };

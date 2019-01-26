@@ -76,6 +76,12 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 	UDraggableItemWidget* DraggedItem;
 
+	/* The DraggableItemWidget currently being moused over, if any */
+	UPROPERTY(BlueprintReadOnly, Category = "UI")
+	UDraggableItemWidget* SelectedItem;
+
+	bool bCanTraceForInteractables;
+
 public:
 	ADungeonPlayerController();
 
@@ -137,13 +143,21 @@ public:
 	UFUNCTION(BlueprintPure)
 	UDraggableItemWidget* GetDraggedItem();
 
+	/** Sets the DraggableItemWidget currently being moused over */
+	UFUNCTION(BlueprintCallable)
+	void SetSelectedItem(UDraggableItemWidget* DraggableItemWidget);
+
+	/** Gets the DraggableItemWidget currently being moused over */
+	UFUNCTION(BlueprintPure)
+	UDraggableItemWidget* GetSelectedItem();
+
 	/** Sets the DraggableItemWidget associated with the current drag and drop operation. Updates the mouse cursor with the image of any item being dragged */
 	UFUNCTION(BlueprintCallable)
 	void StartDraggingItem(UDraggableItemWidget* DraggableItemWidget);
 
 	/** Stops the current drag and drop operation. */
 	UFUNCTION(BlueprintCallable)
-	void StopDraggingItem();
+	void StopDraggingItem(bool WasCanceled);
 
 protected:
 	/**

@@ -27,13 +27,31 @@ ADungeonPlayerController::ADungeonPlayerController()
 	InteractionCameraTraceRadius = 25.0f;
 
 	MaxInteractionDistance = 200.0f;
+
+	bCanTraceForInteractables = true;
 }
 
 void ADungeonPlayerController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	CheckFocus();
+	if (IsLocalPlayerController())
+	{
+		if (bCanTraceForInteractables)
+		{
+			CheckFocus();
+		}
+		else if (!bCanTraceForInteractables && FocusedInteractable)
+		{
+			IInteractable* InteractableInterface = Cast<IInteractable>(FocusedInteractable);
+			if (FocusedInteractable)
+			{
+				InteractableInterface->Execute_OnUnfocused(FocusedInteractable);
+				FocusedInteractable = nullptr;
+				Server_SetFocusedInteractable(nullptr);
+			}
+		}
+	}
 }
 
 AActor* ADungeonPlayerController::GetFocusedInteractable()
@@ -46,7 +64,7 @@ void ADungeonPlayerController::OnInventoryKeyPressed()
 	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
 	if (DungeonHUD)
 	{
-		if (DungeonHUD->IsCharacterMenuVisible())
+		if (DungeonHUD->AreMenusVisible())
 		{
 			DungeonHUD->HideCharacterMenu();
 			DungeonHUD->HideInventoryMenu();
@@ -55,7 +73,7 @@ void ADungeonPlayerController::OnInventoryKeyPressed()
 			bEnableClickEvents = false;
 			bEnableMouseOverEvents = false;
 			SetPawnCanLook(true);
-			StopDraggingItem();
+			StopDraggingItem(true);
 			FocusGame();
 		}
 		else
@@ -80,28 +98,36 @@ void ADungeonPlayerController::OnEscapeKeyPressed()
 		DungeonHUD->HideCharacterMenu();
 		bShowMouseCursor = false;
 		SetPawnCanLook(false);	
-		StopDraggingItem();
+		StopDraggingItem(true);
 		FocusGame();
 	}
 }
 
 void ADungeonPlayerController::OnUseInventoryItemKeyPressed()
 {
-
+	if (SelectedItem)
+	{
+	}
 }
 
 void ADungeonPlayerController::OnDropInventoryItemKeyPressed()
 {
-	/*ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
-	if (DungeonHUD && DungeonHUD->IsCharacterMenuVisible() && HoveringInventoryEquipmentSlot)
+	if (SelectedItem)
 	{
-		AItem* SlottedItem = HoveringInventoryEquipmentSlot->GetItem();
-		ADungeonCharacter* DungeonPawn = Cast<ADungeonCharacter>(GetPawn());
-		if (DungeonPawn)
+		ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetPawn());
+		if (Character)
 		{
-			DungeonPawn->Server_TryDropItem(SlottedItem);
+			Character->Server_RequestDropItem(SelectedItem->GetItem());
 		}
-	}*/
+
+		ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
+		if (DungeonHUD)
+		{
+			DungeonHUD->HideTooltip();
+		}
+		
+		SelectedItem = nullptr;
+	}
 }
 
 TArray<FInputActionKeyMapping> ADungeonPlayerController::GetKeyForAction(FName ActionName)
@@ -111,6 +137,7 @@ TArray<FInputActionKeyMapping> ADungeonPlayerController::GetKeyForAction(FName A
 
 void ADungeonPlayerController::FocusUIAndGame()
 {
+	bCanTraceForInteractables = false;
 	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
 	if (DungeonHUD)
 	{
@@ -119,13 +146,20 @@ void ADungeonPlayerController::FocusUIAndGame()
 		InputMode.SetWidgetToFocus(WidgetPtr);
 		InputMode.SetHideCursorDuringCapture(false);
 		SetInputMode(InputMode);
+		DungeonHUD->BlurBackground();
 	}
 }
 
 void ADungeonPlayerController::FocusGame()
 {
+	bCanTraceForInteractables = true;
 	FInputModeGameOnly InputMode = FInputModeGameOnly();
 	SetInputMode(InputMode);
+	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
+	if (DungeonHUD)
+	{
+		DungeonHUD->UnblurBackground();
+	}
 }
 
 UDungeonCursorWidget* ADungeonPlayerController::GetCursor()
@@ -143,8 +177,23 @@ UDraggableItemWidget* ADungeonPlayerController::GetDraggedItem()
 	return DraggedItem;
 }
 
+void ADungeonPlayerController::SetSelectedItem(UDraggableItemWidget* DraggableItemWidget)
+{
+	SelectedItem = DraggableItemWidget;
+}
+
+UDraggableItemWidget* ADungeonPlayerController::GetSelectedItem()
+{
+	return SelectedItem;
+}
+
 void ADungeonPlayerController::StartDraggingItem(UDraggableItemWidget* DraggableItemWidget)
 {
+	if (SelectedItem == DraggableItemWidget)
+	{
+		SelectedItem = nullptr;
+	}
+
 	if (Cursor)
 	{
 		Cursor->Hide();
@@ -154,25 +203,35 @@ void ADungeonPlayerController::StartDraggingItem(UDraggableItemWidget* Draggable
 		UE_LOG(LogTemp, Warning, TEXT("ADungeonPlayerController::StartDraggingItem - No cursor bound to %s"), *GetName());
 	}
 	
+	// Stop any ongoing drag & drop operation
 	if (DraggedItem)
 	{
 		OnEndItemDrag.Broadcast(DraggedItem->GetItem());
 	}
 	
+	// Start the new drag & drop operation
 	DraggedItem = DraggableItemWidget;
 	if (DraggedItem)
 	{
 		OnBeginItemDrag.Broadcast(DraggedItem->GetItem());
 	}
 
+
+	ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetPawn());
+	if (Character)
+	{
+		Character->Server_RequestRemoveItemFromInventory(DraggedItem->GetItem());
+	}
+
 	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
 	if (DungeonHUD)
 	{
+		DungeonHUD->HideTooltip();
 		DungeonHUD->StartDragAndDropOperation(DraggableItemWidget->GetItem());
 	}
 }
 
-void ADungeonPlayerController::StopDraggingItem()
+void ADungeonPlayerController::StopDraggingItem(bool WasCanceled)
 {
 	if (Cursor)
 	{
@@ -191,8 +250,10 @@ void ADungeonPlayerController::StopDraggingItem()
 	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
 	if (DungeonHUD)
 	{
-		DungeonHUD->StopDragAndDropOperation();
+		DungeonHUD->StopDragAndDropOperation(WasCanceled);
 	}
+
+	DraggedItem = nullptr;
 }
 
 void ADungeonPlayerController::Server_SetFocusedInteractable_Implementation(AActor* Interactable)

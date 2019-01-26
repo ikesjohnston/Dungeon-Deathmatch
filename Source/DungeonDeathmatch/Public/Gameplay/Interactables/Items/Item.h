@@ -5,35 +5,11 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Interactable.h"
+#include "InventoryGlobals.h"
 #include "Item.generated.h"
 
 class ADungeonCharacter;
 class UImage;
-
-/** Struct that stores an inventory grid row column pair */
-USTRUCT(BlueprintType)
-struct FInventoryGridPair
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	uint8 Column;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	uint8 Row;
-
-	FInventoryGridPair()
-	{
-		Row = 0;
-		Column = 0;
-	}
-
-	FInventoryGridPair(uint8 GridColumn, uint8 GridRow)
-	{
-		Column = GridColumn;
-		Row = GridRow;
-	}
-};
 
 /**
  * Enum representation of the different quality levels for items. Higher quality items are generally more rare and valuable.
@@ -117,11 +93,6 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	/**
-	 * Sets the mesh stencil value based on item type and quality; used for drawing post process item outlines
-	 */
-	void SetMeshStencilValue();
-
 public:	
 	/**
 	 * Gets the root mesh component for the item, item subclasses may have additional meshes, but all root physics simulation operations should be applied to this mesh.
@@ -176,14 +147,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Item")
 	virtual FText GetInventoryUseTooltipText();
 
-	/**
-	 * Attempts to use the item if it is currently in the player's inventory. Will only run on the server.
-	 */
-	UFUNCTION()
-	bool TryInventoryUse();
-
-public:
-
 	// ------------------------ BEGIN INTERACTABLE INTERFACE FUNCTIONS ------------------------
 	virtual void OnInteract_Implementation(ADungeonCharacter* InteractingCharacter) override;
 
@@ -206,11 +169,30 @@ public:
 	virtual FText GetInteractableName_Implementation() override;
 	// ------------------------ END INTERACTABLE INTERFACE FUNCTIONS ------------------------
 
-	/** Multicast function that prepares the item for pickup my hiding the mesh and disabling physics and collision */
-	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_PrepareForPickup();
+	/** Server side function that "despawns" the item by hiding its mesh(es), disabling physics and collision, and moving it to the world origin */
+	UFUNCTION(Server, Unreliable, WithValidation)
+	void Server_Despawn();
 
-	/** Multicast function that drops the item at the specified location with an optional ejection force vector, which may be desired for things like ejecting loot from a chest */
+	/** Server side function that "spawns" the item at the specified location; showing all meshes and enabling physics and collision.
+	 *  An optional ejection force vector can be used, which may be desired for things like ejecting loot from a chest 
+	 */
+	UFUNCTION(Server, Unreliable, WithValidation)
+	void Server_SpawnAtLocation(const FVector Location, const FVector EjectionForce = FVector(0, 0, 0));
+
+protected:
+	/**
+	 * Sets the mesh stencil value based on item type and quality; used for drawing post process item outlines
+	 */
+	void SetMeshStencilValue();
+
+	/** Multicast function that "despawns" the item by hiding its mesh(es), disabling physics and collision, and moving it to the world origin */
 	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_DropAtLocation(const FVector Location, const FVector EjectionForce = FVector(0, 0, 0));
+	void Multicast_Despawn();
+
+	/** Multicast function that "spawns" the item at the specified location; showing all meshes and enabling physics and collision.
+	 *  An optional ejection force vector can be used, which may be desired for things like ejecting loot from a chest
+	 */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_SpawnAtLocation(const FVector Location, const FVector EjectionForce = FVector(0, 0, 0));
+
 };

@@ -133,7 +133,7 @@ FWeaponLoadout& UEquipmentComponent::GetInactiveLoadout()
 //	return true;
 //}
 
-bool UEquipmentComponent::TryEquipItem(AEquippable* Equippable, bool CanReplaceEquipment /*= false*/)
+bool UEquipmentComponent::RequestEquipItem(AEquippable* Equippable, bool CanReplaceEquipment /*= false*/)
 {
 	bool WasItemEquipped = false;
 
@@ -143,7 +143,7 @@ bool UEquipmentComponent::TryEquipItem(AEquippable* Equippable, bool CanReplaceE
 		AWeapon* Weapon = Cast<AWeapon>(Equippable);
 		if (Weapon)
 		{
-			WasItemEquipped = TryEquipWeapon(Weapon, CanReplaceEquipment);
+			WasItemEquipped = RequestEquipWeapon(Weapon, CanReplaceEquipment);
 		}
 		AArmor* Armor = Cast<AArmor>(Equippable);
 		if (Armor)
@@ -167,7 +167,7 @@ bool UEquipmentComponent::TryEquipItem(AEquippable* Equippable, bool CanReplaceE
 	return WasItemEquipped;
 }
 
-bool UEquipmentComponent::TryEquipWeapon(AWeapon* Weapon, bool CanReplaceEquipment /*= false*/)
+bool UEquipmentComponent::RequestEquipWeapon(AWeapon* Weapon, bool CanReplaceEquipment /*= false*/)
 {
 	bool WasWeaponEquipped = false;
 
@@ -182,59 +182,59 @@ bool UEquipmentComponent::TryEquipWeapon(AWeapon* Weapon, bool CanReplaceEquipme
 			// First, try to find an open slot
 			if (!ActiveLoadout.MainHandWeapon)
 			{
-				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::MainHand);
+				WasWeaponEquipped = RequestAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::MainHand);
 			}
 			else if (!ActiveLoadout.OffHandWeapon)
 			{
-				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::OffHand);
+				WasWeaponEquipped = RequestAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::OffHand);
 			}
 			else if(!InactiveLoadout.MainHandWeapon)
 			{
-				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, InactiveLoadout, ERequestedHand::MainHand);
+				WasWeaponEquipped = RequestAddWeaponToLoadout(Weapon, InactiveLoadout, ERequestedHand::MainHand);
 			}
 			else if (!InactiveLoadout.OffHandWeapon)
 			{
-				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, InactiveLoadout, ERequestedHand::OffHand);
+				WasWeaponEquipped = RequestAddWeaponToLoadout(Weapon, InactiveLoadout, ERequestedHand::OffHand);
 			}
 			// If no slots are open, just replace the main hand of the active loadout
 			if (!WasWeaponEquipped)
 			{
-				RemoveWeaponFromLoadout(ActiveLoadout, ERequestedHand::MainHand);
-				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::MainHand);
+				RequestRemoveWeaponFromLoadout(ActiveLoadout, ERequestedHand::MainHand);
+				WasWeaponEquipped = RequestAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::MainHand);
 			}
 			break;
 		case EWeaponHand::TwoHand:
 			// First, try to find an open slot
 			if (!ActiveLoadout.MainHandWeapon)
 			{
-				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::MainHand);
+				WasWeaponEquipped = RequestAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::MainHand);
 			}
 			else if (!InactiveLoadout.MainHandWeapon)
 			{
-				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, InactiveLoadout, ERequestedHand::MainHand);
+				WasWeaponEquipped = RequestAddWeaponToLoadout(Weapon, InactiveLoadout, ERequestedHand::MainHand);
 			}
 			// If no slots are open, just replace the main hand of the active loadout
 			if (!WasWeaponEquipped)
 			{
-				RemoveWeaponFromLoadout(ActiveLoadout, ERequestedHand::MainHand);
-				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::MainHand);
+				RequestRemoveWeaponFromLoadout(ActiveLoadout, ERequestedHand::MainHand);
+				WasWeaponEquipped = RequestAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::MainHand);
 			}
 			break;
 		case EWeaponHand::OffHand:
 			// First, try to find an open slot
 			 if (!ActiveLoadout.OffHandWeapon)
 			{
-				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::OffHand);
+				WasWeaponEquipped = RequestAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::OffHand);
 			}
 			else if (!InactiveLoadout.OffHandWeapon)
 			{
-				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, InactiveLoadout, ERequestedHand::OffHand);
+				WasWeaponEquipped = RequestAddWeaponToLoadout(Weapon, InactiveLoadout, ERequestedHand::OffHand);
 			}
 			// If no slots are open, just replace the off hand of the active loadout
 			if (!WasWeaponEquipped)
 			{
-				RemoveWeaponFromLoadout(ActiveLoadout, ERequestedHand::OffHand);
-				WasWeaponEquipped = TryAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::OffHand);
+				RequestRemoveWeaponFromLoadout(ActiveLoadout, ERequestedHand::OffHand);
+				WasWeaponEquipped = RequestAddWeaponToLoadout(Weapon, ActiveLoadout, ERequestedHand::OffHand);
 			}
 			break;
 		default:
@@ -245,7 +245,7 @@ bool UEquipmentComponent::TryEquipWeapon(AWeapon* Weapon, bool CanReplaceEquipme
 	return WasWeaponEquipped;
 }
 
-bool UEquipmentComponent::TryAddWeaponToLoadout(AWeapon* Weapon, FWeaponLoadout& Loadout, ERequestedHand RequestedHand)
+bool UEquipmentComponent::RequestAddWeaponToLoadout(AWeapon* Weapon, FWeaponLoadout& Loadout, ERequestedHand RequestedHand)
 {
 	bool WasWeaponAdded = false;
 
@@ -267,12 +267,12 @@ bool UEquipmentComponent::TryAddWeaponToLoadout(AWeapon* Weapon, FWeaponLoadout&
 	return WasWeaponAdded;
 }
 
-void UEquipmentComponent::UnequipItem(AEquippable* Equippable)
+bool UEquipmentComponent::RequestUnequipItem(AEquippable* Equippable)
 {
-
+	return true;
 }
 
-void UEquipmentComponent::RemoveWeaponFromLoadout(FWeaponLoadout& Loadout, ERequestedHand RequestedHand)
+bool UEquipmentComponent::RequestRemoveWeaponFromLoadout(FWeaponLoadout& Loadout, ERequestedHand RequestedHand)
 {
 	if (GetOwner()->Role == ROLE_Authority)
 	{
@@ -313,4 +313,41 @@ void UEquipmentComponent::RemoveWeaponFromLoadout(FWeaponLoadout& Loadout, ERequ
 			break;
 		}
 	}
+
+	return true;
+}
+
+void UEquipmentComponent::EquipItem(AEquippable* Equippable, bool CanReplaceEquipment /*= false*/)
+{
+
+}
+
+void UEquipmentComponent::EquipWeapon(AWeapon* Weapon, bool CanReplaceEquipment /*= false*/)
+{
+
+}
+
+void UEquipmentComponent::UnequipItem(AEquippable* Equippable)
+{
+
+}
+
+void UEquipmentComponent::AddWeaponToLoadout(AWeapon* Weapon, FWeaponLoadout& Loadout, ERequestedHand RequestedHand)
+{
+
+}
+
+void UEquipmentComponent::RemoveWeaponFromLoadout(FWeaponLoadout& Loadout, ERequestedHand RequestedHand)
+{
+
+}
+
+void UEquipmentComponent::Multicast_OnItemUnequipped_Implementation(AEquippable* Equippable, EEquipmentSlot EquipmentSlot)
+{
+
+}
+
+void UEquipmentComponent::Multicast_OnItemEquipped_Implementation(AEquippable* Equippable, EEquipmentSlot EquipmentSlot)
+{
+
 }

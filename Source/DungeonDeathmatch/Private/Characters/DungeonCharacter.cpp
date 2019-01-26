@@ -57,74 +57,104 @@ ADungeonCharacter::ADungeonCharacter()
 	VitalsPlateWidget->bOnlyOwnerSee = false;
 
 	// Initialize all mesh segments
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
 	MeshComponentHelm = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHelm"));
 	MeshComponentHelm->SetupAttachment(GetMesh());
 	MeshComponentHelm->SetMasterPoseComponent(GetMesh());
+	MeshComponentHelm->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentHelm->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Helm, MeshComponentHelm));
 
 	MeshComponentHair = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHair"));
 	MeshComponentHair->SetupAttachment(GetMesh());
 	MeshComponentHair->SetMasterPoseComponent(GetMesh());
+	MeshComponentHair->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentHair->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Hair, MeshComponentHair));
 
 	MeshComponentHead = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHead"));
 	MeshComponentHead->SetupAttachment(GetMesh());
 	MeshComponentHead->SetMasterPoseComponent(GetMesh());
+	MeshComponentHead->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentHead->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Head, MeshComponentHead));
 
 	MeshComponentShoulderLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentShoulderLeft"));
 	MeshComponentShoulderLeft->SetupAttachment(GetMesh());
 	MeshComponentShoulderLeft->SetMasterPoseComponent(GetMesh());
+	MeshComponentShoulderLeft->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentShoulderLeft->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LeftShoulder, MeshComponentShoulderLeft));
 
 	MeshComponentShoulderRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentShoulderRight"));
 	MeshComponentShoulderRight->SetupAttachment(GetMesh());
 	MeshComponentShoulderRight->SetMasterPoseComponent(GetMesh());
+	MeshComponentShoulderRight->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentShoulderRight->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::RightShoulder, MeshComponentShoulderRight));
 
 	MeshComponentTorso = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentTorso"));
 	MeshComponentTorso->SetupAttachment(GetMesh());
 	MeshComponentTorso->SetMasterPoseComponent(GetMesh());
+	MeshComponentTorso->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentTorso->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Torso, MeshComponentTorso));
 
 	MeshComponentChestArmor = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentChestArmor"));
 	MeshComponentChestArmor->SetupAttachment(GetMesh());
 	MeshComponentChestArmor->SetMasterPoseComponent(GetMesh());
+	MeshComponentChestArmor->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentChestArmor->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::ChestArmor, MeshComponentChestArmor));
 
 	MeshComponentHandLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHandLeft"));
 	MeshComponentHandLeft->SetupAttachment(GetMesh());
 	MeshComponentHandLeft->SetMasterPoseComponent(GetMesh());
+	MeshComponentHandLeft->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentHandLeft->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LeftHand, MeshComponentHandLeft));
 
 	MeshComponentHandRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHandRight"));
 	MeshComponentHandRight->SetupAttachment(GetMesh());
 	MeshComponentHandRight->SetMasterPoseComponent(GetMesh());
+	MeshComponentHandRight->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentHandRight->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::RightHand, MeshComponentHandRight));
 
 	MeshComponentBelt = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentBelt"));
 	MeshComponentBelt->SetupAttachment(GetMesh());
 	MeshComponentBelt->SetMasterPoseComponent(GetMesh());
+	MeshComponentBelt->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentBelt->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Waist, MeshComponentBelt));
 
 	MeshComponentLegs = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentLegs"));
 	MeshComponentLegs->SetupAttachment(GetMesh());
 	MeshComponentLegs->SetMasterPoseComponent(GetMesh());
+	MeshComponentLegs->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentLegs->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Legs, MeshComponentLegs));
 
 	MeshComponentLegArmor = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentLegArmor"));
 	MeshComponentLegArmor->SetupAttachment(GetMesh());
 	MeshComponentLegArmor->SetMasterPoseComponent(GetMesh());
+	MeshComponentLegArmor->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentLegArmor->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LegArmor, MeshComponentLegArmor));
 
 	MeshComponentFootLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentFootLeft"));
 	MeshComponentFootLeft->SetupAttachment(GetMesh());
 	MeshComponentFootLeft->SetMasterPoseComponent(GetMesh());
+	MeshComponentFootLeft->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentFootLeft->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LeftFoot, MeshComponentFootLeft));
 
 	MeshComponentFootRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentFootRight"));
 	MeshComponentFootRight->SetupAttachment(GetMesh());
 	MeshComponentFootRight->SetMasterPoseComponent(GetMesh());
+	MeshComponentFootRight->SetCollisionObjectType(ECC_Pawn);
+	MeshComponentFootRight->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::RightFoot, MeshComponentFootRight));
 
 	ItemDropLocation = CreateDefaultSubobject<USceneComponent>(TEXT("ItemDropLocation"));
@@ -731,7 +761,7 @@ void ADungeonCharacter::OnRollKeyPressed()
 
 void ADungeonCharacter::OnInteractKeyPressed()
 {
-	Server_Interact();
+	Interact();
 }
 
 void ADungeonCharacter::OnSheatheKeyPressed()
@@ -795,7 +825,7 @@ void ADungeonCharacter::OnDropInventoryItemKeyPressed()
 	}
 }
 
-void ADungeonCharacter::Server_Interact_Implementation()
+void ADungeonCharacter::Interact()
 {
 	ADungeonPlayerController* PlayerController = Cast<ADungeonPlayerController>(GetController());
 	if (PlayerController)
@@ -810,11 +840,6 @@ void ADungeonCharacter::Server_Interact_Implementation()
 			}
 		}
 	}
-}
-
-bool ADungeonCharacter::Server_Interact_Validate()
-{
-	return true;
 }
 
 FVector ADungeonCharacter::GetMovementVelocity()
@@ -1181,79 +1206,124 @@ UEquipmentComponent* ADungeonCharacter::GetEquipmentComponent()
 	return EquipmentComponent;
 }
 
-bool ADungeonCharacter::TryAddItemToInventory(AItem* Item)
+void ADungeonCharacter::Server_RequestAddItemToInventory_Implementation(AItem* Item)
 {
-	bool WasItemAdded = false;
-	
-	if (Role == ROLE_Authority) {
-		WasItemAdded = InventoryComponent->TryAddItem(Item);
-	}
-	return WasItemAdded;
+	bool WasItemAdded = InventoryComponent->RequestAddItem(Item);
+	Multicast_AddItemToInventoryResponse(Item, WasItemAdded);
 }
 
-void ADungeonCharacter::Server_TryPickUpItem_Implementation(AItem* Item)
-{
-	/*bool WasEquipped = false;
-	AEquippable* Equippable = Cast<AEquippable>(Item);
-	if (Equippable)
-	{
-		WasEquipped = TryEquipItem(Equippable);
-	}*/
-
-	//if (!WasEquipped)
-	//{
-		bool WasPickedUp = InventoryComponent->TryAddItem(Item);
-		if (WasPickedUp)
-		{
-			Item->Multicast_PrepareForPickup();
-		}
-	//}
-}
-
-bool ADungeonCharacter::Server_TryPickUpItem_Validate(AItem* Item)
+bool ADungeonCharacter::Server_RequestAddItemToInventory_Validate(AItem* Item)
 {
 	return true;
 }
 
-void ADungeonCharacter::Server_TryDropItem_Implementation(AItem* Item, FVector EjectionVector /*= FVector::ZeroVector*/)
+void ADungeonCharacter::Server_RequestAddItemToInventoryAtLocation_Implementation(AItem* Item, FInventoryGridPair OriginSlot)
 {
-	bool WasDropped = InventoryComponent->TryRemoveItem(Item);
-	if (WasDropped)
-	{
-		FVector EjectionForce = (ItemDropLocation->GetForwardVector() * DropEjectionForce) + FVector(0, 0, DropEjectionForce);
-		Item->Multicast_DropAtLocation(ItemDropLocation->GetComponentLocation(), EjectionVector);
-	}
+	bool WasItemAdded = InventoryComponent->RequestAddItem(Item, OriginSlot);
+	Multicast_AddItemToInventoryResponse(Item, WasItemAdded);
 }
 
-bool ADungeonCharacter::Server_TryDropItem_Validate(AItem* Item, FVector EjectionVector /*= FVector::ZeroVector*/)
+bool ADungeonCharacter::Server_RequestAddItemToInventoryAtLocation_Validate(AItem* Item, FInventoryGridPair OriginSlot)
 {
 	return true;
 }
 
-void ADungeonCharacter::Server_TryEquipItem_Implementation(AEquippable* Equippable)
+void ADungeonCharacter::Multicast_AddItemToInventoryResponse_Implementation(AItem* Item, bool WasAdded)
 {
-	bool WasEquipped = TryEquipItem(Equippable);
-	if (!WasEquipped)
+	if (IsLocallyControlled())
 	{
-		Server_TryPickUpItem(Equippable);
+
 	}
 }
 
-bool ADungeonCharacter::Server_TryEquipItem_Validate(AEquippable* Equippable)
+void ADungeonCharacter::Server_RequestPickUpItem_Implementation(AItem* Item)
+{
+	bool WasItemAdded = InventoryComponent->RequestAddItem(Item);
+	if (WasItemAdded)
+	{
+		Item->Server_Despawn();
+	}
+	Multicast_PickUpItemResponse(Item, WasItemAdded);
+}
+
+bool ADungeonCharacter::Server_RequestPickUpItem_Validate(AItem* Item)
 {
 	return true;
 }
 
-bool ADungeonCharacter::TryEquipItem(AEquippable* Equippable)
+void ADungeonCharacter::Multicast_PickUpItemResponse_Implementation(AItem* Item, bool WasPickedUp)
 {
-	bool WasItemEquipped = false;
-
-	if (Role == ROLE_Authority)
+	if (IsLocallyControlled())
 	{
-		//WasItemEquipped = EquipmentComponent->TryEquipItem(Equippable);
-	}
 
-	return WasItemEquipped;
+	}
+}
+
+void ADungeonCharacter::Server_RequestRemoveItemFromInventory_Implementation(AItem* Item)
+{
+	bool WasItemRemoved = InventoryComponent->RequestRemoveItem(Item);
+
+	Multicast_RemoveItemFromInventoryResponse(Item, WasItemRemoved);
+}
+
+bool ADungeonCharacter::Server_RequestRemoveItemFromInventory_Validate(AItem* Item)
+{
+	return true;
+}
+
+void ADungeonCharacter::Multicast_RemoveItemFromInventoryResponse_Implementation(AItem* Item, bool WasRemoved)
+{
+	if (IsLocallyControlled())
+	{
+
+	}
+}
+
+void ADungeonCharacter::Server_RequestDropItem_Implementation(AItem* Item, bool CheckInventory /*= true*/)
+{
+	bool WasItemRemoved = true;
+	if (CheckInventory)
+	{
+		WasItemRemoved = InventoryComponent->RequestRemoveItem(Item);
+	}
+	if (WasItemRemoved)
+	{
+		Item->Server_SpawnAtLocation(ItemDropLocation->GetComponentLocation());
+	}
+	Multicast_DropItemResponse(Item, WasItemRemoved);
+}
+
+bool ADungeonCharacter::Server_RequestDropItem_Validate(AItem* Item, bool CheckInventory /*= true*/)
+{
+	return true;
+}
+
+void ADungeonCharacter::Multicast_DropItemResponse_Implementation(AItem* Item, bool WasDropped)
+{
+	if (IsLocallyControlled())
+	{
+
+	}
+}
+
+void ADungeonCharacter::Server_RequestEquipItem_Implementation(AEquippable* Equippable, EEquipmentSlot EquipmentSlot)
+{
+
+}
+
+bool ADungeonCharacter::Server_RequestEquipItem_Validate(AEquippable* Equippable, EEquipmentSlot EquipmentSlot)
+{
+	return true;
+}
+
+void ADungeonCharacter::Server_RequestUnequipItem_Implementation(AEquippable* Equippable, EEquipmentSlot EquipmentSlot)
+{
+
+}
+
+bool ADungeonCharacter::Server_RequestUnequipItem_Validate(AEquippable* Equippable, EEquipmentSlot EquipmentSlot)
+{
+	return true;
 }
 
 void ADungeonCharacter::Server_UpdateMeshSegments_Implementation(AArmor* Armor)

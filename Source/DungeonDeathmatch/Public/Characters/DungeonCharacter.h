@@ -8,6 +8,7 @@
 #include <GameplayTagContainer.h>
 #include "EquipmentComponent.h"
 #include <GameplayTagAssetInterface.h>
+#include "InventoryGlobals.h"
 #include "DungeonCharacter.generated.h"
 
 class UCameraComponent;
@@ -679,37 +680,66 @@ public:
 	UEquipmentComponent* GetEquipmentComponent();
 
 	/**
-	 * Attempts to add an item to the player's inventory. Only runs on the server.
+	 * Server side function that attempts to add an item to the character's inventory and makes a multicast RPC with the result. Used for items that are currently "despawned" and may only be visible from UI elements.
 	 *
 	 * @param Item The item to attempt to add to the inventory
-	 *
-	 * @return Was the item added to the inventory?
 	 */
-	bool TryAddItemToInventory(AItem* Item);
+	UFUNCTION(Server, Unreliable, WithValidation)
+	void Server_RequestAddItemToInventory(AItem* Item);
 
 	/**
-	 * Attempts to pick up an item and add it to the player's inventory. Only runs on the server.
+	 * Server side function that attempts to add an item to the character's inventory at the specified location and makes a multicast RPC with the result. Used for items that are currently "despawned" and may only be visible from UI elements.
+	 *
+	 * @param Item The item to attempt to add to the inventory
+	* @param OriginSlot The upper left most grid slot where the item should be placed
+	 */
+	UFUNCTION(Server, Unreliable, WithValidation)
+	void Server_RequestAddItemToInventoryAtLocation(AItem* Item, FInventoryGridPair OriginSlot);
+
+	/**
+	 * Server side function that attempts to pick up an item and add it to the character's inventory and makes a multicast RPC with the result. Used when interacting with items in the world.
 	 *
 	 * @param Item The item to attempt to pick up
 	 */
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_TryPickUpItem(AItem* Item);
+	UFUNCTION(BlueprintCallable, Server, Unreliable, WithValidation, Category = "Inventory & Equipment")
+	void Server_RequestPickUpItem(AItem* Item);
 
 	/**
-	 * Attempts to remove an item from the player's inventory. Only runs on the server.
+	 * Server side function that attempts to remove an item from the character's inventory and makes a multicast RPC with the result. Used for items that should remain "despawned" and only be visible from UI elements.
+	 *
+	 * @param Item The item to attempt to remove from the inventory
+	 */
+	UFUNCTION(BlueprintCallable, Server, Unreliable, WithValidation, Category = "Inventory & Equipment")
+	void Server_RequestRemoveItemFromInventory(AItem* Item);
+
+	/**
+	 * Server side function that attempts to remove an item from the character's inventory and "spawn" it in front of the character and makes a multicast RPC with the result.
 	 *
 	 * @param Item The item to attempt to drop
+	 * @param CheckInventory Whether to check if the item is in the inventory before dropping it. This should only not be done when dropping via Drag & Drop operation from the inventory
+	 * in which case the item has already been removed from the inventory.
 	 */
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_TryDropItem(AItem* Item, FVector EjectionVector = FVector::ZeroVector);
+	UFUNCTION(BlueprintCallable, Server, Unreliable, WithValidation, Category = "Inventory & Equipment")
+	void Server_RequestDropItem(AItem* Item, bool CheckInventory = true);
 
 	/**
-	 * Attempts to equip an item and add it to the player's equipment. Only runs on the server.
+	 * Server side function that attempts to equip an item to a specific equipment slot and makes a multicast RPC with the result. Can be used when interacting with items in the world or in the UI.
 	 *
 	 * @param Equippable The item to attempt to equip
+	 * @param EquipmentSlot The equipment slot to attempt to put the item into
 	 */
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_TryEquipItem(AEquippable* Equippable);
+	UFUNCTION(BlueprintCallable, Server, Unreliable, WithValidation, Category = "Inventory & Equipment")
+	void Server_RequestEquipItem(AEquippable* Equippable, EEquipmentSlot EquipmentSlot);
+
+	/**
+	 * Server side function that attempts to unequip an item from a specific equipment slot and makes a multicast RPC with the result. Can be used when interacting with items in the world or in the UI.
+	 *
+	 * @param Equippable The item to attempt to unequip
+	 * @param EquipmentSlot The equipment slot to attempt to remove the item from
+	 */
+	UFUNCTION(BlueprintCallable, Server, Unreliable, WithValidation, Category = "Inventory & Equipment")
+	void Server_RequestUnequipItem(AEquippable* Equippable, EEquipmentSlot EquipmentSlot);
+
 
 	/**
 	 * Updates a character's mesh segments when armor equipment changes. Only called on the server.
@@ -1010,9 +1040,9 @@ protected:
 
 	/********************************************************* END PROTECTED INPUT FUNCTIONS **************************************************************/
 
-	/** Interacts with whatever the character is currently focusing. Only runs on the server. */
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_Interact();
+	/** Interacts with whatever the character is currently focusing. */
+	UFUNCTION()
+	void Interact();
 
 	/********************************************************* BEGIN PROTECTED COMBAT FUNCTIONS **********************************************************/
 
@@ -1058,16 +1088,56 @@ protected:
 
 	/********************************************************* END PROTECTED COMBAT FUNCTIONS ************************************************************/
 
+	/********************************************************* BEGIN PROTECTED INVENTORY & EQUIPMENT FUNCTIONS ************************************************************/
+
+	/**
+	 * Multicast function that delivers the response from a server request to add an item to the character's inventory. Used to trigger any required UI events. Only processed for locally controlled characters.
+	 *
+	 * @param Item The item that was requested to be added to the inventory
+	 * @param WasAdded Was the request successful?
+	 */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_AddItemToInventoryResponse(AItem* Item, bool WasAdded);
+
+	/**
+	 * Multicast function that delivers the response from a server request to pick up an item. Used to trigger any required UI events. Only processed for locally controlled characters.
+	 *
+	 * @param Item The item that was requested to be picked up
+	 * @param WasPickedUp Was the request successful?
+	 */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_PickUpItemResponse(AItem* Item, bool WasPickedUp);
+
+	/**
+	 * Multicast function that delivers the response from a server request to remove an item from the character's inventory. Used to trigger any required UI events. Only processed for locally controlled characters.
+	 *
+	 * @param Item The item that was requested to be removed from the inventory
+	 * @param WasRemoved Was the request successful?
+	 */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_RemoveItemFromInventoryResponse(AItem* Item, bool WasRemoved);
+
+	/**
+	 * Multicast function that delivers the response from a server request to drop an item. Used to trigger any required UI events. Only processed for locally controlled characters.
+	 *
+	 * @param Item The item that was requested to be dropped
+	 * @param WasDropped Was the request successful?
+	 */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_DropItemResponse(AItem* Item, bool WasDropped);
+
+	/********************************************************* END PROTECTED INVENTORY & EQUIPMENT FUNCTIONS ************************************************************/
+
 private:
 	/** Calculates the character's aim yaw and pitch for use by aim offsets */
 	void CalculateAimRotation();
 
-	/**
-	 * Attempts to equip an item and add it to the player's equipment. Will only be run on the server.
-	 *
-	 * @param Equippable The item to attempt to equip
-	 *
-	 * @ return Whether the item was successfully equipped
-	 */
-	bool TryEquipItem(AEquippable* Equippable);
+	///**
+	// * Attempts to equip an item and add it to the player's equipment. Will only be run on the server.
+	// *
+	// * @param Equippable The item to attempt to equip
+	// *
+	// * @ return Whether the item was successfully equipped
+	// */
+	//bool TryEquipItem(AEquippable* Equippable);
 };

@@ -18,7 +18,10 @@ bool UInventoryGridSlotWidget::Initialize()
 	{
 		SlotBackground->SetColorAndOpacity(DefaultBackgroundColor);
 	}
-
+	if (SlotHighlight)
+	{
+		SlotHighlight->SetVisibility(ESlateVisibility::Collapsed);
+	}
 
 	return Result;
 }
@@ -45,5 +48,29 @@ void UInventoryGridSlotWidget::SetItem(AItem* NewItem)
 	else
 	{
 		SlotBackground->SetColorAndOpacity(DefaultBackgroundColor);
+	}
+}
+
+void UInventoryGridSlotWidget::BeginItemOverlap(bool IsOverlapValid)
+{
+	if (SlotHighlight)
+	{
+		SlotHighlight->SetVisibility(ESlateVisibility::HitTestInvisible);
+		if (IsOverlapValid)
+		{
+			SlotHighlight->SetColorAndOpacity(ValidOverlapHighlightColor);
+		}
+		else
+		{
+			SlotHighlight->SetColorAndOpacity(InvalidOverlapHighlightColor);
+		}
+	}
+}
+
+void UInventoryGridSlotWidget::EndItemOverlap()
+{
+	if (SlotHighlight)
+	{
+		SlotHighlight->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }

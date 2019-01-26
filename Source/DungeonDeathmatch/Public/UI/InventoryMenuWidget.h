@@ -65,13 +65,21 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UEquipmentSlotWidget* EquipmentSlotFeet;
 
-	/** The equipment slot widget for main hand weapons */
+	/** The equipment slot widget for loadout one main hand weapons */
 	UPROPERTY(meta = (BindWidget))
-	UEquipmentSlotWidget* EquipmentSlotWeaponMainHand;
+	UEquipmentSlotWidget* EquipmentSlotLoadoutOneWeaponMainHand;
 
-	/** The equipment slot widget for off hand weapons */
+	/** The equipment slot widget for loadout one off hand weapons */
 	UPROPERTY(meta = (BindWidget))
-	UEquipmentSlotWidget* EquipmentSlotWeaponOffHand;
+	UEquipmentSlotWidget* EquipmentSlotLoadoutOneWeaponOffHand;
+
+	/** The equipment slot widget for loadout two main hand weapons */
+	UPROPERTY(meta = (BindWidget))
+	UEquipmentSlotWidget* EquipmentSlotLoadoutTwoWeaponMainHand;
+
+	/** The equipment slot widget for loadout two off hand weapons */
+	UPROPERTY(meta = (BindWidget))
+	UEquipmentSlotWidget* EquipmentSlotLoadoutTwoWeaponOffHand;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
 	TMap<EEquipmentSlot, UEquipmentSlotWidget*> EquipmentSlots;
