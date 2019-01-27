@@ -103,33 +103,6 @@ void ADungeonPlayerController::OnEscapeKeyPressed()
 	}
 }
 
-void ADungeonPlayerController::OnUseInventoryItemKeyPressed()
-{
-	if (SelectedItem)
-	{
-	}
-}
-
-void ADungeonPlayerController::OnDropInventoryItemKeyPressed()
-{
-	if (SelectedItem)
-	{
-		ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetPawn());
-		if (Character)
-		{
-			Character->Server_RequestDropItem(SelectedItem->GetItem());
-		}
-
-		ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
-		if (DungeonHUD)
-		{
-			DungeonHUD->HideTooltip();
-		}
-		
-		SelectedItem = nullptr;
-	}
-}
-
 TArray<FInputActionKeyMapping> ADungeonPlayerController::GetKeyForAction(FName ActionName)
 {
 	return PlayerInput->GetKeysForAction(ActionName);
@@ -185,6 +158,16 @@ void ADungeonPlayerController::SetSelectedItem(UDraggableItemWidget* DraggableIt
 UDraggableItemWidget* ADungeonPlayerController::GetSelectedItem()
 {
 	return SelectedItem;
+}
+
+void ADungeonPlayerController::SetClickedItem(UDraggableItemWidget* DraggableItemWidget)
+{
+	ClickedItem = DraggableItemWidget;
+}
+
+UDraggableItemWidget* ADungeonPlayerController::GetClickedItem()
+{
+	return ClickedItem;
 }
 
 void ADungeonPlayerController::StartDraggingItem(UDraggableItemWidget* DraggableItemWidget)

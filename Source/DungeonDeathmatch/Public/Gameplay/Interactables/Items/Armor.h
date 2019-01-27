@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Equippable.h"
 #include "DungeonCharacter.h"
-#include "EquipmentEnums.h"
+#include "EquipmentGlobals.h"
 #include "Armor.generated.h"
 
 class USkeletalMeshComponent;
@@ -27,10 +27,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Armor")
 	TMap<EMeshSegment, USkeletalMesh*> ArmorMeshMap;
 
-	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
-	virtual void OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter) override;
-	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
-
 public:
 	// Sets default values for this actor's properties
 	AArmor(const FObjectInitializer& ObjectInitializer);
@@ -44,5 +40,14 @@ public:
 	EArmorSlot GetArmorSlot();
 
 	TMap<EMeshSegment, USkeletalMesh*> GetArmorMeshMap();
+
+protected:
+	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
+	virtual void ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter) override;
+	virtual void MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter) override;
+
+	virtual void ServerOnUnequip_Implementation() override;
+	virtual void MulticastOnUnequip_Implementation() override;
+	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
 
 };

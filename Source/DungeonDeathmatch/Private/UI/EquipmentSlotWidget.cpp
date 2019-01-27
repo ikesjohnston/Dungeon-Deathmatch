@@ -7,6 +7,11 @@
 #include "DungeonPlayerController.h"
 #include "Armor.h"
 #include "Weapon.h"
+#include "EquipmentComponent.h"
+#include <CanvasPanel.h>
+#include <WidgetBlueprintLibrary.h>
+#include <CanvasPanelSlot.h>
+#include "DungeonHUD.h"
 
 UEquipmentSlotWidget::UEquipmentSlotWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -18,8 +23,6 @@ UEquipmentSlotWidget::UEquipmentSlotWidget(const FObjectInitializer& ObjectIniti
 bool UEquipmentSlotWidget::Initialize()
 {
 	bool Result = Super::Initialize();
-
-	UpdateEquipment();
 
 	if (SlotBackground)
 	{
@@ -34,6 +37,42 @@ bool UEquipmentSlotWidget::Initialize()
 		SlotBorder->SetColorAndOpacity(DefaultBorderColor);
 	}
 
+	// Initialize the slot size
+	float GridSlotSize = 40.0f;
+
+	UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
+	if (GameInstance)
+	{
+		float GridSlotSize = GameInstance->GetInventoryGridSlotSize();
+	}
+
+	// Set default item texture
+	UTexture2D** TexturePtr = EquipmentSlotTextures.Find(SlotType);
+	if (TexturePtr)
+	{
+		UTexture2D* EmptyEquipmentSlotTexture = *TexturePtr;
+		DefaultEquipmentImage->SetBrushFromTexture(EmptyEquipmentSlotTexture);
+	}
+
+	// Resize slot based on type
+	FInventoryGridPair* EquipmentSizePtr = EquipmentSlotSizes.Find(SlotType);
+	if (EquipmentSizePtr)
+	{
+		FInventoryGridPair SlotGridSize = *EquipmentSizePtr;
+		FVector2D SlotSize = FVector2D(GridSlotSize * SlotGridSize.Column, GridSlotSize * SlotGridSize.Row);
+		SlotBackground->SetBrushSize(SlotSize);
+		SlotBorder->SetBrushSize(SlotSize + FVector2D(BorderSize, BorderSize));
+		// Temporary highlighting method, will be using a dedicated texture, but for now just using a basic translucent square highlight
+		SlotHighlight->SetBrushSize(SlotSize);
+	}
+	EquipmentSizePtr = EquipmentTextureSizes.Find(SlotType);
+	if (EquipmentSizePtr)
+	{
+		FInventoryGridPair SlotTextureSize = *EquipmentSizePtr;
+		FVector2D TextureSize = FVector2D(GridSlotSize * SlotTextureSize.Column, GridSlotSize * SlotTextureSize.Row);
+		DefaultEquipmentImage->SetBrushSize(TextureSize);
+	}
+
 	BindToController();
 
 	return Result;
@@ -45,71 +84,26 @@ void UEquipmentSlotWidget::BindToController()
 
 	if (Controller)
 	{
-		Controller->OnBeginItemDrag.AddDynamic(this, &UEquipmentSlotWidget::OnBeginItemDrag);
-		Controller->OnEndItemDrag.AddDynamic(this, &UEquipmentSlotWidget::OnEndItemDrag);
-		bIsSlotBound = true;
+		ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
+		if(Character)
+		{
+			UEquipmentComponent* EquipmentComponent = Character->GetEquipmentComponent();
+			if (EquipmentComponent)
+			{
+				Controller->OnBeginItemDrag.AddDynamic(this, &UEquipmentSlotWidget::OnBeginItemDrag);
+				Controller->OnEndItemDrag.AddDynamic(this, &UEquipmentSlotWidget::OnEndItemDrag);
+
+				EquipmentComponent->OnItemEquipped.AddDynamic(this, &UEquipmentSlotWidget::OnItemEquipped);
+				EquipmentComponent->OnItemUnequipped.AddDynamic(this, &UEquipmentSlotWidget::OnItemUnequipped);
+
+				bIsSlotBound = true;
+			}
+		}
 	}
 
 	if (!bIsSlotBound)
 	{
 		GetWorld()->GetTimerManager().SetTimer(BindSlotTimerHandle, this, &UEquipmentSlotWidget::BindToController, BindingRetryTime, false);
-	}
-}
-
-void UEquipmentSlotWidget::UpdateEquipment()
-{
-	if (!EquippedItemWidget || !DefaultEquipmentImage || !SlotBackground || !SlotHighlight || !SlotBorder)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("UEquipmentSlotWidget::UpdateEquipment - Essential widgets missing from %s. Verify that widgets are correctly set."), *GetName());
-
-		return;
-	}
-
-	AItem* EquippedItem = EquippedItemWidget->GetItem();
-	if (!EquippedItem)
-	{
-		DefaultEquipmentImage->SetVisibility(ESlateVisibility::Visible);
-		EquippedItemWidget->SetVisibility(ESlateVisibility::Collapsed);
-
-		float GridSlotSize = 40.0f;
-
-		UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
-		if (GameInstance)
-		{
-			float GridSlotSize = GameInstance->GetInventoryGridSlotSize();
-		}
-
-		// Set default item texture
-		UTexture2D** TexturePtr = EquipmentSlotTextures.Find(SlotType);
-		if (TexturePtr)
-		{
-			UTexture2D* EmptyEquipmentSlotTexture = *TexturePtr;
-			DefaultEquipmentImage->SetBrushFromTexture(EmptyEquipmentSlotTexture);
-		}
-
-		// Resize slot based on type
-		FInventoryGridPair* GridSizePtr = EquipmentSlotSizes.Find(SlotType);
-		if (GridSizePtr)
-		{
-			FInventoryGridPair SlotGridSize = *GridSizePtr;
-			FVector2D SlotSize = FVector2D(GridSlotSize * SlotGridSize.Column, GridSlotSize * SlotGridSize.Row);
-			SlotBackground->SetBrushSize(SlotSize);
-			SlotBorder->SetBrushSize(SlotSize + FVector2D(BorderSize, BorderSize));
-			// Temporary highlighting method, will be using a dedicated texture, but for now just using a basic translucent square highlight
-			SlotHighlight->SetBrushSize(SlotSize);
-		}
-		GridSizePtr = EquipmentTextureSizes.Find(SlotType);
-		if (GridSizePtr)
-		{
-			FInventoryGridPair SlotTextureSize = *GridSizePtr;
-			FVector2D TextureSize = FVector2D(GridSlotSize * SlotTextureSize.Column, GridSlotSize * SlotTextureSize.Row);
-			DefaultEquipmentImage->SetBrushSize(TextureSize);
-		}
-	}
-	else
-	{
-		DefaultEquipmentImage->SetVisibility(ESlateVisibility::Collapsed);
-		EquippedItemWidget->SetVisibility(ESlateVisibility::Visible);
 	}
 }
 
@@ -120,44 +114,48 @@ bool UEquipmentSlotWidget::GetCanFitDraggedItem()
 
 void UEquipmentSlotWidget::ProcessItemDragAndDrop()
 {
-	if (bCanFitDraggedItem)
+	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
+	if (Controller)
 	{
-		ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
-		if (Controller)
+		ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
+		if (Character)
 		{
-			ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
-			if (Character)
-			{
-				UDraggableItemWidget* DraggedItemWidget = Controller->GetDraggedItem();
-				UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
-				if (DraggedItemWidget) {
-					if (SelectedItemWidget)
+			UDraggableItemWidget* DraggedItemWidget = Controller->GetDraggedItem();
+			UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
+			UDraggableItemWidget* ClickedItemWidget = Controller->GetClickedItem();
+			if (DraggedItemWidget && bCanFitDraggedItem) {
+				AEquippable* ItemToEquip = Cast<AEquippable>(DraggedItemWidget->GetItem());
+				if (SelectedItemWidget)
+				{
+					// Replacing equipment
+					AEquippable* ItemToUnequip = Cast<AEquippable>(SelectedItemWidget->GetItem());
+					if (ItemToEquip && ItemToUnequip)
 					{
 						Controller->StopDraggingItem(false);
 						SelectedItemWidget->StartDragging();
-						//Character->Server_RequestRemoveItemFromInventory(SelectedItemWidget->GetItem());
-						//Character->Server_RequestAddItemToInventoryAtLocation(DraggedItemWidget->GetItem(), SelectionOrigin);
-						Controller->SetSelectedItem(nullptr);
-					}
-					else
-					{
-						//Character->Server_RequestAddItemToInventoryAtLocation(DraggedItemWidget->GetItem(), SelectionOrigin);
-						Controller->StopDraggingItem(false);
-						Controller->SetSelectedItem(nullptr);
+						Character->Server_RequestUnequipItem(ItemToUnequip, SlotType);
+						Character->Server_RequestEquipItemToSlot(ItemToEquip, SlotType);
+						Controller->SetSelectedItem(EquippedItemWidget);
 					}
 				}
-				else if (SelectedItemWidget)
+				else
 				{
-					SelectedItemWidget->StartDragging();
-					//Character->Server_RequestRemoveItemFromInventory(SelectedItemWidget->GetItem());
+					// Equipping a new item
+					Character->Server_RequestEquipItemToSlot(ItemToEquip, SlotType);
+					Controller->StopDraggingItem(false);
+					Controller->SetSelectedItem(nullptr);
 				}
 			}
-		}
-
-		// Remove any highlight from the previous drag operation
-		if (SlotHighlight)
-		{
-			SlotHighlight->SetVisibility(ESlateVisibility::Collapsed);
+			else if (ClickedItemWidget)
+			{
+				// Unequipping an item
+				AEquippable* ItemToUnequip = Cast<AEquippable>(ClickedItemWidget->GetItem());
+				if (ItemToUnequip)
+				{
+					Character->Server_RequestUnequipItem(ItemToUnequip, SlotType);
+					ClickedItemWidget->StartDragging();
+				}
+			}
 		}
 	}
 }
@@ -269,6 +267,61 @@ void UEquipmentSlotWidget::OnEndItemDrag(AItem* Item)
 	if (SlotBorder)
 	{
 		SlotBorder->SetColorAndOpacity(DefaultBorderColor);
+	}
+}
+
+void UEquipmentSlotWidget::OnItemEquipped(AEquippable* Equippable, EEquipmentSlot Slot)
+{
+	if (Slot == SlotType)
+	{
+		// Add the drag and drop widget on top of the inventory grid
+		UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
+		if (GameInstance)
+		{
+			FString DragAndDropString = FString("Drag&Drop_");
+			DragAndDropString.Append(Equippable->GetItemName().ToString());
+			FName DragAndDropName = FName(*DragAndDropString);
+
+			UDraggableItemWidget* DraggableWidget = Cast<UDraggableItemWidget>(CreateWidget(GetOwningPlayer(), GameInstance->GetDragAndDropItemWidgetClass(), DragAndDropName));
+			if (DraggableWidget)
+			{
+				FInventoryGridPair* GridSizePtr = EquipmentSlotSizes.Find(SlotType);
+				if (GridSizePtr)
+				{
+					FInventoryGridPair SlotGridSize = *GridSizePtr;
+					DraggableWidget->InitializeDraggableEquipment(Equippable, SlotGridSize);
+					if (DraggableEquipmentCanvas)
+					{
+						DraggableEquipmentCanvas->AddChild(DraggableWidget);
+						DraggableWidget->SetDesiredSizeInViewport(Equippable->GetGridSizeVector());
+						UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(DraggableWidget->Slot);
+						CanvasSlot->SetAutoSize(true);
+						DraggableWidget->SetRenderTranslation(FVector2D(BorderSize, BorderSize));
+					}
+					DraggableWidget->SetVisibility(ESlateVisibility::Visible);
+				}
+				EquippedItemWidget = DraggableWidget;
+			}
+			DefaultEquipmentImage->SetVisibility(ESlateVisibility::Collapsed);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UEquipmentSlotWidget::OnItemEquipped - Failed to get game instance."));
+		}
+	}
+}
+
+void UEquipmentSlotWidget::OnItemUnequipped(AEquippable* Equippable, EEquipmentSlot Slot)
+{
+	if (Slot == SlotType)
+	{
+		EquippedItemWidget->SetVisibility(ESlateVisibility::Collapsed);
+		if (DraggableEquipmentCanvas)
+		{
+			DraggableEquipmentCanvas->RemoveChild(EquippedItemWidget);
+		}
+		EquippedItemWidget = nullptr;
+		DefaultEquipmentImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 }
 
@@ -402,11 +455,64 @@ void UEquipmentSlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 	}
 }
 
-FReply UEquipmentSlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+FReply UEquipmentSlotWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
+	if (Controller)
 	{
-		ProcessItemDragAndDrop();
+		UDraggableItemWidget* SelectedItem = Controller->GetSelectedItem();
+		if (SelectedItem)
+		{
+			if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+			{
+				if (SelectedItem)
+				{
+					Controller->SetClickedItem(SelectedItem);
+					return UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton).NativeReply;
+				}
+			}
+			else if (InMouseEvent.GetEffectingButton() == EKeys::MiddleMouseButton)
+			{
+				ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
+				if (Character)
+				{
+					UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
+					// Unequip item and drop it
+					AEquippable* ItemToDrop = Cast<AEquippable>(SelectedItemWidget->GetItem());
+					if (ItemToDrop)
+					{
+						Character->Server_RequestUnequipItem(ItemToDrop, SlotType);
+						Character->Server_RequestDropItem(ItemToDrop, false);
+						Controller->SetSelectedItem(nullptr);
+						ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
+						if (HUD)
+						{
+							HUD->HideTooltip();
+						}
+					}
+				}
+			}
+			else if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
+			{
+				ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
+				if (Character)
+				{
+					UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
+					// Unequip item and attempt to move it to the character's inventory
+					AEquippable* ItemToUnequip = Cast<AEquippable>(SelectedItemWidget->GetItem());
+					if (ItemToUnequip)
+					{
+						Character->Server_RequestUnequipItem(ItemToUnequip, SlotType, true);
+						Controller->SetSelectedItem(nullptr);
+						ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
+						if (HUD)
+						{
+							HUD->HideTooltip();
+						}
+					}
+				}
+			}
+		}
 	}
 
 	return FReply::Handled();
@@ -414,26 +520,31 @@ FReply UEquipmentSlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry
 
 FReply UEquipmentSlotWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
+	if (Controller)
 	{
-		ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
-		if (Controller)
+		if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 		{
-			UDraggableItemWidget* SelectedItem = Controller->GetSelectedItem();
-			UDraggableItemWidget* DraggedItem = Controller->GetDraggedItem();
-			if (DraggedItem)
-			{
-				ProcessItemDragAndDrop();
-			}
-			else if (SelectedItem && SelectedItem->IsReadyForDrag())
-			{
-				if (SelectedItem->GetItem() == EquippedItemWidget->GetItem())
-				{
-					SelectedItem->StartDragging();
-				}
-			}
+			ProcessItemDragAndDrop();
+			Controller->SetClickedItem(nullptr);
 		}
 	}
 
 	return FReply::Handled();
+}
+
+void UEquipmentSlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
+{
+	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
+	if (Controller)
+	{
+		UDraggableItemWidget* ClickedItem = Controller->GetClickedItem();
+		UDraggableItemWidget* DraggedItem = Controller->GetDraggedItem();
+		if (ClickedItem && !DraggedItem)
+		{
+			Controller->SetSelectedItem(nullptr);
+			ProcessItemDragAndDrop();
+			Controller->SetClickedItem(nullptr);
+		}
+	}
 }

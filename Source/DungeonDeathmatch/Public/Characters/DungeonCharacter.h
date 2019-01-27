@@ -6,7 +6,7 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include <GameplayTagContainer.h>
-#include "EquipmentComponent.h"
+#include "EquipmentGlobals.h"
 #include <GameplayTagAssetInterface.h>
 #include "InventoryGlobals.h"
 #include "DungeonCharacter.generated.h"
@@ -158,6 +158,10 @@ protected:
 
 	/** Mapping of mesh segment to mesh component, for updating the character mesh with new equipment */
 	TMap<EMeshSegment, USkeletalMeshComponent*> MeshComponentMap;
+
+	/** Mapping of mesh segment to default meshes, for updating the character mesh when removing equipment */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mesh")
+	TMap<EMeshSegment, USkeletalMesh*> DefaultMeshMap;
 
 	/********************************************************* END CHARACTER MESH SEGMENTS VARIABLES **********************************************************/
 
@@ -398,6 +402,8 @@ public:
 	ADungeonCharacter();
 
 protected:
+	virtual void PreInitializeComponents() override;
+
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
@@ -691,7 +697,7 @@ public:
 	 * Server side function that attempts to add an item to the character's inventory at the specified location and makes a multicast RPC with the result. Used for items that are currently "despawned" and may only be visible from UI elements.
 	 *
 	 * @param Item The item to attempt to add to the inventory
-	* @param OriginSlot The upper left most grid slot where the item should be placed
+	 * @param OriginSlot The upper left most grid slot where the item should be placed
 	 */
 	UFUNCTION(Server, Unreliable, WithValidation)
 	void Server_RequestAddItemToInventoryAtLocation(AItem* Item, FInventoryGridPair OriginSlot);
@@ -723,47 +729,33 @@ public:
 	void Server_RequestDropItem(AItem* Item, bool CheckInventory = true);
 
 	/**
+	 * Server side function that attempts to equip an item to any valid equipment slot and makes a multicast RPC with the result. Can be used when interacting with items in the world or in the UI.
+	 *
+	 * @param Equippable The item to attempt to equip
+	 * @param TryMoveReplacementToInventory Should an attempt be made to move any item already in the specified slot back to the character's inventory?
+	 */
+	UFUNCTION(BlueprintCallable, Server, Unreliable, WithValidation, Category = "Inventory & Equipment")
+	void Server_RequestEquipItem(AEquippable* Equippable, bool TryMoveReplacementToInventory = false);
+
+	/**
 	 * Server side function that attempts to equip an item to a specific equipment slot and makes a multicast RPC with the result. Can be used when interacting with items in the world or in the UI.
 	 *
 	 * @param Equippable The item to attempt to equip
 	 * @param EquipmentSlot The equipment slot to attempt to put the item into
+	 * @param TryMoveReplacementToInventory Should an attempt be made to move any item already in the specified slot back to the character's inventory?
 	 */
 	UFUNCTION(BlueprintCallable, Server, Unreliable, WithValidation, Category = "Inventory & Equipment")
-	void Server_RequestEquipItem(AEquippable* Equippable, EEquipmentSlot EquipmentSlot);
+	void Server_RequestEquipItemToSlot(AEquippable* Equippable, EEquipmentSlot EquipmentSlot, bool TryMoveReplacementToInventory = false);
 
 	/**
 	 * Server side function that attempts to unequip an item from a specific equipment slot and makes a multicast RPC with the result. Can be used when interacting with items in the world or in the UI.
 	 *
 	 * @param Equippable The item to attempt to unequip
 	 * @param EquipmentSlot The equipment slot to attempt to remove the item from
+	 * @param TryMoveToInventory Should an attempt be made to move the unequipped item back to the character's inventory?
 	 */
 	UFUNCTION(BlueprintCallable, Server, Unreliable, WithValidation, Category = "Inventory & Equipment")
-	void Server_RequestUnequipItem(AEquippable* Equippable, EEquipmentSlot EquipmentSlot);
-
-
-	/**
-	 * Updates a character's mesh segments when armor equipment changes. Only called on the server.
-	 *
-	 * @param Armor The piece of armor to update meshes with
-	 */
-	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_UpdateMeshSegments(AArmor* Armor);
-
-	/**
-	 * Updates a character's mesh segments when armor equipment changes; called on all clients, should only be called by server.
-	 *
-	 * @param Armor The piece of armor to update meshes with
-	 */
-	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_UpdateMeshSegments(AArmor* Armor);
-
-	/**
-	 * Adds a weapon from a loadout slot to a specified sheathe location
-	 *
-	 * @param LoadoutSlot The struct containing the weapon and sheathe slot details
-	 */
-	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_UpdateLoadout(const FWeaponLoadout& Loadout);
+	void Server_RequestUnequipItem(AEquippable* Equippable, EEquipmentSlot EquipmentSlot, bool TryMoveToInventory = false);
 
 	/********************************************************* END PUBLIC INVENTORY & EQUIPMENT FUNCTIONS *****************************************************/
 
@@ -822,6 +814,16 @@ public:
 	 * @return The mesh segment to component map
 	 */
 	TMap<EMeshSegment, USkeletalMeshComponent*> GetMeshComponentMap();
+
+
+	/**
+	 * Server call to update a character's mesh segment with a new mesh; used when changing armor equipment.
+	 *
+	 * @param MeshSegment The mesh segment to alter
+	 * @param Mesh The mesh to update the segment to, will use a default mesh if this is nullptr
+	 */
+	UFUNCTION(Server, Unreliable, WithValidation)
+	void Server_UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh);
 
 	/**
 	 * Gets the 2DRenderCapture Actor for use by the UI
@@ -1030,14 +1032,6 @@ protected:
 	UFUNCTION()
 	void OnEscapeKeyPressed();
 
-	/** Processes Use Inventory Item key presses. Only valid when the inventory menu is open. */
-	UFUNCTION()
-	void OnUseInventoryItemKeyPressed();
-
-	/** Processes Drop Inventory Item key presses. Only valid when the inventory menu is open. */
-	UFUNCTION()
-	void OnDropInventoryItemKeyPressed();
-
 	/********************************************************* END PROTECTED INPUT FUNCTIONS **************************************************************/
 
 	/** Interacts with whatever the character is currently focusing. */
@@ -1126,7 +1120,45 @@ protected:
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_DropItemResponse(AItem* Item, bool WasDropped);
 
+	/**
+	 * Multicast function that delivers the response from a server request to equip an item. Used to trigger any required UI events. Only processed for locally controlled characters.
+	 *
+	 * @param Equippable The item that was requested to be equipped
+	 * @param WasEquipped Was the request successful?
+	 */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_EquipItemResponse(AEquippable* Equippable, bool WasEquipped);
+
+	/**
+	 * Multicast function that delivers the response from a server request to unequip an item. Used to trigger any required UI events. Only processed for locally controlled characters.
+	 *
+	 * @param  Equippable The item that was requested to be unequipped
+	 * @param WasUnequipped Was the request successful?
+	 */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_UnequipItemResponse(AEquippable* Equippable, bool WasUnequipped);
+
+	/**
+	 * Updates a character's mesh segment with a new mesh; used when changing armor equipment. Should only be called by server.
+	 *
+	 * @param MeshSegment The mesh segment to alter
+	 * @param Mesh The mesh to update the segment to, will use a default mesh if this is nullptr
+	 */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh);
+
+	/**
+	 * Adds a weapon from a loadout slot to a specified sheathe location
+	 *
+	 * @param LoadoutSlot The struct containing the weapon and sheathe slot details
+	 */
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_UpdateLoadout(const FWeaponLoadout& Loadout);
+
 	/********************************************************* END PROTECTED INVENTORY & EQUIPMENT FUNCTIONS ************************************************************/
+
+	UFUNCTION(BlueprintCallable, Category = "Mesh")
+	void InitMeshSegmentsDefaults(TMap<EMeshSegment, USkeletalMesh*> MeshMap);
 
 private:
 	/** Calculates the character's aim yaw and pitch for use by aim offsets */

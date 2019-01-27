@@ -104,25 +104,15 @@ void ACharacterRenderCapture2D::BeginPlay()
 	
 }
 
-void ACharacterRenderCapture2D::OnArmorEquipped(AArmor* Armor)
+void ACharacterRenderCapture2D::UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh)
 {
-	if (Armor)
+	USkeletalMeshComponent** MeshComponentPtr = MeshComponentMap.Find(MeshSegment);
+	if (MeshComponentPtr)
 	{
-		UpdateMeshSegments(Armor->GetArmorMeshMap());
-	}
-}
-
-void ACharacterRenderCapture2D::UpdateMeshSegments(TMap<EMeshSegment, USkeletalMesh*> MeshMap)
-{
-	for (TPair<EMeshSegment, USkeletalMesh*> MeshPair : MeshMap)
-	{
-		EMeshSegment MeshSegment = MeshPair.Key;
-		USkeletalMesh* Mesh = MeshPair.Value;
-		
-		USkeletalMeshComponent* MeshComponent = *MeshComponentMap.Find(MeshSegment);
+		USkeletalMeshComponent* MeshComponent = *MeshComponentPtr;
 		if (MeshComponent)
 		{
-			MeshComponent->SetSkeletalMesh(Mesh);
+			MeshComponent->SetSkeletalMesh(NewMesh);
 		}
 	}
 }
@@ -135,10 +125,6 @@ void ACharacterRenderCapture2D::Tick(float DeltaTime)
 
 void ACharacterRenderCapture2D::InitializeCharacter(ADungeonCharacter* Character)
 {
-	Character->OnArmorEquipped.RemoveDynamic(this, &ACharacterRenderCapture2D::OnArmorEquipped);
-	DisplayedCharacter = Character;
-	DisplayedCharacter->OnArmorEquipped.AddDynamic(this, &ACharacterRenderCapture2D::OnArmorEquipped);
-
 	TMap<EMeshSegment, USkeletalMeshComponent*> CharacterMeshComponentMap = Character->GetMeshComponentMap();
 	for (TPair<EMeshSegment, USkeletalMeshComponent*> MeshComponentPair : CharacterMeshComponentMap)
 	{

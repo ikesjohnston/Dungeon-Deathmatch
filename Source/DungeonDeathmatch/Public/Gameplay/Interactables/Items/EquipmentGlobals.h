@@ -1,6 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "EquipmentGlobals.generated.h"
+
+class AWeapon;
 
 /* All equipment slots available to a character */
 UENUM(BlueprintType)
@@ -112,4 +115,28 @@ enum class ERequestedHand : uint8
 	MainHand	UMETA(DisplayName = "Main Hand"),
 	OffHand		UMETA(DisplayName = "Off Hand"),
 	Both		UMETA(DisplayName = "Both")
+};
+
+/** Struct that stores the details of an individual weapon loadout */
+USTRUCT(BlueprintType)
+struct FWeaponLoadout
+{
+	GENERATED_BODY()
+
+	/** The main hand weapon slot in the loadout. This weapon will determine if an off hand weapon can be used. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	AWeapon* MainHandWeapon;
+
+	/** The off hand weapon loadout. This can only be used if MainHandWeapon is a OneHand weapon. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	AWeapon* OffHandWeapon;
+
+	/** The location on the character where this loadout is stored */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	ELoadoutSheatheLocation SheatheLocation;
+
+	FWeaponLoadout()
+	{
+
+	}
 };

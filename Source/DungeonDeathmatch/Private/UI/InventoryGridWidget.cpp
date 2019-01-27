@@ -16,6 +16,8 @@
 #include <Kismet/KismetSystemLibrary.h>
 #include <Reply.h>
 #include "DungeonCharacter.h"
+#include <WidgetBlueprintLibrary.h>
+#include "DungeonHUD.h"
 
 // Console command for debugging inventory grid widgets
 static int32 DebugInventoryGrid = 0;
@@ -123,7 +125,7 @@ void UInventoryGridWidget::AddItem(AItem* Item, FInventoryGridPair OriginGridSlo
 		UDraggableItemWidget* DraggableWidget = Cast<UDraggableItemWidget>(CreateWidget(GetOwningPlayer(), GameInstance->GetDragAndDropItemWidgetClass(), DragAndDropName));
 		if (DraggableWidget)
 		{
-			DraggableWidget->InitializeDraggableItem(Item, false, OriginGridSlot);
+			DraggableWidget->InitializeDraggableItem(Item, OriginGridSlot);
 			if (DraggableItemsCanvas)
 			{
 				DraggableItemsCanvas->AddChild(DraggableWidget);
@@ -266,37 +268,38 @@ void UInventoryGridWidget::UpdateInventoryGridSize(uint8 Rows, uint8 Columns)
 
 void UInventoryGridWidget::ProcessItemDragAndDrop()
 {
-	if (bIsSelectionValid)
+	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
+	if (Controller)
 	{
-		ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
-		if (Controller)
+		ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
+		if (Character)
 		{
-			ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
-			if (Character)
-			{
-				UDraggableItemWidget* DraggedItemWidget = Controller->GetDraggedItem();
-				UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
-				if (DraggedItemWidget) {
-					if (SelectedItemWidget)
-					{
-						Controller->StopDraggingItem(false);
-						SelectedItemWidget->StartDragging();
-						Character->Server_RequestRemoveItemFromInventory(SelectedItemWidget->GetItem());
-						Character->Server_RequestAddItemToInventoryAtLocation(DraggedItemWidget->GetItem(), SelectionOrigin);
-						Controller->SetSelectedItem(nullptr);
-					}
-					else
-					{
-						Character->Server_RequestAddItemToInventoryAtLocation(DraggedItemWidget->GetItem(), SelectionOrigin);
-						Controller->StopDraggingItem(false);
-						Controller->SetSelectedItem(nullptr);
-					}
-				}
-				else if (SelectedItemWidget)
+			UDraggableItemWidget* DraggedItemWidget = Controller->GetDraggedItem();
+			UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
+			UDraggableItemWidget* ClickedItemWidget = Controller->GetClickedItem();
+			if (DraggedItemWidget && bIsSelectionValid) {
+				if (SelectedItemWidget)
 				{
+					// Selecting a replacement item to drag
+					Controller->StopDraggingItem(false);
 					SelectedItemWidget->StartDragging();
 					Character->Server_RequestRemoveItemFromInventory(SelectedItemWidget->GetItem());
+					Character->Server_RequestAddItemToInventoryAtLocation(DraggedItemWidget->GetItem(), SelectionOrigin);
+					Controller->SetSelectedItem(nullptr);
 				}
+				else
+				{
+					// Trying to drop the item at the current location
+					Character->Server_RequestAddItemToInventoryAtLocation(DraggedItemWidget->GetItem(), SelectionOrigin);
+					Controller->StopDraggingItem(false);
+					Controller->SetSelectedItem(nullptr);
+				}
+			}
+			else if (ClickedItemWidget)
+			{
+				// Selecting a new item to drag
+				ClickedItemWidget->StartDragging();
+				Character->Server_RequestRemoveItemFromInventory(ClickedItemWidget->GetItem());
 			}
 		}
 	}
@@ -462,11 +465,66 @@ void UInventoryGridWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 	bIsHovering = false;
 }
 
-FReply UInventoryGridWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+FReply UInventoryGridWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
+	if (Controller)
 	{
-		ProcessItemDragAndDrop();
+		UDraggableItemWidget* SelectedItem = Controller->GetSelectedItem();
+
+		if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+		{
+			if (SelectedItem)
+			{
+				Controller->SetClickedItem(SelectedItem);
+				return UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton).NativeReply;
+			}
+		}
+		else if (InMouseEvent.GetEffectingButton() == EKeys::MiddleMouseButton)
+		{
+			ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
+			if (Character)
+			{
+				UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
+				// Drop the item
+				AItem* ItemToDrop = SelectedItemWidget->GetItem();
+				if (ItemToDrop)
+				{
+					Character->Server_RequestRemoveItemFromInventory(ItemToDrop);
+					Character->Server_RequestDropItem(ItemToDrop, false);
+					Controller->SetSelectedItem(nullptr);
+					ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
+					if (HUD)
+					{
+						HUD->HideTooltip();
+					}
+				}
+			}
+		}
+		else if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
+		{
+			ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
+			if (Character)
+			{
+				UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
+				if (SelectedItemWidget)
+				{
+					// If the item is an equippable, try to equip it
+					AEquippable* Equippable = Cast<AEquippable>(SelectedItemWidget->GetItem());
+					if (Equippable)
+					{
+						Character->Server_RequestRemoveItemFromInventory(Equippable);
+						Character->Server_RequestEquipItem(Equippable, true);
+						Controller->SetSelectedItem(nullptr);
+						ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
+						if (HUD)
+						{
+							HUD->HideTooltip();
+						}
+					}
+				}
+			}
+		}
 	}
 
 	return FReply::Handled();
@@ -474,23 +532,31 @@ FReply UInventoryGridWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry
 
 FReply UInventoryGridWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
+	if (Controller)
 	{
-		ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
-		if (Controller)
+		if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 		{
-			UDraggableItemWidget* SelectedItem = Controller->GetSelectedItem();
-			UDraggableItemWidget* DraggedItem = Controller->GetDraggedItem();
-			if (DraggedItem)
-			{
-				ProcessItemDragAndDrop();
-			}
-			else if (SelectedItem && SelectedItem->IsReadyForDrag())
-			{
-				SelectedItem->StartDragging();
-			}
+			ProcessItemDragAndDrop();
+			Controller->SetClickedItem(nullptr);
 		}
 	}
 
 	return FReply::Handled();
+}
+
+void UInventoryGridWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
+{
+	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
+	if (Controller)
+	{
+		UDraggableItemWidget* ClickedItem = Controller->GetClickedItem();
+		UDraggableItemWidget* DraggedItem = Controller->GetDraggedItem();
+		if (ClickedItem && !DraggedItem)
+		{
+			Controller->SetSelectedItem(nullptr);
+			ProcessItemDragAndDrop();
+			Controller->SetClickedItem(nullptr);
+		}
+	}
 }

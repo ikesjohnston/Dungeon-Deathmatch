@@ -49,13 +49,19 @@ public:
 	virtual bool Initialize() override;
 
 	/** Sets the item associated with this widget and adjusts the widget size and location to match its location context */
-	void InitializeDraggableItem(AItem* DraggableItem, bool IsEquipment = false, FInventoryGridPair InventoryGridLocation = FInventoryGridPair());
+	void InitializeDraggableItem(AItem* DraggableItem, FInventoryGridPair InventoryGridLocation = FInventoryGridPair());
+
+	/** Initializes the widget for a specifically sized equipment slot */
+	void InitializeDraggableEquipment(AItem* DraggableItem, FInventoryGridPair SlotSize);
 
 	/**  Gets the item associated with this widget */
 	AItem* GetItem();
 
 	/** Is this widget in a state where it can be dragged? */
 	bool IsReadyForDrag();
+
+	/** Sets if this widget in a state where it can be dragged */
+	void SetIsReadyForDrag(bool IsReadyForDrag);
 
 	/** Tells the local player controller to start dragging this widget's item. Does NOT remove the item from any inventory or equipment components or widgets. */
 	void StartDragging();
@@ -65,7 +71,7 @@ protected:
 
 	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
 
-	virtual FReply NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	//virtual FReply NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
-	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
+	//virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
 };

@@ -100,9 +100,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Scene Capture")
 	float InputRotationRate;
 
-	/** The character that's appearance is being dupilcated for this scene */
-	ADungeonCharacter* DisplayedCharacter;
-
 public:	
 	// Sets default values for this actor's properties
 	ACharacterRenderCapture2D();
@@ -111,25 +108,19 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	/** Event for when a new piece of armor is equipped to the displayed character 
-	 *
-	 * @param Armor The piece of armor that was equipped
-	 */
-	UFUNCTION()
-	void OnArmorEquipped(AArmor* Armor);
-
-	/** 
-	 * Updates the duplicated mesh with the mapped skeletal meshes
-	 *
-	 * @param MeshMap The mapping of mesh segment to skeletal mesh
-	 */
-	void UpdateMeshSegments(TMap<EMeshSegment, USkeletalMesh*> MeshMap);
-
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	void InitializeCharacter(ADungeonCharacter* Character);
+
+	/**
+	 * Updates the captured mesh with the specified mesh segment
+	 *
+	 * @param MeshSegment The mesh segment to alter
+	 * @param Mesh The mesh to update the segment to, will use a default mesh if this is nullptr
+	 */
+	void UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh);
 
 	/**
 	 * Rotates the captured character given some mouse axis input

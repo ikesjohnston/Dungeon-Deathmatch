@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Equippable.h"
-#include "EquipmentEnums.h"
+#include "EquipmentGlobals.h"
 #include "Weapon.generated.h"
 
 class UCapsuleComponent;
@@ -65,10 +65,4 @@ public:
 
 	/** Gets the combat state of the weapon */
 	EWeaponState GetWeaponState();
-
-	/** Calls character equipment logic. Can be overridden in BP. */
-	virtual void OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter) override;
-
-	/** Calls character unequip logic. Can be overridden in BP. */
-	virtual void OnUnequip_Implementation() override;
 };

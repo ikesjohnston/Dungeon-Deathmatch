@@ -4,12 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "EquipmentEnums.h"
+#include "EquipmentGlobals.h"
 #include "Item.h"
 #include "EquipmentSlotWidget.generated.h"
 
 class UImage;
 class UDraggableItemWidget;
+class UCanvasPanel;
 
 /**
  * Widget for displaying an equipment slot and any item currently in that slot
@@ -36,8 +37,12 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UImage* DefaultEquipmentImage;
 
-	/** The draggable item widget for whatever item is equipped in the slot, if any*/
+	/** The canvas widget that draggable equipment widgets will be added and removed from */
 	UPROPERTY(meta = (BindWidget))
+	UCanvasPanel* DraggableEquipmentCanvas;
+
+	/** The draggable item widget for whatever item is equipped in the slot, if any*/
+	UPROPERTY()
 	UDraggableItemWidget* EquippedItemWidget;
 
 	/** The type of equipment that can go in this slot */
@@ -104,9 +109,6 @@ protected:
 	/** Attempts to get the local player controller and bind the slot to it */
 	void BindToController();
 
-	/** Updates the displayed item image for the slot and disables the draggable item widget if nothing is equipped */
-	void UpdateEquipment();
-
 	/** Can this slot accept the currently dragged item? */
 	bool GetCanFitDraggedItem();
 
@@ -121,11 +123,31 @@ protected:
 	UFUNCTION()
 	void OnEndItemDrag(AItem* Item);
 
+	/**
+	 * Event for when a new item is equipped to the character that owns this widget
+	 *
+	 * @param Equippable The item that was equipped
+	 * @param EquipmentSlot The equipment slot the item went into
+	 */
+	UFUNCTION()
+	void OnItemEquipped(AEquippable* Equippable, EEquipmentSlot EquipmentSlot);
+
+	/**
+	 * Event for when an item is unequipped from the character that owns this widget
+	 *
+	 * @param Equippable The item that was unequipped
+	 * @param EquipmentSlot The equipment slot the item was removed from
+	 */
+	UFUNCTION()
+	void OnItemUnequipped(AEquippable* Equippable, EEquipmentSlot EquipmentSlot);
+
 	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
 	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
 
-	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
 };

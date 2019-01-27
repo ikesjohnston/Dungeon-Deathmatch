@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "EquipmentEnums.h"
+#include "EquipmentGlobals.h"
 #include "InventoryMenuWidget.generated.h"
 
 class UInventoryGridWidget;

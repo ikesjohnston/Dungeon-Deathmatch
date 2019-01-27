@@ -80,6 +80,10 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 	UDraggableItemWidget* SelectedItem;
 
+	/* The DraggableItemWidget that is being clicked on, if any. Used for determining "click and hold" drag events, vs just "click & release" drag events */
+	UPROPERTY(BlueprintReadOnly, Category = "UI")
+	UDraggableItemWidget* ClickedItem;
+
 	bool bCanTraceForInteractables;
 
 public:
@@ -101,16 +105,6 @@ public:
 	 * Processes UI updates from the escape key being pressed
 	 */
 	void OnEscapeKeyPressed();
-	
-	/**
-	 * Triggers UI updates from the UseInventoryItem key being pressed
-	 */
-	void OnUseInventoryItemKeyPressed();
-
-	/**
-	 * Triggers UI updates from the DropInventoryItem key being pressed
-	 */
-	void OnDropInventoryItemKeyPressed();
 
 	/**
 	 * Gets the key binding for a specific action.
@@ -140,23 +134,24 @@ public:
 	void SetCursor(UDungeonCursorWidget* NewCursor);
 
 	/** Gets the DraggableItemWidget associated with the current drag and drop operation, if any */
-	UFUNCTION(BlueprintPure)
 	UDraggableItemWidget* GetDraggedItem();
 
 	/** Sets the DraggableItemWidget currently being moused over */
-	UFUNCTION(BlueprintCallable)
 	void SetSelectedItem(UDraggableItemWidget* DraggableItemWidget);
 
 	/** Gets the DraggableItemWidget currently being moused over */
-	UFUNCTION(BlueprintPure)
 	UDraggableItemWidget* GetSelectedItem();
 
+	/** Sets the DraggableItemWidget currently being clicked on */
+	void SetClickedItem(UDraggableItemWidget* DraggableItemWidget);
+
+	/** Gets the DraggableItemWidget currently being clicked on */
+	UDraggableItemWidget* GetClickedItem();
+
 	/** Sets the DraggableItemWidget associated with the current drag and drop operation. Updates the mouse cursor with the image of any item being dragged */
-	UFUNCTION(BlueprintCallable)
 	void StartDraggingItem(UDraggableItemWidget* DraggableItemWidget);
 
 	/** Stops the current drag and drop operation. */
-	UFUNCTION(BlueprintCallable)
 	void StopDraggingItem(bool WasCanceled);
 
 protected:
