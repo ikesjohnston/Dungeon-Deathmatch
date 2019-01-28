@@ -219,7 +219,9 @@ void UInGameOverlayWidget::CheckForItemDrop()
 			ADungeonCharacter* Character = Cast<ADungeonCharacter>(PlayerController->GetPawn());
 			if (Character)
 			{
-				Character->Server_RequestDropItem(DraggedItemWidget->GetItem(), false);
+				AItem* DraggedItem = DraggedItemWidget->GetItem();
+				Character->Server_RequestDropItem(DraggedItem, false);
+				UGameplayStatics::PlaySound2D(DraggedItem->GetWorld(), DraggedItem->GetInteractionSound());
 			}
 			PlayerController->StopDraggingItem(true);
 		}

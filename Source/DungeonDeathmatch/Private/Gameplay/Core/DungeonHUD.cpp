@@ -2,6 +2,7 @@
 
 #include "DungeonHUD.h"
 #include "UI/InGameOverlayWidget.h"
+#include <Kismet/GameplayStatics.h>
 
 void ADungeonHUD::BeginPlay()
 {
@@ -52,6 +53,7 @@ void ADungeonHUD::ShowInventoryMenu()
 	if (InGameOverlay)
 	{
 		InGameOverlay->ShowInventoryMenu();
+		UGameplayStatics::PlaySound2D(GetWorld(), InventoryOpenSound);
 	}
 }
 
@@ -60,6 +62,7 @@ void ADungeonHUD::HideInventoryMenu()
 	if (InGameOverlay)
 	{
 		InGameOverlay->HideInventoryMenu();
+		UGameplayStatics::PlaySound2D(GetWorld(), InventoryCloseSound);
 	}
 }
 

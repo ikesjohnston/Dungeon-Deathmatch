@@ -61,6 +61,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment")
 	TMap<EEquipmentSlot, FInventoryGridPair> EquipmentTextureSizes;
 
+	/* Sound to play when a drag operation starts */
+	UPROPERTY(EditAnywhere, Category = "Equipment")
+	USoundCue* BeginDragSound;
+
 	/** The time, in seconds, to wait before retrying binding on failure */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment")
 	float BindingRetryTime;

@@ -135,6 +135,7 @@ void UEquipmentSlotWidget::ProcessItemDragAndDrop()
 						SelectedItemWidget->StartDragging();
 						Character->Server_RequestUnequipItem(ItemToUnequip, SlotType);
 						Character->Server_RequestEquipItemToSlot(ItemToEquip, SlotType);
+						UGameplayStatics::PlaySound2D(Character->GetWorld(), ItemToEquip->GetInteractionSound());
 						Controller->SetSelectedItem(EquippedItemWidget);
 					}
 				}
@@ -142,11 +143,12 @@ void UEquipmentSlotWidget::ProcessItemDragAndDrop()
 				{
 					// Equipping a new item
 					Character->Server_RequestEquipItemToSlot(ItemToEquip, SlotType);
+					UGameplayStatics::PlaySound2D(Character->GetWorld(), ItemToEquip->GetInteractionSound());
 					Controller->StopDraggingItem(false);
 					Controller->SetSelectedItem(nullptr);
 				}
 			}
-			else if (ClickedItemWidget)
+			else if (ClickedItemWidget && !DraggedItemWidget)
 			{
 				// Unequipping an item
 				AEquippable* ItemToUnequip = Cast<AEquippable>(ClickedItemWidget->GetItem());
@@ -154,6 +156,7 @@ void UEquipmentSlotWidget::ProcessItemDragAndDrop()
 				{
 					Character->Server_RequestUnequipItem(ItemToUnequip, SlotType);
 					ClickedItemWidget->StartDragging();
+					UGameplayStatics::PlaySound2D(Character->GetWorld(), BeginDragSound);
 				}
 			}
 		}
@@ -293,10 +296,9 @@ void UEquipmentSlotWidget::OnItemEquipped(AEquippable* Equippable, EEquipmentSlo
 					if (DraggableEquipmentCanvas)
 					{
 						DraggableEquipmentCanvas->AddChild(DraggableWidget);
-						DraggableWidget->SetDesiredSizeInViewport(Equippable->GetGridSizeVector());
 						UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(DraggableWidget->Slot);
 						CanvasSlot->SetAutoSize(true);
-						DraggableWidget->SetRenderTranslation(FVector2D(BorderSize, BorderSize));
+						DraggableWidget->SetRenderTranslation(FVector2D(BorderSize / 2, BorderSize / 2));
 					}
 					DraggableWidget->SetVisibility(ESlateVisibility::Visible);
 				}
@@ -483,6 +485,7 @@ FReply UEquipmentSlotWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InG
 					{
 						Character->Server_RequestUnequipItem(ItemToDrop, SlotType);
 						Character->Server_RequestDropItem(ItemToDrop, false);
+						UGameplayStatics::PlaySound2D(Character->GetWorld(), ItemToDrop->GetInteractionSound());
 						Controller->SetSelectedItem(nullptr);
 						ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
 						if (HUD)
@@ -503,6 +506,7 @@ FReply UEquipmentSlotWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InG
 					if (ItemToUnequip)
 					{
 						Character->Server_RequestUnequipItem(ItemToUnequip, SlotType, true);
+						UGameplayStatics::PlaySound2D(Character->GetWorld(), ItemToUnequip->GetInteractionSound());
 						Controller->SetSelectedItem(nullptr);
 						ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
 						if (HUD)

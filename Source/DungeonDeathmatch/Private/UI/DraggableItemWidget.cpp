@@ -10,7 +10,6 @@
 #include <SlateBlueprintLibrary.h>
 #include "EquipmentGlobals.h"
 #include "Equippable.h"
-#include <WidgetBlueprintLibrary.h>
 
 UDraggableItemWidget::UDraggableItemWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -55,7 +54,7 @@ void UDraggableItemWidget::InitializeDraggableItem(AItem* DraggableItem, FInvent
 	{
 		float GridSize = GameInstance->GetInventoryGridSlotSize();
 		FVector2D RenderTranslation = FVector2D(GridSize * InventoryGridLocation.Column, GridSize * InventoryGridLocation.Row);
-		ItemCanvas->SetRenderTranslation(RenderTranslation);
+		SetRenderTranslation(RenderTranslation);
 		ItemSelectButton->WidgetStyle.Normal.ImageSize = Item->GetGridSizeVector();
 		ItemSelectButton->WidgetStyle.Hovered.ImageSize = Item->GetGridSizeVector();
 		ItemSelectButton->WidgetStyle.Pressed.ImageSize = Item->GetGridSizeVector();
@@ -94,22 +93,8 @@ AItem* UDraggableItemWidget::GetItem()
 	return Item;
 }
 
-bool UDraggableItemWidget::IsReadyForDrag()
-{
-	return bIsReadyForDrag;
-}
-
-void UDraggableItemWidget::SetIsReadyForDrag(bool IsReadyForDrag)
-{
-	bIsReadyForDrag = IsReadyForDrag;
-}
-
 void UDraggableItemWidget::StartDragging()
 {
-	bIsReadyForDrag = false;
-
-	ItemSelectButton->SetVisibility(ESlateVisibility::Collapsed);
-
 	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
 
 	if (Controller)
@@ -126,7 +111,7 @@ void UDraggableItemWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const
 	if (GameInstance)
 	{
 		float GridSize = GameInstance->GetInventoryGridSlotSize();
-		FVector2D RenderTranslation = FVector2D(GridSize * GridLocation.Column, GridSize * GridLocation.Row);
+		//FVector2D RenderTranslation = FVector2D(GridSize * GridLocation.Column, GridSize * GridLocation.Row);
 
 		ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
 		if (Controller)
@@ -138,7 +123,7 @@ void UDraggableItemWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const
 				FVector2D PixelPosition;
 				FVector2D ViewportPosition;
 				USlateBlueprintLibrary::LocalToViewport(GetWorld(), GetCachedGeometry(), FVector2D(0, 0), PixelPosition, ViewportPosition);
-				ViewportPosition += RenderTranslation;
+				//ViewportPosition += RenderTranslation;
 				HUD->ShowTooltipAtLocation(ViewportPosition, Item);
 			}
 		}
@@ -147,8 +132,6 @@ void UDraggableItemWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const
 
 void UDraggableItemWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 {
-	// Stop any initializing hold drag and hide the item tooltip
-	bIsReadyForDrag = false;
 	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
 	if (Controller)
 	{

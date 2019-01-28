@@ -1105,6 +1105,26 @@ bool ADungeonCharacter::Server_UpdateMeshSegment_Validate(EMeshSegment MeshSegme
 	return true;
 }
 
+void ADungeonCharacter::Server_AttachActorToSocket_Implementation(AActor* Actor, FName SocketName)
+{
+	Multicast_AttachActorToSocket(Actor, SocketName);
+}
+
+bool ADungeonCharacter::Server_AttachActorToSocket_Validate(AActor* Actor, FName SocketName)
+{
+	return true;
+}
+
+void ADungeonCharacter::Server_DetachActor_Implementation(AActor* Actor)
+{
+	Multicast_DetachActor(Actor);
+}
+
+bool ADungeonCharacter::Server_DetachActor_Validate(AActor* Actor)
+{
+	return true;
+}
+
 ACharacterRenderCapture2D* ADungeonCharacter::GetRenderCaptureActor()
 {
 	return RenderCaptureActor;
@@ -1225,7 +1245,10 @@ void ADungeonCharacter::Multicast_PickUpItemResponse_Implementation(AItem* Item,
 {
 	if (IsLocallyControlled())
 	{
-
+		if (WasPickedUp)
+		{
+			UGameplayStatics::PlaySound2D(GetWorld(), Item->GetInteractionSound());
+		}
 	}
 }
 
@@ -1301,16 +1324,22 @@ bool ADungeonCharacter::Server_RequestEquipItem_Validate(AEquippable* Equippable
 
 void ADungeonCharacter::Server_RequestEquipItemToSlot_Implementation(AEquippable* Equippable, EEquipmentSlot EquipmentSlot, bool TryMoveReplacementToInventory /*= false*/)
 {
+	// Unequip the item but don't move it back to the inventory until after the replacement item has been equipped, so we know there will be room in the inventory
 	AEquippable* EquipmentInSlot = EquipmentComponent->GetEquipmentInSlot(EquipmentSlot);
 	if (EquipmentInSlot)
 	{
-		Server_RequestUnequipItem(EquipmentInSlot, EquipmentSlot, TryMoveReplacementToInventory);
+		Server_RequestUnequipItem(EquipmentInSlot, EquipmentSlot, false);
 	}
 
 	bool WasItemEquipped = EquipmentComponent->RequestEquipItem(Equippable, EquipmentSlot);
 	if (WasItemEquipped)
 	{
 		Equippable->Server_Despawn();
+	}
+
+	if (EquipmentInSlot && TryMoveReplacementToInventory)
+	{
+		Server_RequestAddItemToInventory(EquipmentInSlot);
 	}
 
 	Multicast_EquipItemResponse(Equippable, WasItemEquipped);
@@ -1395,13 +1424,23 @@ void ADungeonCharacter::Multicast_UpdateMeshSegment_Implementation(EMeshSegment 
 	}
 }
 
-void ADungeonCharacter::Multicast_UpdateLoadout_Implementation(const FWeaponLoadout& Loadout)
+void ADungeonCharacter::Multicast_AttachActorToSocket_Implementation(AActor* Actor, FName SocketName)
 {
+	FAttachmentTransformRules AttachmentRules = FAttachmentTransformRules::SnapToTargetIncludingScale;
+	AttachmentRules.bWeldSimulatedBodies = true;
 
+	Actor->AttachToComponent(GetMesh(), AttachmentRules ,SocketName);
+}
+
+void ADungeonCharacter::Multicast_DetachActor_Implementation(AActor* Actor)
+{
+	Actor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 }
 
 void ADungeonCharacter::InitMeshSegmentsDefaults(TMap<EMeshSegment, USkeletalMesh*> MeshMap)
 {
+	GetMesh()->SetCollisionObjectType(ECC_Pawn);
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	for (TTuple<EMeshSegment, USkeletalMeshComponent*> Tuple : MeshComponentMap)
 	{
 		USkeletalMeshComponent* MeshComp = Tuple.Value;

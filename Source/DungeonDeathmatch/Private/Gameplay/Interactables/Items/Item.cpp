@@ -170,6 +170,11 @@ UTexture2D* AItem::GetIcon()
 	return Icon;
 }
 
+USoundCue* AItem::GetInteractionSound()
+{
+	return InteractionSound;
+}
+
 FLinearColor AItem::GetQualityTierColor()
 {
 	float R, G, B, A;

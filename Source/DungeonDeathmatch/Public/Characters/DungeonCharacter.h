@@ -757,6 +757,47 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Unreliable, WithValidation, Category = "Inventory & Equipment")
 	void Server_RequestUnequipItem(AEquippable* Equippable, EEquipmentSlot EquipmentSlot, bool TryMoveToInventory = false);
 
+	/**
+	 * Gets the mapping of mesh segment to character's mesh component
+	 * @return The mesh segment to component map
+	 */
+	TMap<EMeshSegment, USkeletalMeshComponent*> GetMeshComponentMap();
+
+
+	/**
+	 * Server call to update a character's mesh segment with a new mesh; used when changing armor equipment.
+	 *
+	 * @param MeshSegment The mesh segment to alter
+	 * @param Mesh The mesh to update the segment to, will use a default mesh if this is nullptr
+	 */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh);
+
+	/**
+	 * Server call to attach an actor to the character mesh at the specified socket.
+	 *
+	 * @param Actor The actor to attach
+	 * @param SocketName The name of the socket to attach the actor to
+	 */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_AttachActorToSocket(AActor* Actor, FName SocketName);
+
+	/**
+	 * Server call to detach an actor from the character mesh.
+	 *
+	 * @param Actor The actor to detach
+	 */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_DetachActor(AActor* Actor);
+
+	/**
+	 * Gets the 2DRenderCapture Actor for use by the UI
+	 *
+	 * @return The character's 2D RenderCapture Actor
+	 */
+	UFUNCTION(BlueprintCallable)
+	ACharacterRenderCapture2D* GetRenderCaptureActor();
+
 	/********************************************************* END PUBLIC INVENTORY & EQUIPMENT FUNCTIONS *****************************************************/
 
 	/********************************************************* BEGIN PUBLIC COMBAT FUNCTIONS ******************************************************************/
@@ -808,30 +849,6 @@ public:
 	void Server_BeginMeleeComboEndTimer(float TimeToComboEnd);
 
 	/********************************************************* END PUBLIC COMBAT FUNCTIONS ********************************************************************/
-
-	/** 
-	 * Gets the mapping of mesh segment to character's mesh component
-	 * @return The mesh segment to component map
-	 */
-	TMap<EMeshSegment, USkeletalMeshComponent*> GetMeshComponentMap();
-
-
-	/**
-	 * Server call to update a character's mesh segment with a new mesh; used when changing armor equipment.
-	 *
-	 * @param MeshSegment The mesh segment to alter
-	 * @param Mesh The mesh to update the segment to, will use a default mesh if this is nullptr
-	 */
-	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh);
-
-	/**
-	 * Gets the 2DRenderCapture Actor for use by the UI
-	 *
-	 * @return The character's 2D RenderCapture Actor
-	 */
-	UFUNCTION(BlueprintCallable)
-	ACharacterRenderCapture2D* GetRenderCaptureActor();
 
 protected:
 	/********************************************************* BEGIN PROTECTED ABILITY SYSTEM FUNCTIONS *******************************************************/
@@ -1139,26 +1156,36 @@ protected:
 	void Multicast_UnequipItemResponse(AEquippable* Equippable, bool WasUnequipped);
 
 	/**
-	 * Updates a character's mesh segment with a new mesh; used when changing armor equipment. Should only be called by server.
+	 * Updates a character's mesh segment with a new mesh; used when changing armor equipment. Should only be called by the server.
 	 *
 	 * @param MeshSegment The mesh segment to alter
 	 * @param Mesh The mesh to update the segment to, will use a default mesh if this is nullptr
 	 */
-	UFUNCTION(NetMulticast, Unreliable)
+	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh);
 
 	/**
-	 * Adds a weapon from a loadout slot to a specified sheathe location
+	 * Attaches an actor to the character mesh at the specified socket. Should only be called by the server.
 	 *
-	 * @param LoadoutSlot The struct containing the weapon and sheathe slot details
+	 * @param Actor The actor to attach
+	 * @param SocketName The name of the socket to attach the actor to
 	 */
-	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_UpdateLoadout(const FWeaponLoadout& Loadout);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_AttachActorToSocket(AActor* Actor, FName SocketName);
 
-	/********************************************************* END PROTECTED INVENTORY & EQUIPMENT FUNCTIONS ************************************************************/
+	/**
+	 * Detaches an actor from the character mesh. Should only be called by the server.
+	 *
+	 * @param Actor The actor to detach
+	 */
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_DetachActor(AActor* Actor);
 
+	/** Sets the character mesh segments to use their assigned default meshes */
 	UFUNCTION(BlueprintCallable, Category = "Mesh")
 	void InitMeshSegmentsDefaults(TMap<EMeshSegment, USkeletalMesh*> MeshMap);
+
+	/********************************************************* END PROTECTED INVENTORY & EQUIPMENT FUNCTIONS ************************************************************/
 
 private:
 	/** Calculates the character's aim yaw and pitch for use by aim offsets */

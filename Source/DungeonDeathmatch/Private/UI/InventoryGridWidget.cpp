@@ -129,6 +129,7 @@ void UInventoryGridWidget::AddItem(AItem* Item, FInventoryGridPair OriginGridSlo
 			if (DraggableItemsCanvas)
 			{
 				DraggableItemsCanvas->AddChild(DraggableWidget);
+				DraggableWidget->SetVisibility(ESlateVisibility::Visible);
 			}
 			else
 			{
@@ -168,10 +169,10 @@ void UInventoryGridWidget::RemoveItem(AItem* Item, FInventoryGridPair OriginGrid
 	if (WidgetPtr)
 	{
 		UDraggableItemWidget* DraggableWidget = *WidgetPtr;
-		DraggableWidget->SetVisibility(ESlateVisibility::Collapsed);
 		if (DraggableItemsCanvas)
 		{
 			DraggableItemsCanvas->RemoveChild(DraggableWidget);
+			DraggableWidget->SetVisibility(ESlateVisibility::Collapsed);
 		}
 		else
 		{
@@ -283,14 +284,28 @@ void UInventoryGridWidget::ProcessItemDragAndDrop()
 					// Selecting a replacement item to drag
 					Controller->StopDraggingItem(false);
 					SelectedItemWidget->StartDragging();
-					Character->Server_RequestRemoveItemFromInventory(SelectedItemWidget->GetItem());
-					Character->Server_RequestAddItemToInventoryAtLocation(DraggedItemWidget->GetItem(), SelectionOrigin);
+					AItem* SelectedItem = SelectedItemWidget->GetItem();
+					if (SelectedItem)
+					{
+						Character->Server_RequestRemoveItemFromInventory(SelectedItem);
+					}
+					AItem* DraggedItem = DraggedItemWidget->GetItem();
+					if (DraggedItem)
+					{
+						Character->Server_RequestAddItemToInventoryAtLocation(DraggedItem, SelectionOrigin);
+						UGameplayStatics::PlaySound2D(Character->GetWorld(), DraggedItem->GetInteractionSound());
+					}
 					Controller->SetSelectedItem(nullptr);
 				}
 				else
 				{
 					// Trying to drop the item at the current location
-					Character->Server_RequestAddItemToInventoryAtLocation(DraggedItemWidget->GetItem(), SelectionOrigin);
+					AItem* DraggedItem = DraggedItemWidget->GetItem();
+					if (DraggedItem)
+					{
+						Character->Server_RequestAddItemToInventoryAtLocation(DraggedItem, SelectionOrigin);
+						UGameplayStatics::PlaySound2D(Character->GetWorld(), DraggedItem->GetInteractionSound());
+					}
 					Controller->StopDraggingItem(false);
 					Controller->SetSelectedItem(nullptr);
 				}
@@ -300,6 +315,7 @@ void UInventoryGridWidget::ProcessItemDragAndDrop()
 				// Selecting a new item to drag
 				ClickedItemWidget->StartDragging();
 				Character->Server_RequestRemoveItemFromInventory(ClickedItemWidget->GetItem());
+				UGameplayStatics::PlaySound2D(Character->GetWorld(), BeginDragSound);
 			}
 		}
 	}
@@ -486,17 +502,21 @@ FReply UInventoryGridWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InG
 			if (Character)
 			{
 				UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
-				// Drop the item
-				AItem* ItemToDrop = SelectedItemWidget->GetItem();
-				if (ItemToDrop)
+				if (SelectedItemWidget)
 				{
-					Character->Server_RequestRemoveItemFromInventory(ItemToDrop);
-					Character->Server_RequestDropItem(ItemToDrop, false);
-					Controller->SetSelectedItem(nullptr);
-					ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
-					if (HUD)
+					// Drop the item
+					AItem* ItemToDrop = SelectedItemWidget->GetItem();
+					if (ItemToDrop)
 					{
-						HUD->HideTooltip();
+						Character->Server_RequestRemoveItemFromInventory(ItemToDrop);
+						Character->Server_RequestDropItem(ItemToDrop, false);
+						UGameplayStatics::PlaySound2D(Character->GetWorld(), ItemToDrop->GetInteractionSound());
+						Controller->SetSelectedItem(nullptr);
+						ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
+						if (HUD)
+						{
+							HUD->HideTooltip();
+						}
 					}
 				}
 			}
@@ -515,6 +535,7 @@ FReply UInventoryGridWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InG
 					{
 						Character->Server_RequestRemoveItemFromInventory(Equippable);
 						Character->Server_RequestEquipItem(Equippable, true);
+						UGameplayStatics::PlaySound2D(Character->GetWorld(), Equippable->GetInteractionSound());
 						Controller->SetSelectedItem(nullptr);
 						ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
 						if (HUD)

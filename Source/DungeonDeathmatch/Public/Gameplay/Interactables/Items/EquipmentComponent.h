@@ -36,7 +36,7 @@ protected:
 	ADungeonCharacter* OwningCharacter;
 
 	/** The map of equipment the player has equipped in each slot */
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
 	TMap<EEquipmentSlot, AEquippable*> Equipment;
 
 	/** The first of two weapon loadouts available to the player */
@@ -153,7 +153,7 @@ protected:
 	 * @param Equippable The item that was equipped
 	 * @param EquipmentSlot The equipment slot the item went into
 	 */
-	UFUNCTION(NetMulticast, Unreliable, Category = "Equipment")
+	UFUNCTION(NetMulticast, Reliable, Category = "Equipment")
 	void Multicast_OnItemEquipped(AEquippable* Equippable, EEquipmentSlot EquipmentSlot);
 
 	/**
@@ -162,6 +162,6 @@ protected:
 	 * @param Equippable The item that was unequipped
 	 * @param EquipmentSlot The equipment slot the item was removed from
 	 */
-	UFUNCTION(NetMulticast, Unreliable, Category = "Equipment")
+	UFUNCTION(NetMulticast, Reliable, Category = "Equipment")
 	void Multicast_OnItemUnequipped(AEquippable* Equippable, EEquipmentSlot EquipmentSlot);
 };

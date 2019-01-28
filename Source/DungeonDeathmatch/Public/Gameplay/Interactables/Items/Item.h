@@ -60,6 +60,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
 	UTexture2D* Icon;
 
+	/* Sound to play when this item is added or removed from the player's inventory */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item")
+	USoundCue* InteractionSound;
+
 	/* The color corresponding to the quality of the item that is used for UI and post process elements */
 	FLinearColor QualityTierColor;
 
@@ -128,6 +132,10 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "Item")
 	UTexture2D* GetIcon();
+
+	/* Sound to play when this item is added or removed from the player's inventory */
+	UFUNCTION(BlueprintPure, Category = "Item")
+	USoundCue* GetInteractionSound();
 
 	/**
 	 * Gets the quality color of the item; used by UI elements

@@ -50,6 +50,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	TMap<AItem*, UDraggableItemWidget*> DraggableItemWidgets;
 
+	/* Sound to play when a drag operation starts */
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	USoundCue* BeginDragSound;
+
 	/* Is the mouse hovering over this widget? */
 	bool bIsHovering;
 

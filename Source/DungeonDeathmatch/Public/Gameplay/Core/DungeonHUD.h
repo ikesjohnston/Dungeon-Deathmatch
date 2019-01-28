@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
+#include <Sound/SoundCue.h>
 #include "DungeonHUD.generated.h"
 
 class UInGameOverlayWidget;
@@ -24,6 +25,12 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 	UInGameOverlayWidget* InGameOverlay;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	USoundCue* InventoryOpenSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	USoundCue* InventoryCloseSound;
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "UI")

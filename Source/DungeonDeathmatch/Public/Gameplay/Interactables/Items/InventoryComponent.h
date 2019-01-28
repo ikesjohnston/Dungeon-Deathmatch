@@ -138,7 +138,7 @@ protected:
 	 * @param Item The item that was added to the inventory
 	 * @param OriginSlot The upper left most slot that this item occupies in the inventory grid
 	 */
-	UFUNCTION(NetMulticast, Unreliable, Category = "Inventory")
+	UFUNCTION(NetMulticast, Reliable, Category = "Inventory")
 	void Multicast_OnItemAdd(AItem* Item, FInventoryGridPair OriginSlot);
 
 	/** 
@@ -154,7 +154,7 @@ protected:
 	 * @param Item The item that was removed from the inventory
 	 * @param OriginSlot The upper left most slot that this item occupies in the inventory grid
 	 */
-	UFUNCTION(NetMulticast, Unreliable, Category = "Inventory")
+	UFUNCTION(NetMulticast, Reliable, Category = "Inventory")
 	void Multicast_OnItemRemove(AItem* Item, FInventoryGridPair OriginSlot);
 
 	/**
@@ -163,6 +163,6 @@ protected:
 	 * @param Rows The new amount of rows for the inventory grid
 	 * @param Columns The new amount of columns for the inventory grid
 	 */
-	UFUNCTION(Server, Unreliable, WithValidation, BlueprintCallable, Category = "Inventory")
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Inventory")
 	void Server_ChangeInventorySize(uint8 Rows, uint8 Columns);
 };
