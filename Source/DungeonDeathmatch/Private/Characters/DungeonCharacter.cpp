@@ -153,10 +153,6 @@ ADungeonCharacter::ADungeonCharacter()
 
 	EquipmentComponent = CreateDefaultSubobject<UEquipmentComponent>(TEXT("Equipment"));
 
-	SocketNameSheatheWaistLeft = "SheatheWaistL";
-	SocketNameSheatheWaistRight = "SheatheWaistR";
-	SocketNameSheatheBackOne = "SheatheBackOne";
-	SocketNameSheatheBackTwo = "SheatheBackTwo";
 	SocketNameConsumableOne = "ConsumableOne";
 	SocketNameConsumableTwo = "ConsumableTwo";
 
@@ -1105,12 +1101,12 @@ bool ADungeonCharacter::Server_UpdateMeshSegment_Validate(EMeshSegment MeshSegme
 	return true;
 }
 
-void ADungeonCharacter::Server_AttachActorToSocket_Implementation(AActor* Actor, FName SocketName)
+void ADungeonCharacter::Server_AttachActorToSocket_Implementation(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation)
 {
-	Multicast_AttachActorToSocket(Actor, SocketName);
+	Multicast_AttachActorToSocket(Actor, SocketName, RelativePosition, RelativeRotation);
 }
 
-bool ADungeonCharacter::Server_AttachActorToSocket_Validate(AActor* Actor, FName SocketName)
+bool ADungeonCharacter::Server_AttachActorToSocket_Validate(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation)
 {
 	return true;
 }
@@ -1128,6 +1124,17 @@ bool ADungeonCharacter::Server_DetachActor_Validate(AActor* Actor)
 ACharacterRenderCapture2D* ADungeonCharacter::GetRenderCaptureActor()
 {
 	return RenderCaptureActor;
+}
+
+FName ADungeonCharacter::GetNameForWeaponSocket(EWeaponSocketType WeaponSocketType)
+{
+	FName* NamePtr = WeaponSocketMap.Find(WeaponSocketType);
+	if (NamePtr)
+	{
+		return *NamePtr;
+	}
+
+	return FName();
 }
 
 void ADungeonCharacter::OnFistColliderLeftBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
@@ -1334,7 +1341,12 @@ void ADungeonCharacter::Server_RequestEquipItemToSlot_Implementation(AEquippable
 	bool WasItemEquipped = EquipmentComponent->RequestEquipItem(Equippable, EquipmentSlot);
 	if (WasItemEquipped)
 	{
-		Equippable->Server_Despawn();
+		// Don't "despawn" weapons since they need to be directly attached to the character mesh
+		AWeapon* Weapon = Cast<AWeapon>(Equippable);
+		if (!Weapon)
+		{
+			Equippable->Server_Despawn();
+		}
 	}
 
 	if (EquipmentInSlot && TryMoveReplacementToInventory)
@@ -1424,17 +1436,27 @@ void ADungeonCharacter::Multicast_UpdateMeshSegment_Implementation(EMeshSegment 
 	}
 }
 
-void ADungeonCharacter::Multicast_AttachActorToSocket_Implementation(AActor* Actor, FName SocketName)
+void ADungeonCharacter::Multicast_AttachActorToSocket_Implementation(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation)
 {
 	FAttachmentTransformRules AttachmentRules = FAttachmentTransformRules::SnapToTargetIncludingScale;
-	AttachmentRules.bWeldSimulatedBodies = true;
+	//AttachmentRules.bWeldSimulatedBodies = true;
 
 	Actor->AttachToComponent(GetMesh(), AttachmentRules ,SocketName);
+
+	Actor->SetActorRelativeLocation(RelativePosition);
+	Actor->SetActorRelativeRotation(RelativeRotation);
+
+	if (RenderCaptureActor)
+	{
+		//RenderCaptureActor->AttachActorToSocket(Actor, SocketName, RelativePosition, RelativeRotation);
+	}
 }
 
 void ADungeonCharacter::Multicast_DetachActor_Implementation(AActor* Actor)
 {
 	Actor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+	//RenderCaptureActor->DetachActor(Actor);
 }
 
 void ADungeonCharacter::InitMeshSegmentsDefaults(TMap<EMeshSegment, USkeletalMesh*> MeshMap)

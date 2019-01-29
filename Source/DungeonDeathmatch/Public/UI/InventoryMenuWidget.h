@@ -9,6 +9,7 @@
 
 class UInventoryGridWidget;
 class UEquipmentSlotWidget;
+class UInteractiveCharacterRenderWidget;
 
 /**
  * 
@@ -22,6 +23,10 @@ protected:
 	/** The inventory grid widget that displays the character inventory */
 	UPROPERTY(meta = (BindWidget))
 	UInventoryGridWidget* InventoryGrid;
+
+	/** The character preview grid widget that displays the character model */
+	UPROPERTY(meta = (BindWidget))
+	UInteractiveCharacterRenderWidget* InteractiveCharacterRender;
 
 	// ----------------------------------------- BEGIN EQUIPMENT WIDGET VARIABLES -----------------------------------------
 

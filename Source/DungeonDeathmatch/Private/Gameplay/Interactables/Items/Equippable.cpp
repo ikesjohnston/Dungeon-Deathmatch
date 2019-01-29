@@ -30,28 +30,28 @@ FText AEquippable::GetInventoryUseTooltipText()
 	return FText::FromString("Equip");
 }
 
-void AEquippable::Server_OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)
+void AEquippable::Server_OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
 {
-	ServerOnEquip(NewEquippingCharacter);
-	Multicast_OnEquip(NewEquippingCharacter);
+	ServerOnEquip(NewEquippingCharacter, EquipmentSlot);
+	Multicast_OnEquip(NewEquippingCharacter, EquipmentSlot);
 }
 
-bool AEquippable::Server_OnEquip_Validate(ADungeonCharacter* NewEquippingCharacter)
+bool AEquippable::Server_OnEquip_Validate(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
 {
 	return true;
 }
 
-void AEquippable::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)
+void AEquippable::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
 {
 	EquippingCharacter = NewEquippingCharacter;
 }
 
-void AEquippable::Multicast_OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)
+void AEquippable::Multicast_OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
 {
 
 }
 
-void AEquippable::MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)
+void AEquippable::MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
 {
 	
 }

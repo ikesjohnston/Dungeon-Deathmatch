@@ -334,21 +334,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Inventory & Equipment")
 	float DropEjectionForce;
 
-	/** The name of the socket corresponding to the left waist weapon sheathe */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
-	FString SocketNameSheatheWaistLeft;
-
-	/** The name of the socket corresponding to the right waist weapon sheathe */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
-	FString SocketNameSheatheWaistRight;
-
-	/** The name of the socket corresponding to the first back sheathe */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
-	FString SocketNameSheatheBackOne;
-
-	/** The name of the socket corresponding to the second back sheathe */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
-	FString SocketNameSheatheBackTwo;
+	/** Mapping of sock types to socket names, used for attaching weapons to the character mesh during equipment */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment")
+	TMap<EWeaponSocketType, FName> WeaponSocketMap;
 
 	/** The name of the socket corresponding to the first hot keyed consumable */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
@@ -778,9 +766,11 @@ public:
 	 *
 	 * @param Actor The actor to attach
 	 * @param SocketName The name of the socket to attach the actor to
+	 * @param RelativePosition The relative position adjustment to transform the actor by after attachment
+	 * @param RelativeRotation The relative rotation adjustment to transform the actor by after attachment
 	 */
 	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_AttachActorToSocket(AActor* Actor, FName SocketName);
+	void Server_AttachActorToSocket(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation);
 
 	/**
 	 * Server call to detach an actor from the character mesh.
@@ -797,6 +787,9 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable)
 	ACharacterRenderCapture2D* GetRenderCaptureActor();
+
+	/** Gets socket name on the character for a given weapon socket type*/
+	FName GetNameForWeaponSocket(EWeaponSocketType WeaponSocketType);
 
 	/********************************************************* END PUBLIC INVENTORY & EQUIPMENT FUNCTIONS *****************************************************/
 
@@ -1169,9 +1162,11 @@ protected:
 	 *
 	 * @param Actor The actor to attach
 	 * @param SocketName The name of the socket to attach the actor to
+	 * @param RelativePosition The relative position adjustment to transform the actor by after attachment
+	 * @param RelativeRotation The relative rotation adjustment to transform the actor by after attachment
 	 */
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_AttachActorToSocket(AActor* Actor, FName SocketName);
+	void Multicast_AttachActorToSocket(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation);
 
 	/**
 	 * Detaches an actor from the character mesh. Should only be called by the server.

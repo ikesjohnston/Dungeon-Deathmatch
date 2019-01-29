@@ -43,8 +43,8 @@ public:
 
 protected:
 	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
-	virtual void ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter) override;
-	virtual void MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter) override;
+	virtual void ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot) override;
+	virtual void MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot) override;
 
 	virtual void ServerOnUnequip_Implementation() override;
 	virtual void MulticastOnUnequip_Implementation() override;

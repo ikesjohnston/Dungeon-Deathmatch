@@ -193,7 +193,7 @@ void UEquipmentComponent::EquipItem(AEquippable* Equippable, EEquipmentSlot Slot
 	{
 		Equipment.Add(TTuple<EEquipmentSlot, AEquippable*>(Slot, Equippable));
 		Multicast_OnItemEquipped(Equippable, Slot);
-		Equippable->Server_OnEquip(OwningCharacter);
+		Equippable->Server_OnEquip(OwningCharacter, Slot);
 	}
 }
 

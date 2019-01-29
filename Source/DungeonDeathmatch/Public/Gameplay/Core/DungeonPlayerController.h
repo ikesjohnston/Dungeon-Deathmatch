@@ -12,6 +12,7 @@ class UInteractable;
 class AItem;
 class UDungeonCursorWidget;
 class UDraggableItemWidget;
+class ACharacterRenderCapture2D;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractableFocusedSignature, class UInteractable*, Interactable);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInteractableUnfocusedSignature);
@@ -84,6 +85,10 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 	UDraggableItemWidget* ClickedItem;
 
+	/* The RenderCapture actor that is being clicked on, if any. Used for processing actor rotation on mouse move. */
+	UPROPERTY(BlueprintReadOnly, Category = "UI")
+	ACharacterRenderCapture2D* SelectedRenderCaptureActor;
+
 	bool bCanTraceForInteractables;
 
 public:
@@ -153,6 +158,12 @@ public:
 
 	/** Stops the current drag and drop operation. */
 	void StopDraggingItem(bool WasCanceled);
+
+	/** Sets the RenderCapture actor currently being clicked on */
+	void SetSelectedRenderCaptureActor(ACharacterRenderCapture2D* NewRenderCaptureActor);
+
+	/** Gets the RenderCapture actor currently being clicked on */
+	ACharacterRenderCapture2D* GetSelectedRenderCaptureActor();
 
 protected:
 	/**

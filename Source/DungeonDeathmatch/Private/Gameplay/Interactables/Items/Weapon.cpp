@@ -3,7 +3,6 @@
 #include "Weapon.h"
 #include <Components/CapsuleComponent.h>
 #include <Components/StaticMeshComponent.h>
-#include <WidgetComponent.h>
 #include "EquipmentGlobals.h"
 #include "Equippable.h"
 
@@ -29,6 +28,13 @@ void AWeapon::BeginPlay()
 
 }
 
+void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AWeapon, WeaponSocketType);
+}
+
 EWeaponHand AWeapon::GetWeaponHand()
 {
 	return WeaponHand;
@@ -42,6 +48,81 @@ EWeaponType AWeapon::GetWeaponType()
 EWeaponState AWeapon::GetWeaponState()
 {
 	return WeaponState;
+}
+
+EWeaponSocketType AWeapon::GetWeaponSocketType()
+{
+	return WeaponSocketType;
+}
+
+void AWeapon::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
+{
+	Super::ServerOnEquip_Implementation(NewEquippingCharacter, EquipmentSlot);
+
+	switch (EquipmentSlot)
+	{
+	case EEquipmentSlot::WeaponLoadoutOneMainHand:
+		if (WeaponHand == EWeaponHand::OneHand)
+		{
+			WeaponSocketType = EWeaponSocketType::MainHandWeaponLoadoutOne;
+		}
+		else
+		{
+			WeaponSocketType = EWeaponSocketType::TwoHandWeaponLoadoutOne;
+		}
+		break;
+	case EEquipmentSlot::WeaponLoadoutOneOffHand:
+		if (WeaponType == EWeaponType::Shield)
+		{
+			WeaponSocketType = EWeaponSocketType::OffHandShieldLoadoutOne;
+		}
+		else
+		{
+			WeaponSocketType = EWeaponSocketType::OffHandWeaponLoadoutOne;
+		}
+		break;
+	case EEquipmentSlot::WeaponLoadoutTwoMainHand:
+		if (WeaponHand == EWeaponHand::OneHand)
+		{
+			WeaponSocketType = EWeaponSocketType::MainHandWeaponLoadoutTwo;
+		}
+		else
+		{
+			WeaponSocketType = EWeaponSocketType::TwoHandWeaponLoadoutTwo;
+		}
+		break;
+	case EEquipmentSlot::WeaponLoadoutTwoOffHand:
+		if (WeaponType == EWeaponType::Shield)
+		{
+			WeaponSocketType = EWeaponSocketType::OffHandShieldLoadoutTwo;
+		}
+		else
+		{
+			WeaponSocketType = EWeaponSocketType::OffHandWeaponLoadoutTwo;
+		}
+		break;
+	default:
+		break;
+	}
+
+	FName AttachSocketName = NewEquippingCharacter->GetNameForWeaponSocket(WeaponSocketType);
+	NewEquippingCharacter->Server_AttachActorToSocket(this, AttachSocketName, UnsheathedSocketPositionAdjustment, UnsheathedSocketRotationAdjustment);
+}
+
+void AWeapon::MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
+{
+	Super::MulticastOnEquip_Implementation(NewEquippingCharacter, EquipmentSlot);
+}
+
+void AWeapon::ServerOnUnequip_Implementation()
+{
+	EquippingCharacter->Server_DetachActor(this);
+	Super::ServerOnUnequip_Implementation();
+}
+
+void AWeapon::MulticastOnUnequip_Implementation()
+{
+	Super::MulticastOnUnequip_Implementation();
 }
 
 //void AWeapon::OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)

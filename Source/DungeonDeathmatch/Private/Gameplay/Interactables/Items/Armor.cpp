@@ -30,11 +30,11 @@ TMap<EMeshSegment, USkeletalMesh*> AArmor::GetArmorMeshMap()
 	return ArmorMeshMap;
 }
 
-void AArmor::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)
+void AArmor::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
 {
 	if (Role == ROLE_Authority)
 	{
-		Super::ServerOnEquip_Implementation(NewEquippingCharacter);
+		Super::ServerOnEquip_Implementation(NewEquippingCharacter, EquipmentSlot);
 		for (TTuple<EMeshSegment, USkeletalMesh*> Tuple : ArmorMeshMap)
 		{
 			EquippingCharacter->Server_UpdateMeshSegment(Tuple.Key, Tuple.Value);
@@ -42,9 +42,9 @@ void AArmor::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharact
 	}
 }
 
-void AArmor::MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)
+void AArmor::MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
 {
-	Super::MulticastOnEquip_Implementation(NewEquippingCharacter);
+	Super::MulticastOnEquip_Implementation(NewEquippingCharacter, EquipmentSlot);
 }
 
 void AArmor::ServerOnUnequip_Implementation()

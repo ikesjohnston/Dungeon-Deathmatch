@@ -5,15 +5,22 @@
 #include <Components/SkeletalMeshComponent.h>
 #include "DungeonCharacter.h"
 #include "Armor.h"
+#include <PhysicsEngine/PhysicsConstraintComponent.h>
 
 // Sets default values
 ACharacterRenderCapture2D::ACharacterRenderCapture2D()
 {
-	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	RootMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RootMeshComponent"));
+	RootMeshComponent->SetVisibility(false);
+
+	RootComponent = RootMeshComponent;
+
+	TurntableMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurntableMeshComponent"));
+	TurntableMeshComponent->SetupAttachment(RootComponent);
 
 	// Initialize all mesh segments
 	MeshComponentMaster = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentMaster"));
-	MeshComponentMaster->SetupAttachment(RootComponent);
+	MeshComponentMaster->SetupAttachment(TurntableMeshComponent);
 
 	MeshComponentHelm = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHelm"));
 	MeshComponentHelm->SetupAttachment(MeshComponentMaster);
@@ -94,7 +101,18 @@ ACharacterRenderCapture2D::ACharacterRenderCapture2D()
 	PointLightComponent = CreateDefaultSubobject<UPointLightComponent>(TEXT("PointLight"));
 	PointLightComponent->SetupAttachment(RootComponent);
 
-	InputRotationRate = 180.0f;
+	/*PhysicsConstraint = CreateDefaultSubobject<UPhysicsConstraintComponent>(TEXT("PhysicsConstraint"));
+	PhysicsConstraint->SetupAttachment(RootMeshComponent);
+	PhysicsConstraint->SetConstrainedComponents(RootMeshComponent, NAME_None, TurntableMeshComponent, NAME_None);
+	PhysicsConstraint->SetAngularSwing2Limit(ACM_Locked, 0);
+	PhysicsConstraint->SetAngularTwistLimit(ACM_Locked, 0);
+	PhysicsConstraint->SetDisableCollision(true);*/
+
+	TurntableMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	TurntableMeshComponent->SetSimulatePhysics(true);
+
+	RotationTarget = 0;
+	RotationTargetLerpAlpha = .05;
 }
 
 // Called when the game starts or when spawned
@@ -102,6 +120,35 @@ void ACharacterRenderCapture2D::BeginPlay()
 {
 	Super::BeginPlay();
 	
+}
+
+// Called every frame
+void ACharacterRenderCapture2D::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	float CurrentTurntableYaw = TurntableMeshComponent->GetRelativeTransform().GetRotation().Rotator().Yaw;
+
+	float NewYaw = FMath::Lerp(CurrentTurntableYaw, RotationTarget, RotationTargetLerpAlpha);
+	if (NewYaw < -180)
+	{
+		NewYaw += 360;
+		RotationTarget += 360;
+	}
+	else if (NewYaw > 180)
+	{
+		NewYaw -= 360;
+		RotationTarget -= 360;
+	}
+
+	FRotator NewRotation = FRotator(0, NewYaw, 0);
+	NewRotation.Normalize();
+	TurntableMeshComponent->SetRelativeRotation(NewRotation);
+
+	/*FRotator CurrentTurntableRotation = TurntableMeshComponent->GetRelativeTransform().GetRotation().Rotator();
+	FRotator NewTurntableRotation = FMath::RInterpTo(CurrentTurntableRotation, FRotator(0, RotationTarget, 0), DeltaTime, RotationTargetLerpAlpha);
+
+	TurntableMeshComponent->SetRelativeRotation(NewTurntableRotation);*/
 }
 
 void ACharacterRenderCapture2D::UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh)
@@ -117,10 +164,43 @@ void ACharacterRenderCapture2D::UpdateMeshSegment(EMeshSegment MeshSegment, USke
 	}
 }
 
-// Called every frame
-void ACharacterRenderCapture2D::Tick(float DeltaTime)
+void ACharacterRenderCapture2D::AttachActorToSocket(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation)
 {
-	Super::Tick(DeltaTime);
+	if (Role == ROLE_Authority)
+	{
+		FActorSpawnParameters SpawnParameters;
+		SpawnParameters.Template = Actor;
+
+		UClass* ActorClass = Actor->GetClass();
+		AActor* ActorToAttach = GetWorld()->SpawnActor<AActor>(Actor->GetClass(), SpawnParameters);
+
+		DuplicateAttachedActorMap.Add(TTuple<AActor*, AActor*>(Actor, ActorToAttach));
+
+		FAttachmentTransformRules AttachmentRules = FAttachmentTransformRules::SnapToTargetIncludingScale;
+		AttachmentRules.bWeldSimulatedBodies = true;
+
+		ActorToAttach->AttachToComponent(MeshComponentMaster, AttachmentRules, SocketName);
+
+		ActorToAttach->SetActorRelativeLocation(RelativePosition);
+		ActorToAttach->SetActorRelativeRotation(RelativeRotation);
+	}
+}
+
+void ACharacterRenderCapture2D::DetachActor(AActor* Actor)
+{
+	if (Role == ROLE_Authority)
+	{
+		AActor** ActorPtr = DuplicateAttachedActorMap.Find(Actor);
+		if (ActorPtr)
+		{
+			AActor* ActorToDetach = *ActorPtr;
+			if (ActorToDetach)
+			{
+				ActorToDetach->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+				ActorToDetach->Destroy();
+			}
+		}
+	}
 }
 
 void ACharacterRenderCapture2D::InitializeCharacter(ADungeonCharacter* Character)
@@ -139,8 +219,12 @@ void ACharacterRenderCapture2D::InitializeCharacter(ADungeonCharacter* Character
 	}
 }
 
-void ACharacterRenderCapture2D::RotateCharacter(float RotationInput, float DeltaTime)
+void ACharacterRenderCapture2D::AddToTargetRotation(float Rotation)
 {
-	FRotator CurrentRotation = MeshComponentMaster->GetComponentRotation();
-	MeshComponentMaster->AddRelativeRotation(FQuat(FVector(0, 0, 1), InputRotationRate * RotationInput * DeltaTime));
+	RotationTarget += Rotation;
+}
+
+void ACharacterRenderCapture2D::StopRotating()
+{
+	RotationTarget = TurntableMeshComponent->GetRelativeTransform().GetRotation().Rotator().Yaw;
 }

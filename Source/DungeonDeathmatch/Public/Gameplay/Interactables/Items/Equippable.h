@@ -32,7 +32,7 @@ public:
 
 	/** Server side function for calling OnEquip events. */
 	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_OnEquip(ADungeonCharacter* NewEquippingCharacter);
+	void Server_OnEquip(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot);
 
 	/** Server side function for calling OnUnequip events. */
 	UFUNCTION(Server, Reliable, WithValidation)
@@ -41,7 +41,7 @@ public:
 protected:
 	/** Multicast function for calling OnEquip event on all clients. Should only be called by server side functions. */
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnEquip(ADungeonCharacter* NewEquippingCharacter);
+	void Multicast_OnEquip(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot);
 
 	/** Multicast function for calling OnUnequip event on all clients. Should only be called by server side functions. */
 	UFUNCTION(NetMulticast, Reliable)
@@ -49,7 +49,7 @@ protected:
 
 	/** Override event that will only be called on the server when the item is equipped. Should only be called directly by Server_OnEquip. */
 	UFUNCTION(BlueprintNativeEvent, Category = "Equipment")
-	void ServerOnEquip(ADungeonCharacter* NewEquippingCharacter);
+	void ServerOnEquip(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot);
 
 	/** Override event that will only be called on the server when the item is unequipped. Should only be called directly by Server_OnUnequip. */
 	UFUNCTION(BlueprintNativeEvent, Category = "Equipment")
@@ -57,7 +57,7 @@ protected:
 
 	/** Override event that will be called on all clients when the item is equipped. Should only be called directly by Multicast_OnEquip. */
 	UFUNCTION(BlueprintNativeEvent, Category = "Equipment")
-	void MulticastOnEquip(ADungeonCharacter* NewEquippingCharacter);
+	void MulticastOnEquip(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot);
 
 	/** Override event that will be called on all clients when the item is unequipped. Should only be called directly by Multicast_OnUnequip. */
 	UFUNCTION(BlueprintNativeEvent, Category = "Equipment")

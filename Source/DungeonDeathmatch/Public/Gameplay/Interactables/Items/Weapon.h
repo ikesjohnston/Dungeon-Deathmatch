@@ -38,13 +38,25 @@ protected:
 	/** The combat state of the weapon, determines when it is able to be used and do damage */
 	EWeaponState WeaponState;
 
-	/** The socket on the equipping character's mesh to attach the weapon to when sheathed */
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Attachment")
-	FName SheathedAttachSocketName;
+	/** The socket type this weapon uses when sheathed and drawn. Determined by the equipment slot it is in. Determines the sockets to attach the weapon to when equipped. */
+	UPROPERTY(Replicated)
+	EWeaponSocketType WeaponSocketType;
 
-	/** The socket on the equipping character's mesh to attach the weapon to unsheathed */
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Attachment")
-	FName UnsheathedSocketName;
+	/** The relative position adjustment for this weapon when attached to its sheathed socket. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	FVector SheathedSocketPositionAdjustment;
+
+	/** The relative rotation adjustment for this weapon when attached to its sheathed socket. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	FRotator SheathedSocketRotationAdjustment;
+
+	/** The relative position adjustment for this weapon when attached to its unsheathed socket. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	FVector UnsheathedSocketPositionAdjustment;
+
+	/** The relative rotation adjustment for this weapon when attached to its unsheathed socket. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	FRotator UnsheathedSocketRotationAdjustment;
 
 public:
 	// Sets default values for this actor's properties
@@ -65,4 +77,16 @@ public:
 
 	/** Gets the combat state of the weapon */
 	EWeaponState GetWeaponState();
+
+	/** Gets The location where this weapon is sheathed. */
+	EWeaponSocketType GetWeaponSocketType();
+
+protected:
+	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
+	virtual void ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot) override;
+	virtual void MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot) override;
+
+	virtual void ServerOnUnequip_Implementation() override;
+	virtual void MulticastOnUnequip_Implementation() override;
+	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
 };

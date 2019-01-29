@@ -11,6 +11,8 @@ class USkeletalMesh;
 class USkeletalMeshComponent;
 class UCameraComponent;
 class USceneCaptureComponent2D;
+class UPhysicsConstraintComponent;
+class UStaticMeshComponent;
 
 UCLASS()
 class DUNGEONDEATHMATCH_API ACharacterRenderCapture2D : public AActor
@@ -18,6 +20,19 @@ class DUNGEONDEATHMATCH_API ACharacterRenderCapture2D : public AActor
 	GENERATED_BODY()
 
 protected:	
+
+	/** The root mesh the turntable mesh rotates on top of */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mesh")
+	UStaticMeshComponent* RootMeshComponent;
+
+	/** The turntable mesh the character mesh sits on top of */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mesh")
+	UStaticMeshComponent* TurntableMeshComponent;
+
+	///** The master skeletal mesh component */
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mesh")
+	//UPhysicsConstraintComponent* PhysicsConstraint;
+
 	/********************************************************* BEGIN CHARACTER MESH SEGMENT VARIABLES *********************************************************/
 
 	/** The master skeletal mesh component */
@@ -94,11 +109,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Scene Capture")
 	UPointLightComponent* PointLightComponent;
 
-	/**
-	 * The degrees per second the model will turn when given maximum horizontal mouse input
-	 */
+	/** The target Z Rotation of the character mesh */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Scene Capture")
-	float InputRotationRate;
+	float RotationTarget;
+
+	/** The alpha value for lerping to the rotation target */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Scene Capture")
+	float RotationTargetLerpAlpha;
+
+	TMap<AActor*, AActor*> DuplicateAttachedActorMap;
 
 public:	
 	// Sets default values for this actor's properties
@@ -123,8 +142,25 @@ public:
 	void UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh);
 
 	/**
-	 * Rotates the captured character given some mouse axis input
+	 * Attach an actor to the character mesh at the specified socket
+	 *
+	 * @param Actor The actor to attach
+	 * @param SocketName The name of the socket to attach the actor to
 	 */
+	void AttachActorToSocket(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation);
+
+	/**
+	 * Detach an actor from the character mesh
+	 *
+	 * @param Actor The actor to detach
+	 */
+	void DetachActor(AActor* Actor);
+
+	/** Adds yaw input to the character mesh */
 	UFUNCTION(BlueprintCallable)
-	void RotateCharacter(float RotationInput, float DeltaTime);
+	void AddToTargetRotation(float Rotation);
+
+	/** Stops any ongoing mesh rotation */
+	UFUNCTION(BlueprintCallable)
+	void StopRotating();
 };

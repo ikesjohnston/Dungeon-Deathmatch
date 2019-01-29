@@ -5,7 +5,7 @@
 
 class AWeapon;
 
-/* All equipment slots available to a character */
+/** All equipment slots available to a character */
 UENUM(BlueprintType)
 enum class EEquipmentSlot : uint8
 {
@@ -27,7 +27,7 @@ enum class EEquipmentSlot : uint8
 	NUM_EQUIPMENT_SLOTS			UMETA(Hidden)
 };
 
-/* Used to determine what equipment slot a piece of armor can go into when equipping an item. */
+/** Used to determine what equipment slot a piece of armor can go into when equipping an item. */
 UENUM(BlueprintType)
 enum class EArmorSlot : uint8
 {
@@ -44,7 +44,7 @@ enum class EArmorSlot : uint8
 	NUM_ARMOR_SLOTS UMETA(Hidden)
 };
 
-/* Used to determine what equipment slot a weapon can go into when equipping an item. */
+/** Used to determine what equipment slot a weapon can go into when equipping an item. */
 UENUM(BlueprintType)
 enum class EWeaponHand : uint8
 {
@@ -53,7 +53,7 @@ enum class EWeaponHand : uint8
 	OffHand		UMETA(DisplayName = "Off Hand"),
 };
 
-/* Used on tooltips and for applying class specific effects on attack. */
+/** Used on tooltips and for applying class specific effects on attack. */
 UENUM(BlueprintType)
 enum class EWeaponType : uint8
 {
@@ -71,7 +71,7 @@ enum class EWeaponType : uint8
 	NUM_WEAPON_TYPES
 };
 
-/*  Used in combat logic to determine if a weapon is available for use. */
+/* * Used in combat logic to determine if a weapon is available for use. */
 UENUM(BlueprintType)
 enum class EWeaponState : uint8
 {
@@ -84,28 +84,16 @@ enum class EWeaponState : uint8
 
 /** Represents a specific socket on a character to place an individual weapon */
 UENUM(BlueprintType)
-enum class EWeaponSheatheLocation : uint8
+enum class EWeaponSocketType : uint8
 {
-	WaistOneHandOne		UMETA(DisplayName = "Waist One Hand One"),
-	WasitOneHandTwo		UMETA(DisplayName = "Wasit One Hand Two"),
-	BackOneHandOne		UMETA(DisplayName = "Back One Hand One"),
-	BackOneHandTwo		UMETA(DisplayName = "Back One Hand Two"),
-	BackOffHandOne		UMETA(DisplayName = "Back Off Hand One"),
-	BackOffHandTwo		UMETA(DisplayName = "Back Off Hand Two"),
-	BackTwoHandOne		UMETA(DisplayName = "Back Two Hand One"),
-	BackTwoHandTwo		UMETA(DisplayName = "Back Two Hand Two")
-};
-
-/** Represents a specific set of sockets on a character to place the weapons of a loadout */
-UENUM(BlueprintType)
-enum class ELoadoutSheatheLocation : uint8
-{
-	DualWieldOne		UMETA(DisplayName = "Dual Wield One"),
-	DualWieldOneTwo		UMETA(DisplayName = "Dual Wield Two"),
-	OneHandShieldOne	UMETA(DisplayName = "One Hand & Shield One"),
-	OneHandShieldTwo	UMETA(DisplayName = "One Hand & Shield Two"),
-	TwoHandOne			UMETA(DisplayName = "Two Hand One"),
-	TwoHandTwo			UMETA(DisplayName = "Two Hand Two")
+	MainHandWeaponLoadoutOne		UMETA(DisplayName = "Main Hand Weapon Loadout One"),
+	OffHandWeaponLoadoutOne			UMETA(DisplayName = "Off Hand Weapon Loadout One"),
+	OffHandShieldLoadoutOne			UMETA(DisplayName = "Off Hand Shield Loadout One"),
+	TwoHandWeaponLoadoutOne			UMETA(DisplayName = "Two Hand Weapon Loadout One"),
+	MainHandWeaponLoadoutTwo		UMETA(DisplayName = "Main Hand Weapon Loadout Two"),
+	OffHandWeaponLoadoutTwo			UMETA(DisplayName = "Off Hand Weapon Loadout Two"),
+	OffHandShieldLoadoutTwo			UMETA(DisplayName = "Off Hand Shield Loadout Two"),
+	TwoHandWeaponLoadoutTwo			UMETA(DisplayName = "Two Hand Weapon Loadout Two"),
 };
 
 /** Represents a specific hand that is being requested to equip or unequip a weapon */
@@ -130,10 +118,6 @@ struct FWeaponLoadout
 	/** The off hand weapon loadout. This can only be used if MainHandWeapon is a OneHand weapon. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	AWeapon* OffHandWeapon;
-
-	/** The location on the character where this loadout is stored */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	ELoadoutSheatheLocation SheatheLocation;
 
 	FWeaponLoadout()
 	{

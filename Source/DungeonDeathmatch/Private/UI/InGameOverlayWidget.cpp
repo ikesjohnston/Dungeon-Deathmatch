@@ -11,6 +11,7 @@
 #include "DraggableItemWidget.h"
 #include "DragAndDropItemWidget.h"
 #include "Item.h"
+#include "CharacterRenderCapture2D.h"
 
 UInGameOverlayWidget::UInGameOverlayWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -255,9 +256,34 @@ void UInGameOverlayWidget::OnDropItemScreenButtonUnhovered()
 
 FReply UInGameOverlayWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (bIsHoveringDropArea)
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
-		CheckForItemDrop();
+		if (bIsHoveringDropArea)
+		{
+			CheckForItemDrop();
+		}
+
+		ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
+		if (Controller)
+		{
+			Controller->SetSelectedRenderCaptureActor(nullptr);
+		}
+	}
+
+	return FReply::Handled();
+}
+
+FReply UInGameOverlayWidget::NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
+	if (Controller)
+	{
+		ACharacterRenderCapture2D* SelectedRenderCaptureActor = Controller->GetSelectedRenderCaptureActor();
+		if (SelectedRenderCaptureActor)
+		{
+			FVector2D MouseDelta = InMouseEvent.GetCursorDelta();
+			SelectedRenderCaptureActor->AddToTargetRotation(-MouseDelta.X);
+		}
 	}
 
 	return FReply::Handled();

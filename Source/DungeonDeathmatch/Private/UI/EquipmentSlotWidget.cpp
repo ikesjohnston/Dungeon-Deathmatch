@@ -146,6 +146,10 @@ void UEquipmentSlotWidget::ProcessItemDragAndDrop()
 					UGameplayStatics::PlaySound2D(Character->GetWorld(), ItemToEquip->GetInteractionSound());
 					Controller->StopDraggingItem(false);
 					Controller->SetSelectedItem(nullptr);
+					if (SlotHighlight)
+					{
+						SlotHighlight->SetVisibility(ESlateVisibility::Collapsed);
+					}
 				}
 			}
 			else if (ClickedItemWidget && !DraggedItemWidget)
@@ -531,6 +535,7 @@ FReply UEquipmentSlotWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, 
 		{
 			ProcessItemDragAndDrop();
 			Controller->SetClickedItem(nullptr);
+			Controller->SetSelectedRenderCaptureActor(nullptr);
 		}
 	}
 

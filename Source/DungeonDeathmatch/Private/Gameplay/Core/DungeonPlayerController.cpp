@@ -11,6 +11,7 @@
 #include <GameFramework/PlayerController.h>
 #include "Item.h"
 #include "DraggableItemWidget.h"
+#include "CharacterRenderCapture2D.h"
 
 // Console command for drawing interaction cast debug shapes
 static int32 DebugInteraction = 0;
@@ -237,6 +238,16 @@ void ADungeonPlayerController::StopDraggingItem(bool WasCanceled)
 	}
 
 	DraggedItem = nullptr;
+}
+
+void ADungeonPlayerController::SetSelectedRenderCaptureActor(ACharacterRenderCapture2D* NewRenderCaptureActor)
+{
+	SelectedRenderCaptureActor = NewRenderCaptureActor;
+}
+
+ACharacterRenderCapture2D* ADungeonPlayerController::GetSelectedRenderCaptureActor()
+{
+	return SelectedRenderCaptureActor;
 }
 
 void ADungeonPlayerController::Server_SetFocusedInteractable_Implementation(AActor* Interactable)
