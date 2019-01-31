@@ -5,6 +5,9 @@
 #include <Components/StaticMeshComponent.h>
 #include "EquipmentGlobals.h"
 #include "Equippable.h"
+#include "Item.h"
+#include "InteractTooltipWidget.h"
+#include "ItemTooltipWidget.h"
 
 // Sets default values
 AWeapon::AWeapon(const FObjectInitializer& ObjectInitializer)
@@ -127,6 +130,17 @@ void AWeapon::MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCha
 {
 	Super::MulticastOnEquip_Implementation(NewEquippingCharacter, EquipmentSlot);
 	GetRootMeshComponent()->SetSimulatePhysics(false);
+
+	// Disable interactable trace collision on meshes so they don't block interactable tracing from camera
+	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
+	for (int i = 0; i < MeshComponents.Num(); i++)
+	{
+		UMeshComponent* MeshComp = Cast<UMeshComponent>(MeshComponents[i]);
+		if (MeshComp)
+		{
+			MeshComp->SetCollisionResponseToChannel(TRACE_INTERACTABLE, ECR_Ignore);
+		}
+	}
 }
 
 void AWeapon::ServerOnUnequip_Implementation()
@@ -139,36 +153,29 @@ void AWeapon::MulticastOnUnequip_Implementation()
 {
 	Super::MulticastOnUnequip_Implementation();
 	GetRootMeshComponent()->SetSimulatePhysics(true);
-}
 
-//void AWeapon::OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)
-//{
-//	Super::OnEquip(NewEquippingCharacter);
-//
-//	/*UMeshComponent* RootMeshComponent = GetRootMeshComponent();
-//	if (RootMeshComponent)
-//	{
-//		RootMeshComponent->SetSimulatePhysics(false);
-//		RootMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-//		RootMeshComponent->SetCollisionObjectType(ECC_WorldDynamic);
-//	}*/
-//}
-//
-//void AWeapon::OnUnequip_Implementation()
-//{
-//	//if (Role == ROLE_Authority)
-//	//{
-//	//	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-//	//	bool bWasReturnedToInventory = EquippingCharacter->TryAddItemToInventory(this);
-//	//	// If the item wasn't able to be picked up, just drop it
-//	//	if (!bWasReturnedToInventory)
-//	//	{
-//	//		GetMeshComponent()->SetSimulatePhysics(true);
-//	//		GetMeshComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-//	//		GetMeshComponent()->SetCollisionObjectType(TRACE_INTERACTABLE);
-//	//		GetMeshComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
-//	//	}
-//	//	Super::OnUnequip();
-//	//}
-//}
+	// Reenable interactable trace collision on meshes
+	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());
+	for (int i = 0; i < MeshComponents.Num(); i++)
+	{
+		UMeshComponent* MeshComp = Cast<UMeshComponent>(MeshComponents[i]);
+		if (MeshComp)
+		{
+			MeshComp->SetCollisionResponseToChannel(TRACE_INTERACTABLE, ECR_Block);
+		}
+	}
+
+	// Reinitialize item tooltip
+	UInteractTooltipWidget* InteractTooltip = Cast<UInteractTooltipWidget>(WidgetComponent->GetUserWidgetObject());
+	if (InteractTooltip)
+	{
+		InteractTooltip->SetInteractable(this);
+		UItemTooltipWidget* ItemTooltip = Cast<UItemTooltipWidget>(InteractTooltip->GetItemTooltip());
+		if (ItemTooltip)
+		{
+			ItemTooltip->SetItem(this);
+			ItemTooltip->SetVisibility(ESlateVisibility::Visible);
+		}
+	}
+}
 

@@ -1,11 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "InventoryMenuWidget.h"
+#include "DungeonPlayerController.h"
+#include "DungeonCharacter.h"
+#include "InteractiveCharacterRenderWidget.h"
 
 UInventoryMenuWidget::UInventoryMenuWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-
+	BindingRetryTime = 0.1f;
 }
 
 bool UInventoryMenuWidget::Initialize()
@@ -28,5 +31,34 @@ bool UInventoryMenuWidget::Initialize()
 	EquipmentSlots.Add(EEquipmentSlot::WeaponLoadoutTwoMainHand, EquipmentSlotLoadoutTwoWeaponMainHand);
 	EquipmentSlots.Add(EEquipmentSlot::WeaponLoadoutTwoOffHand, EquipmentSlotLoadoutTwoWeaponOffHand);
 
+	BindToController();
+
 	return Result;
+}
+
+void UInventoryMenuWidget::BindToController()
+{
+	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+
+	if (Controller)
+	{
+		ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
+		if (Character)
+		{
+			if (InteractiveCharacterRender)
+			{
+				ACharacterRenderCapture2D* RenderCaptureActor = Character->GetRenderCaptureActor();
+				if (RenderCaptureActor)
+				{
+					InteractiveCharacterRender->SetRenderCaptureActor(RenderCaptureActor);
+					bIsSlotBound = true;
+				}
+			}
+		}
+	}
+
+	if (!bIsSlotBound)
+	{
+		GetWorld()->GetTimerManager().SetTimer(BindSlotTimerHandle, this, &UInventoryMenuWidget::BindToController, BindingRetryTime, false);
+	}
 }

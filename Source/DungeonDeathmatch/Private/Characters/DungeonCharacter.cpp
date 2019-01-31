@@ -1275,6 +1275,24 @@ void ADungeonCharacter::Server_RequestPickUpItem_Implementation(AItem* Item)
 	if (Equippable)
 	{
 		TArray<EEquipmentSlot> OpenEquipmentSlots = EquipmentComponent->GetOpenSlotsForEquippable(Equippable);
+
+		// If trying to equip a two handed weapon, make sure both main and off hand slots are open
+		AWeapon* Weapon = Cast<AWeapon>(Equippable);
+		if (Weapon)
+		{
+			if (Weapon->GetWeaponHand() == EWeaponHand::TwoHand)
+			{
+				if (EquipmentComponent->GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutOneOffHand))
+				{
+					OpenEquipmentSlots.Remove(EEquipmentSlot::WeaponLoadoutOneMainHand);
+				}
+				if (EquipmentComponent->GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutTwoOffHand))
+				{
+					OpenEquipmentSlots.Remove(EEquipmentSlot::WeaponLoadoutTwoMainHand);
+				}
+			}
+		}
+
 		if (OpenEquipmentSlots.Num() > 0)
 		{
 			EEquipmentSlot SlotToEquipItem = OpenEquipmentSlots[0];
@@ -1461,13 +1479,18 @@ void ADungeonCharacter::Server_RequestEquipItemToSlot_Implementation(AEquippable
 		}
 	}
 
+	// Now try adding any replaced equipment back to the inventory
 	if (EquipmentInSlot && TryMoveReplacementToInventory)
 	{
+		// Spawn the item in front of the player in case the request to add it back to the inventory fails
+		EquipmentInSlot->Server_SpawnAtLocation(ItemDropLocation->GetComponentLocation());
 		Server_RequestAddItemToInventory(EquipmentInSlot);
 	}
 
+	// Now try adding any unequipped weapon back to the inventory
 	if (WeaponToUnequip)
 	{
+		// Spawn the item in front of the player in case the request to add it back to the inventory fails
 		WeaponToUnequip->Server_SpawnAtLocation(ItemDropLocation->GetComponentLocation());
 		Server_RequestAddItemToInventory(WeaponToUnequip);
 	}
@@ -1580,7 +1603,9 @@ void ADungeonCharacter::Multicast_AttachActorToSocket_Implementation(AActor* Act
 
 void ADungeonCharacter::Multicast_DetachActor_Implementation(AActor* Actor)
 {
-	Actor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	FDetachmentTransformRules DetachRules = FDetachmentTransformRules::KeepRelativeTransform;
+	DetachRules.bCallModify = true;
+	Actor->DetachFromActor(DetachRules);
 
 	if (IsLocallyControlled() && RenderCaptureActor)
 	{

@@ -25,7 +25,7 @@ protected:
 	UInventoryGridWidget* InventoryGrid;
 
 	/** The character preview grid widget that displays the character model */
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (BindWidget))
 	UInteractiveCharacterRenderWidget* InteractiveCharacterRender;
 
 	// ----------------------------------------- BEGIN EQUIPMENT WIDGET VARIABLES -----------------------------------------
@@ -91,8 +91,24 @@ protected:
 
 	// ----------------------------------------- END EQUIPMENT WIDGET VARIABLES -----------------------------------------
 
+	/** The time, in seconds, to wait before retrying binding on failure */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment")
+	float BindingRetryTime;
+
+private:
+	/** Has the slot been bound to a player controller yet? */
+	bool bIsSlotBound;
+
+	/** Timer handle for retrying slot binding on failure */
+	FTimerHandle BindSlotTimerHandle;
+
 public:
 	UInventoryMenuWidget(const FObjectInitializer& ObjectInitializer);
 
 	virtual bool Initialize() override;
+
+protected:
+	/** Attempts to get the local player controller and bind the menu to it */
+	void BindToController();
+
 };

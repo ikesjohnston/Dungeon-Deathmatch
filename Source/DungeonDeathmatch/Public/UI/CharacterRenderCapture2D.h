@@ -101,6 +101,17 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Scene Capture")
 	UPointLightComponent* PointLightComponent;
 
+	/** The width of the render texture target to create for scene capture */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Scene Capture")
+	int32 RenderTargetTextureWidth;
+
+	/** The height of the render texture target to create for scene capture */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Scene Capture")
+	int32 RenderTargetTextureHeight;
+
+	/** The render target texture created at runtime for scene capture */
+	UTextureRenderTarget2D* RenderTargetTexture;
+
 	/** The target Z Rotation of the character mesh */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Scene Capture")
 	float RotationTarget;
@@ -147,6 +158,9 @@ public:
 	 * @param Actor The actor to detach
 	 */
 	void DetachActor(AActor* Actor);
+
+	/** Gets the render target texture created at runtime for scene capture */
+	UTextureRenderTarget2D* GetRenderTargetTexture();
 
 	/** Adds yaw input to the character mesh */
 	UFUNCTION(BlueprintCallable)

@@ -8,6 +8,7 @@
 
 class UImage;
 class ACharacterRenderCapture2D;
+class UMaterialInstance;
 
 /**
  * 
@@ -23,6 +24,20 @@ protected:
 	UImage* CharacterRenderImage;
 
 	ACharacterRenderCapture2D* RenderCaptureActor;
+
+	/** The material instance to use for the generated render target brush */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	UMaterialInstance* RenderCaptureMaterialInstance;
+
+	/** The parameter name of the material instance for the render target texture */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	FName MaterialInstanceRTParamName;
+
+	/** The size to set for the generated render target brush */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	FVector2D RenderTargetBrushSize;
+
+	FSlateBrush RenderTargetBrush;
 
 public:
 	UInteractiveCharacterRenderWidget(const FObjectInitializer& ObjectInitializer);

@@ -6,6 +6,7 @@
 #include "DungeonCharacter.h"
 #include "Armor.h"
 #include <PhysicsEngine/PhysicsConstraintComponent.h>
+#include <Kismet/KismetRenderingLibrary.h>
 
 // Sets default values
 ACharacterRenderCapture2D::ACharacterRenderCapture2D()
@@ -100,6 +101,9 @@ ACharacterRenderCapture2D::ACharacterRenderCapture2D()
 	PointLightComponent = CreateDefaultSubobject<UPointLightComponent>(TEXT("PointLight"));
 	PointLightComponent->SetupAttachment(RootComponent);
 
+	RenderTargetTextureWidth = 2048;
+	RenderTargetTextureHeight = 2048;
+
 	RotationTarget = 0;
 	RotationTargetLerpAlpha = .05;
 }
@@ -109,6 +113,9 @@ void ACharacterRenderCapture2D::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	RenderTargetTexture = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), RenderTargetTextureWidth, RenderTargetTextureHeight);
+
+	SceneCaptureComponent->TextureTarget = RenderTargetTexture;
 	SceneCaptureComponent->ShowOnlyActors.Add(this);
 }
 
@@ -200,6 +207,11 @@ void ACharacterRenderCapture2D::DetachActor(AActor* Actor)
 			ActorToDetach->Destroy();
 		}
 	}
+}
+
+UTextureRenderTarget2D* ACharacterRenderCapture2D::GetRenderTargetTexture()
+{
+	return RenderTargetTexture;
 }
 
 void ACharacterRenderCapture2D::InitializeCharacter(ADungeonCharacter* Character)
