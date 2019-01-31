@@ -32,9 +32,7 @@ void UEquipmentComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UEquipmentComponent, PrimaryWeaponLoadout);
-	DOREPLIFETIME(UEquipmentComponent, SecondaryWeaponLoadout);
-
+	DOREPLIFETIME(UEquipmentComponent, bIsPrimaryLoadoutActive);
 }
 
 TMap<EEquipmentSlot, AEquippable*> UEquipmentComponent::GetEquipment() const
@@ -117,6 +115,23 @@ TArray<EEquipmentSlot> UEquipmentComponent::GetValidSlotsForEquippable(AEquippab
 		default:
 			break;
 		}
+
+		AWeapon* MainHandWeapon = Cast<AWeapon>(GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutOneMainHand));
+		if (MainHandWeapon)
+		{
+			if (MainHandWeapon->GetWeaponHand() == EWeaponHand::TwoHand)
+			{
+				ValidSlots.Remove(EEquipmentSlot::WeaponLoadoutOneOffHand);
+			}
+		}
+		MainHandWeapon = Cast<AWeapon>(GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutTwoMainHand));
+		if (MainHandWeapon)
+		{
+			if (MainHandWeapon->GetWeaponHand() == EWeaponHand::TwoHand)
+			{
+				ValidSlots.Remove(EEquipmentSlot::WeaponLoadoutTwoOffHand);
+			}
+		}
 	}
 
 	return ValidSlots;
@@ -136,24 +151,6 @@ TArray<EEquipmentSlot> UEquipmentComponent::GetOpenSlotsForEquippable(AEquippabl
 	}
 
 	return OpenSlots;
-}
-
-FWeaponLoadout& UEquipmentComponent::GetActiveLoadout()
-{
-	if (bIsPrimaryLoadoutActive)
-	{
-		return PrimaryWeaponLoadout;
-	}
-	return SecondaryWeaponLoadout;
-}
-
-FWeaponLoadout& UEquipmentComponent::GetInactiveLoadout()
-{
-	if (bIsPrimaryLoadoutActive)
-	{
-		return SecondaryWeaponLoadout;
-	}
-	return PrimaryWeaponLoadout;
 }
 
 bool UEquipmentComponent::RequestEquipItem(AEquippable* Equippable, EEquipmentSlot Slot)
@@ -185,6 +182,16 @@ bool UEquipmentComponent::RequestUnequipItem(AEquippable* Equippable, EEquipment
 	}
 
 	return Result;
+}
+
+void UEquipmentComponent::ToggleActiveLoadout()
+{
+	bIsPrimaryLoadoutActive = !bIsPrimaryLoadoutActive;
+}
+
+bool UEquipmentComponent::IsPrimaryLoadoutActive()
+{
+	return bIsPrimaryLoadoutActive;
 }
 
 void UEquipmentComponent::EquipItem(AEquippable* Equippable, EEquipmentSlot Slot)

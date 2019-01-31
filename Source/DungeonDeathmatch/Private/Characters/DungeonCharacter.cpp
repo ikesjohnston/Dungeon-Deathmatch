@@ -22,6 +22,7 @@
 #include "Armor.h"
 #include "Weapon.h"
 #include "CharacterRenderCapture2D.h"
+#include "EquipmentGlobals.h"
 
 // Console command for logging melee combo states
 static int32 LogCombos = 0;
@@ -176,6 +177,7 @@ void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	DOREPLIFETIME(ADungeonCharacter, CombatState);
 	DOREPLIFETIME(ADungeonCharacter, CurrentMeleeComboState);
 	DOREPLIFETIME(ADungeonCharacter, bIsMeleeComboReady);
 
@@ -245,25 +247,22 @@ void ADungeonCharacter::BeginPlay()
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 		AddStartupGameplayAbilities();
 
-		// Initialize the render capture actor, only do this on the local client
 		if (IsLocallyControlled())
 		{
+			// Initialize the render capture actor, only do this for the local player character
 			if (RenderCaptureClass)
 			{
 				RenderCaptureActor = Cast<ACharacterRenderCapture2D>(GetWorld()->SpawnActor(RenderCaptureClass));
 				if (RenderCaptureActor)
 				{
 					RenderCaptureActor->InitializeCharacter(this);
-					RenderCaptureActor->SetActorLocation(FVector(0, 0, -10000));
+					RenderCaptureActor->SetActorLocation(FVector(0, 0, -1000));
 				}
 			}
-		}
-	}
 
-	// Only show health plates on enemy characters
-	if (IsLocallyControlled())
-	{
-		VitalsPlateWidget->SetVisibility(false);
+			// Only show health plates on enemy characters
+			VitalsPlateWidget->SetVisibility(false);
+		}
 	}
 }
 
@@ -293,6 +292,7 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 	// Action Inputs
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &ADungeonCharacter::OnInteractKeyPressed);
+	PlayerInputComponent->BindAction("LoadoutSwitch", IE_Pressed, this, &ADungeonCharacter::OnLoadoutSwitchKeyPressed);
 	PlayerInputComponent->BindAction("Sheathe", IE_Pressed, this, &ADungeonCharacter::OnSheatheKeyPressed);
 	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &ADungeonCharacter::OnAttackKeyPressed);
 	PlayerInputComponent->BindAction("Block", IE_Pressed, this, &ADungeonCharacter::OnBlockKeyPressed);
@@ -719,12 +719,17 @@ void ADungeonCharacter::OnInteractKeyPressed()
 	Interact();
 }
 
+void ADungeonCharacter::OnLoadoutSwitchKeyPressed()
+{
+	Server_ToggleActiveLoadout();
+}
+
 void ADungeonCharacter::OnSheatheKeyPressed()
 {
-	/*if (CombatState == ECombatState::WeaponSheathed)
-		UnsheatheWeapon();
-	else if (CombatState == ECombatState::WeaponReady)
-		SheatheWeapon();*/
+	if (CombatState == ECombatState::Sheathed)
+		Server_SetCombatState(ECombatState::ReadyToUse);
+	else if (CombatState == ECombatState::ReadyToUse)
+		Server_SetCombatState(ECombatState::Sheathed);
 }
 
 void ADungeonCharacter::OnAttackKeyPressed()
@@ -1086,6 +1091,44 @@ USphereComponent* ADungeonCharacter::GetRightFistCollider()
 	return FistColliderRight;
 }
 
+void ADungeonCharacter::Server_ToggleActiveLoadout_Implementation()
+{
+	EquipmentComponent->ToggleActiveLoadout();
+
+
+}
+
+bool ADungeonCharacter::Server_ToggleActiveLoadout_Validate()
+{
+	return true;
+}
+
+void ADungeonCharacter::Server_SetCombatState_Implementation(ECombatState NewCombatSate)
+{
+	CombatState = NewCombatSate;
+
+	switch (CombatState)
+	{
+	default:
+		break;
+	case ECombatState::Sheathed:
+		break;
+	case ECombatState::Unsheathing:
+		break;
+	case ECombatState::Sheathing:
+		break;
+	case ECombatState::ReadyToUse:
+		break;
+	case ECombatState::AttackInProgress:
+		break;
+	}
+}
+
+bool ADungeonCharacter::Server_SetCombatState_Validate(ECombatState NewCombatSate)
+{
+	return true;
+}
+
 TMap<EMeshSegment, USkeletalMeshComponent*> ADungeonCharacter::GetMeshComponentMap()
 {
 	return MeshComponentMap;
@@ -1187,6 +1230,10 @@ UEquipmentComponent* ADungeonCharacter::GetEquipmentComponent()
 void ADungeonCharacter::Server_RequestAddItemToInventory_Implementation(AItem* Item)
 {
 	bool WasItemAdded = InventoryComponent->RequestAddItem(Item);
+	if (WasItemAdded)
+	{
+		Item->Server_Despawn();
+	}
 	Multicast_AddItemToInventoryResponse(Item, WasItemAdded);
 }
 
@@ -1198,6 +1245,10 @@ bool ADungeonCharacter::Server_RequestAddItemToInventory_Validate(AItem* Item)
 void ADungeonCharacter::Server_RequestAddItemToInventoryAtLocation_Implementation(AItem* Item, FInventoryGridPair OriginSlot)
 {
 	bool WasItemAdded = InventoryComponent->RequestAddItem(Item, OriginSlot);
+	if (WasItemAdded)
+	{
+		Item->Server_Despawn();
+	}
 	Multicast_AddItemToInventoryResponse(Item, WasItemAdded);
 }
 
@@ -1231,12 +1282,20 @@ void ADungeonCharacter::Server_RequestPickUpItem_Implementation(AItem* Item)
 			WasItemEquipped = EquipmentComponent->RequestEquipItem(Equippable, SlotToEquipItem);
 		}
 	}
-	if(!WasItemEquipped)
+	if (WasItemEquipped)
+	{
+		// Don't "despawn" weapons since they need to be directly attached to the character mesh
+		AWeapon* Weapon = Cast<AWeapon>(Equippable);
+		if (!Weapon)
+		{
+			Equippable->Server_Despawn();
+		}
+	}
+	else
 	{
 		WasItemAdded = InventoryComponent->RequestAddItem(Item);
 	}
-
-	if (WasItemAdded || WasItemEquipped)
+	if (WasItemAdded)
 	{
 		Item->Server_Despawn();
 	}
@@ -1338,6 +1397,59 @@ void ADungeonCharacter::Server_RequestEquipItemToSlot_Implementation(AEquippable
 		Server_RequestUnequipItem(EquipmentInSlot, EquipmentSlot, false);
 	}
 
+	// If equipping a two handed weapon, unequip anything in the off hand slot. If equipping an offhand, unequip any equipped two hander.
+	AWeapon* WeaponToUnequip = nullptr;
+	AWeapon* Weapon = Cast<AWeapon>(Equippable);
+	if (Weapon)
+	{
+		if (Weapon->GetWeaponHand() == EWeaponHand::TwoHand)
+		{
+			if (EquipmentSlot == EEquipmentSlot::WeaponLoadoutOneMainHand)
+			{
+				WeaponToUnequip = Cast<AWeapon>(EquipmentComponent->GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutOneOffHand));
+				if (WeaponToUnequip)
+				{
+					Server_RequestUnequipItem(WeaponToUnequip, EEquipmentSlot::WeaponLoadoutOneOffHand, false);
+				}
+			}
+			else if (EquipmentSlot == EEquipmentSlot::WeaponLoadoutTwoMainHand)
+			{
+				WeaponToUnequip = Cast<AWeapon>(EquipmentComponent->GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutTwoOffHand));
+				if (WeaponToUnequip)
+				{
+					Server_RequestUnequipItem(WeaponToUnequip, EEquipmentSlot::WeaponLoadoutTwoOffHand, false);
+				}
+			}
+		}
+		else if (Weapon->GetWeaponHand() == EWeaponHand::OffHand || Weapon->GetWeaponHand() == EWeaponHand::OneHand)
+		{
+			if (EquipmentSlot == EEquipmentSlot::WeaponLoadoutOneOffHand)
+			{
+				WeaponToUnequip = Cast<AWeapon>(EquipmentComponent->GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutOneMainHand));
+				if (WeaponToUnequip && WeaponToUnequip->GetWeaponHand() == EWeaponHand::TwoHand)
+				{
+					Server_RequestUnequipItem(WeaponToUnequip, EEquipmentSlot::WeaponLoadoutOneMainHand, false);
+				}
+				else
+				{
+					WeaponToUnequip = nullptr;
+				}
+			}
+			else if (EquipmentSlot == EEquipmentSlot::WeaponLoadoutTwoOffHand)
+			{
+				WeaponToUnequip = Cast<AWeapon>(EquipmentComponent->GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutTwoMainHand));
+				if (WeaponToUnequip && WeaponToUnequip->GetWeaponHand() == EWeaponHand::TwoHand)
+				{
+					Server_RequestUnequipItem(WeaponToUnequip, EEquipmentSlot::WeaponLoadoutTwoMainHand, false);
+				}
+				else
+				{
+					WeaponToUnequip = nullptr;
+				}
+			}
+		}
+	}
+
 	bool WasItemEquipped = EquipmentComponent->RequestEquipItem(Equippable, EquipmentSlot);
 	if (WasItemEquipped)
 	{
@@ -1352,6 +1464,12 @@ void ADungeonCharacter::Server_RequestEquipItemToSlot_Implementation(AEquippable
 	if (EquipmentInSlot && TryMoveReplacementToInventory)
 	{
 		Server_RequestAddItemToInventory(EquipmentInSlot);
+	}
+
+	if (WeaponToUnequip)
+	{
+		WeaponToUnequip->Server_SpawnAtLocation(ItemDropLocation->GetComponentLocation());
+		Server_RequestAddItemToInventory(WeaponToUnequip);
 	}
 
 	Multicast_EquipItemResponse(Equippable, WasItemEquipped);
@@ -1381,10 +1499,18 @@ void ADungeonCharacter::Server_RequestUnequipItem_Implementation(AEquippable* Eq
 		if (WasItemUnequipped && TryMoveToInventory)
 		{
 			bool WasItemMovedToInventory = InventoryComponent->RequestAddItem(Equippable);
-			if (!WasItemMovedToInventory)
+			if (WasItemMovedToInventory)
+			{
+				Equippable->Server_Despawn();
+			}
+			else
 			{
 				Equippable->Server_SpawnAtLocation(ItemDropLocation->GetComponentLocation());
 			}
+		}
+		else
+		{
+			Equippable->Server_Despawn();
 		}
 	}
 
@@ -1439,16 +1565,16 @@ void ADungeonCharacter::Multicast_UpdateMeshSegment_Implementation(EMeshSegment 
 void ADungeonCharacter::Multicast_AttachActorToSocket_Implementation(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation)
 {
 	FAttachmentTransformRules AttachmentRules = FAttachmentTransformRules::SnapToTargetIncludingScale;
-	//AttachmentRules.bWeldSimulatedBodies = true;
+	AttachmentRules.bWeldSimulatedBodies = true;
 
 	Actor->AttachToComponent(GetMesh(), AttachmentRules ,SocketName);
 
 	Actor->SetActorRelativeLocation(RelativePosition);
 	Actor->SetActorRelativeRotation(RelativeRotation);
 
-	if (RenderCaptureActor)
+	if (IsLocallyControlled() && RenderCaptureActor)
 	{
-		//RenderCaptureActor->AttachActorToSocket(Actor, SocketName, RelativePosition, RelativeRotation);
+		RenderCaptureActor->AttachActorToSocket(Actor, SocketName, RelativePosition, RelativeRotation);
 	}
 }
 
@@ -1456,7 +1582,10 @@ void ADungeonCharacter::Multicast_DetachActor_Implementation(AActor* Actor)
 {
 	Actor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 
-	//RenderCaptureActor->DetachActor(Actor);
+	if (IsLocallyControlled() && RenderCaptureActor)
+	{
+		RenderCaptureActor->DetachActor(Actor);
+	}
 }
 
 void ADungeonCharacter::InitMeshSegmentsDefaults(TMap<EMeshSegment, USkeletalMesh*> MeshMap)

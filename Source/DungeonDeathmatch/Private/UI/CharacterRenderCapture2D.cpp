@@ -10,17 +10,16 @@
 // Sets default values
 ACharacterRenderCapture2D::ACharacterRenderCapture2D()
 {
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
+
 	RootMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RootMeshComponent"));
 	RootMeshComponent->SetVisibility(false);
-
-	RootComponent = RootMeshComponent;
-
-	TurntableMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurntableMeshComponent"));
-	TurntableMeshComponent->SetupAttachment(RootComponent);
+	RootMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RootMeshComponent->SetupAttachment(RootComponent);
 
 	// Initialize all mesh segments
 	MeshComponentMaster = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentMaster"));
-	MeshComponentMaster->SetupAttachment(TurntableMeshComponent);
+	MeshComponentMaster->SetupAttachment(RootMeshComponent);
 
 	MeshComponentHelm = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHelm"));
 	MeshComponentHelm->SetupAttachment(MeshComponentMaster);
@@ -101,16 +100,6 @@ ACharacterRenderCapture2D::ACharacterRenderCapture2D()
 	PointLightComponent = CreateDefaultSubobject<UPointLightComponent>(TEXT("PointLight"));
 	PointLightComponent->SetupAttachment(RootComponent);
 
-	/*PhysicsConstraint = CreateDefaultSubobject<UPhysicsConstraintComponent>(TEXT("PhysicsConstraint"));
-	PhysicsConstraint->SetupAttachment(RootMeshComponent);
-	PhysicsConstraint->SetConstrainedComponents(RootMeshComponent, NAME_None, TurntableMeshComponent, NAME_None);
-	PhysicsConstraint->SetAngularSwing2Limit(ACM_Locked, 0);
-	PhysicsConstraint->SetAngularTwistLimit(ACM_Locked, 0);
-	PhysicsConstraint->SetDisableCollision(true);*/
-
-	TurntableMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	TurntableMeshComponent->SetSimulatePhysics(true);
-
 	RotationTarget = 0;
 	RotationTargetLerpAlpha = .05;
 }
@@ -120,6 +109,7 @@ void ACharacterRenderCapture2D::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	SceneCaptureComponent->ShowOnlyActors.Add(this);
 }
 
 // Called every frame
@@ -127,7 +117,7 @@ void ACharacterRenderCapture2D::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	float CurrentTurntableYaw = TurntableMeshComponent->GetRelativeTransform().GetRotation().Rotator().Yaw;
+	float CurrentTurntableYaw = RootMeshComponent->GetRelativeTransform().GetRotation().Rotator().Yaw;
 
 	float NewYaw = FMath::Lerp(CurrentTurntableYaw, RotationTarget, RotationTargetLerpAlpha);
 	if (NewYaw < -180)
@@ -143,12 +133,7 @@ void ACharacterRenderCapture2D::Tick(float DeltaTime)
 
 	FRotator NewRotation = FRotator(0, NewYaw, 0);
 	NewRotation.Normalize();
-	TurntableMeshComponent->SetRelativeRotation(NewRotation);
-
-	/*FRotator CurrentTurntableRotation = TurntableMeshComponent->GetRelativeTransform().GetRotation().Rotator();
-	FRotator NewTurntableRotation = FMath::RInterpTo(CurrentTurntableRotation, FRotator(0, RotationTarget, 0), DeltaTime, RotationTargetLerpAlpha);
-
-	TurntableMeshComponent->SetRelativeRotation(NewTurntableRotation);*/
+	RootMeshComponent->SetRelativeRotation(NewRotation);
 }
 
 void ACharacterRenderCapture2D::UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh)
@@ -166,39 +151,53 @@ void ACharacterRenderCapture2D::UpdateMeshSegment(EMeshSegment MeshSegment, USke
 
 void ACharacterRenderCapture2D::AttachActorToSocket(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation)
 {
-	if (Role == ROLE_Authority)
+	ENetRole ActorRole = Actor->GetLocalRole();
+	Actor->Role = ROLE_Authority;
+
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.Template = Actor;
+
+	UClass* ActorClass = Actor->GetClass();
+	AActor* ActorToAttach = GetWorld()->SpawnActor<AActor>(ActorClass, SpawnParameters);
+
+	Actor->Role = ActorRole;
+
+	AItem* Item = Cast<AItem>(ActorToAttach);
+	if (Item)
 	{
-		FActorSpawnParameters SpawnParameters;
-		SpawnParameters.Template = Actor;
+		UMeshComponent* RootMesh = Item->GetRootMeshComponent();
+		if (RootMesh)
+		{
+			RootMesh->SetSimulatePhysics(false);
+		}
 
-		UClass* ActorClass = Actor->GetClass();
-		AActor* ActorToAttach = GetWorld()->SpawnActor<AActor>(Actor->GetClass(), SpawnParameters);
-
-		DuplicateAttachedActorMap.Add(TTuple<AActor*, AActor*>(Actor, ActorToAttach));
-
-		FAttachmentTransformRules AttachmentRules = FAttachmentTransformRules::SnapToTargetIncludingScale;
-		AttachmentRules.bWeldSimulatedBodies = true;
-
-		ActorToAttach->AttachToComponent(MeshComponentMaster, AttachmentRules, SocketName);
-
-		ActorToAttach->SetActorRelativeLocation(RelativePosition);
-		ActorToAttach->SetActorRelativeRotation(RelativeRotation);
+		Item->Execute_OnUnfocused(Item);
 	}
+
+	DuplicateAttachedActorMap.Add(TTuple<AActor*, AActor*>(Actor, ActorToAttach));
+
+	FAttachmentTransformRules AttachmentRules = FAttachmentTransformRules::SnapToTargetIncludingScale;
+	AttachmentRules.bWeldSimulatedBodies = true;
+
+	ActorToAttach->AttachToComponent(MeshComponentMaster, AttachmentRules, SocketName);
+
+	ActorToAttach->SetActorRelativeLocation(RelativePosition);
+	ActorToAttach->SetActorRelativeRotation(RelativeRotation);
+
+	SceneCaptureComponent->ShowOnlyActors.Add(ActorToAttach);
 }
 
 void ACharacterRenderCapture2D::DetachActor(AActor* Actor)
 {
-	if (Role == ROLE_Authority)
+	AActor** ActorPtr = DuplicateAttachedActorMap.Find(Actor);
+	if (ActorPtr)
 	{
-		AActor** ActorPtr = DuplicateAttachedActorMap.Find(Actor);
-		if (ActorPtr)
+		AActor* ActorToDetach = *ActorPtr;
+		if (ActorToDetach)
 		{
-			AActor* ActorToDetach = *ActorPtr;
-			if (ActorToDetach)
-			{
-				ActorToDetach->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-				ActorToDetach->Destroy();
-			}
+			ActorToDetach->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+			SceneCaptureComponent->ShowOnlyActors.Remove(ActorToDetach);
+			ActorToDetach->Destroy();
 		}
 	}
 }
@@ -226,5 +225,5 @@ void ACharacterRenderCapture2D::AddToTargetRotation(float Rotation)
 
 void ACharacterRenderCapture2D::StopRotating()
 {
-	RotationTarget = TurntableMeshComponent->GetRelativeTransform().GetRotation().Rotator().Yaw;
+	RotationTarget = RootMeshComponent->GetRelativeTransform().GetRotation().Rotator().Yaw;
 }

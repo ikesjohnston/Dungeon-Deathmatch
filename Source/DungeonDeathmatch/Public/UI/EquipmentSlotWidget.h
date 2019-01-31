@@ -97,6 +97,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment")
 	FLinearColor InvalidOverlapHighlightColor;
 
+	/** The color to tint the default item image for off hand weapon slots when a two handed weapon is equipped in its respective slot */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment")
+	FLinearColor LockedSlotItemColor;
+
 private:
 	/** Has the slot been bound to a player controller yet? */
 	bool bIsSlotBound;
@@ -112,6 +116,9 @@ public:
 protected:
 	/** Attempts to get the local player controller and bind the slot to it */
 	void BindToController();
+
+	/** Resets the default item image to the global default for the slot type */
+	void ResetDefaultImage();
 
 	/** Can this slot accept the currently dragged item? */
 	bool GetCanFitDraggedItem();

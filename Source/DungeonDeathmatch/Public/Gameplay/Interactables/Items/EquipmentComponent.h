@@ -39,15 +39,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
 	TMap<EEquipmentSlot, AEquippable*> Equipment;
 
-	/** The first of two weapon loadouts available to the player */
+	/** Is the first loadout active, or is it the second? Determines combat animations and weapon placement. */
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Equipment|\Weapons")
-	FWeaponLoadout PrimaryWeaponLoadout;
-
-	/** The second of two weapon loadouts available to the player */
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Equipment|\Weapons")
-	FWeaponLoadout SecondaryWeaponLoadout;
-
-	/** Flag to determine if the primary loadout is active, is toggled on loadout switch */
 	bool bIsPrimaryLoadoutActive;
 
 public:	
@@ -95,20 +88,6 @@ public:
 	TArray<EEquipmentSlot> GetOpenSlotsForEquippable(AEquippable* Equippable);
 
 	/**
-	 * Gets the character's active loadout
-	 *
-	 * @return The active loadout
-	 */
-	FWeaponLoadout& GetActiveLoadout();
-
-	/**
-	 * Gets the character's inactive loadout
-	 *
-	 * @return The inactive loadout
-	 */
-	FWeaponLoadout& GetInactiveLoadout();
-
-	/**
 	 * Attempts to equip an item to the specified slot.  This function will only run on the server.
 	 *
 	 * @param Equippable The item to attempt to equip
@@ -117,7 +96,6 @@ public:
 	 * @return Whether the item was equipped successfully
 	 */
 	bool RequestEquipItem(AEquippable* Equippable, EEquipmentSlot Slot);
-
 
 	/**
 	 * Attempts to unequip an item from a specific slot. This function will only run on the server.
@@ -129,6 +107,11 @@ public:
 	 */
 	bool RequestUnequipItem(AEquippable* Equippable, EEquipmentSlot Slot);
 
+	/** Toggles which loadout is the current active loadout */
+	void ToggleActiveLoadout();
+
+	/** Is the primary loadout active, or is the second? */
+	bool IsPrimaryLoadoutActive();
 
 protected:
 	/**

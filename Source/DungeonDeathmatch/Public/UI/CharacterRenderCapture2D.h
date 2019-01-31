@@ -21,17 +21,9 @@ class DUNGEONDEATHMATCH_API ACharacterRenderCapture2D : public AActor
 
 protected:	
 
-	/** The root mesh the turntable mesh rotates on top of */
+	/** The root mesh that any rotation adjustments will be made on */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mesh")
 	UStaticMeshComponent* RootMeshComponent;
-
-	/** The turntable mesh the character mesh sits on top of */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mesh")
-	UStaticMeshComponent* TurntableMeshComponent;
-
-	///** The master skeletal mesh component */
-	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mesh")
-	//UPhysicsConstraintComponent* PhysicsConstraint;
 
 	/********************************************************* BEGIN CHARACTER MESH SEGMENT VARIABLES *********************************************************/
 

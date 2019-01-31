@@ -73,7 +73,7 @@ enum class EWeaponType : uint8
 
 /* * Used in combat logic to determine if a weapon is available for use. */
 UENUM(BlueprintType)
-enum class EWeaponState : uint8
+enum class ECombatState : uint8
 {
 	Sheathed			UMETA(DisplayName = "Weapon Sheathed"),
 	Unsheathing			UMETA(DisplayName = "Unsheathing Weapon"),

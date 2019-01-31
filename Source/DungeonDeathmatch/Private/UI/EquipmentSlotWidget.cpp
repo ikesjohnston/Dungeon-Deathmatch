@@ -43,15 +43,7 @@ bool UEquipmentSlotWidget::Initialize()
 	UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
 	if (GameInstance)
 	{
-		float GridSlotSize = GameInstance->GetInventoryGridSlotSize();
-	}
-
-	// Set default item texture
-	UTexture2D** TexturePtr = EquipmentSlotTextures.Find(SlotType);
-	if (TexturePtr)
-	{
-		UTexture2D* EmptyEquipmentSlotTexture = *TexturePtr;
-		DefaultEquipmentImage->SetBrushFromTexture(EmptyEquipmentSlotTexture);
+		GridSlotSize = GameInstance->GetInventoryGridSlotSize();
 	}
 
 	// Resize slot based on type
@@ -65,13 +57,8 @@ bool UEquipmentSlotWidget::Initialize()
 		// Temporary highlighting method, will be using a dedicated texture, but for now just using a basic translucent square highlight
 		SlotHighlight->SetBrushSize(SlotSize);
 	}
-	EquipmentSizePtr = EquipmentTextureSizes.Find(SlotType);
-	if (EquipmentSizePtr)
-	{
-		FInventoryGridPair SlotTextureSize = *EquipmentSizePtr;
-		FVector2D TextureSize = FVector2D(GridSlotSize * SlotTextureSize.Column, GridSlotSize * SlotTextureSize.Row);
-		DefaultEquipmentImage->SetBrushSize(TextureSize);
-	}
+
+	ResetDefaultImage();
 
 	BindToController();
 
@@ -104,6 +91,34 @@ void UEquipmentSlotWidget::BindToController()
 	if (!bIsSlotBound)
 	{
 		GetWorld()->GetTimerManager().SetTimer(BindSlotTimerHandle, this, &UEquipmentSlotWidget::BindToController, BindingRetryTime, false);
+	}
+}
+
+void UEquipmentSlotWidget::ResetDefaultImage()
+{
+	float GridSlotSize = 40.0f;
+
+	UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
+	if (GameInstance)
+	{
+		GridSlotSize = GameInstance->GetInventoryGridSlotSize();
+	}
+
+	// Set default item texture
+	UTexture2D** TexturePtr = EquipmentSlotTextures.Find(SlotType);
+	if (TexturePtr)
+	{
+		UTexture2D* EmptyEquipmentSlotTexture = *TexturePtr;
+		DefaultEquipmentImage->SetBrushFromTexture(EmptyEquipmentSlotTexture);
+		DefaultEquipmentImage->SetColorAndOpacity(FLinearColor::White);
+	}
+
+	FInventoryGridPair* EquipmentSizePtr = EquipmentTextureSizes.Find(SlotType);
+	if (EquipmentSizePtr)
+	{
+		FInventoryGridPair SlotTextureSize = *EquipmentSizePtr;
+		FVector2D TextureSize = FVector2D(GridSlotSize * SlotTextureSize.Column, GridSlotSize * SlotTextureSize.Row);
+		DefaultEquipmentImage->SetBrushSize(TextureSize);
 	}
 }
 
@@ -315,6 +330,21 @@ void UEquipmentSlotWidget::OnItemEquipped(AEquippable* Equippable, EEquipmentSlo
 			UE_LOG(LogTemp, Warning, TEXT("UEquipmentSlotWidget::OnItemEquipped - Failed to get game instance."));
 		}
 	}
+	else
+	{
+		// If a two handed weapon was equipped and this is the offhand slot, update the slot item image to signify the slot is locked by the two hander
+		AWeapon* Weapon = Cast<AWeapon>(Equippable);
+		if (Weapon && Weapon->GetWeaponHand() == EWeaponHand::TwoHand)
+		{
+			if ((Slot == EEquipmentSlot::WeaponLoadoutOneMainHand && SlotType == EEquipmentSlot::WeaponLoadoutOneOffHand) || (Slot == EEquipmentSlot::WeaponLoadoutTwoMainHand && SlotType == EEquipmentSlot::WeaponLoadoutTwoOffHand))
+			{
+				DefaultEquipmentImage->SetBrushFromTexture(Weapon->GetIcon());
+				DefaultEquipmentImage->SetBrushSize(Weapon->GetGridSizeVector());
+				DefaultEquipmentImage->SetColorAndOpacity(LockedSlotItemColor);
+				DefaultEquipmentImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+			}
+		}
+	}
 }
 
 void UEquipmentSlotWidget::OnItemUnequipped(AEquippable* Equippable, EEquipmentSlot Slot)
@@ -327,7 +357,21 @@ void UEquipmentSlotWidget::OnItemUnequipped(AEquippable* Equippable, EEquipmentS
 			DraggableEquipmentCanvas->RemoveChild(EquippedItemWidget);
 		}
 		EquippedItemWidget = nullptr;
+
+		ResetDefaultImage();
 		DefaultEquipmentImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+	else
+	{
+		// If a two handed weapon was unequipped and this is the offhand slot, restore the default item image
+		AWeapon* Weapon = Cast<AWeapon>(Equippable);
+		if (Weapon && Weapon->GetWeaponHand() == EWeaponHand::TwoHand)
+		{
+			if ((Slot == EEquipmentSlot::WeaponLoadoutOneMainHand && SlotType == EEquipmentSlot::WeaponLoadoutOneOffHand) || (Slot == EEquipmentSlot::WeaponLoadoutTwoMainHand && SlotType == EEquipmentSlot::WeaponLoadoutTwoOffHand))
+			{
+				ResetDefaultImage();
+			}
+		}
 	}
 }
 

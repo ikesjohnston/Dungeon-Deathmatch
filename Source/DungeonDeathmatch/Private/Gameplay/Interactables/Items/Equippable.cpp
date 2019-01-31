@@ -44,11 +44,12 @@ bool AEquippable::Server_OnEquip_Validate(ADungeonCharacter* NewEquippingCharact
 void AEquippable::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
 {
 	EquippingCharacter = NewEquippingCharacter;
+	Execute_SetCanInteract(this, false);
 }
 
 void AEquippable::Multicast_OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
 {
-
+	MulticastOnEquip(NewEquippingCharacter, EquipmentSlot);
 }
 
 void AEquippable::MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
@@ -70,6 +71,7 @@ bool AEquippable::Server_OnUnequip_Validate()
 void AEquippable::ServerOnUnequip_Implementation()
 {
 	EquippingCharacter = nullptr;
+	Execute_SetCanInteract(this, true);
 }
 
 void AEquippable::Multicast_OnUnequip_Implementation()

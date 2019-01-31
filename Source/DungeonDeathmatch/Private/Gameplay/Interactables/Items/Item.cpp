@@ -304,8 +304,19 @@ FText AItem::GetInteractableName_Implementation()
 	return ItemName;
 }
 
+void AItem::Server_SetCanInteract_Implementation(bool CanInteract)
+{
+	Execute_SetCanInteract(this, CanInteract);
+}
+
+bool AItem::Server_SetCanInteract_Validate(bool CanInteract)
+{
+	return true;
+}
+
 void AItem::Server_Despawn_Implementation()
 {
+	Server_SetCanInteract(false);
 	Multicast_Despawn();
 }
 
@@ -340,13 +351,13 @@ void AItem::Multicast_Despawn_Implementation()
 	// Move item to origin
 	SetActorLocation(FVector::ZeroVector);
 
-	Execute_SetCanInteract(this, false);
 	Execute_OnUnfocused(this);
 }
 
 void AItem::Server_SpawnAtLocation_Implementation(const FVector Location, const FVector EjectionForce /*= FVector(0, 0, 0)*/)
 {
 	Multicast_SpawnAtLocation(Location, EjectionForce);
+	Server_SetCanInteract(true);
 }
 
 bool AItem::Server_SpawnAtLocation_Validate(const FVector Location, const FVector EjectionForce /*= FVector(0, 0, 0)*/)
@@ -379,7 +390,5 @@ void AItem::Multicast_SpawnAtLocation_Implementation(const FVector Location, con
 	WidgetComponent->SetVisibility(false);
 
 	SetActorLocation(Location);
-
-	Execute_SetCanInteract(this, true);
 }
 

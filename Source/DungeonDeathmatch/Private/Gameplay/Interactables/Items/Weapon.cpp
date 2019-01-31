@@ -13,6 +13,8 @@ AWeapon::AWeapon(const FObjectInitializer& ObjectInitializer)
 	PrimaryActorTick.bCanEverTick = false;
 
 	DamagingVolume = CreateDefaultSubobject<UCapsuleComponent>(TEXT("DamagingVolume"));
+	DamagingVolume->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	DamagingVolume->SetCollisionResponseToChannel(TRACE_INTERACTABLE, ECR_Ignore);
 	DamagingVolume->SetupAttachment(RootMeshComponent);
 }
 
@@ -43,11 +45,6 @@ EWeaponHand AWeapon::GetWeaponHand()
 EWeaponType AWeapon::GetWeaponType()
 {
 	return WeaponType;
-}
-
-EWeaponState AWeapon::GetWeaponState()
-{
-	return WeaponState;
 }
 
 EWeaponSocketType AWeapon::GetWeaponSocketType()
@@ -105,13 +102,31 @@ void AWeapon::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharac
 		break;
 	}
 
+	Server_SpawnAtLocation(NewEquippingCharacter->GetActorLocation());
+	Server_SetCanInteract(false);
 	FName AttachSocketName = NewEquippingCharacter->GetNameForWeaponSocket(WeaponSocketType);
-	NewEquippingCharacter->Server_AttachActorToSocket(this, AttachSocketName, UnsheathedSocketPositionAdjustment, UnsheathedSocketRotationAdjustment);
+
+	FVector SocketPositionAdjustment = FVector::ZeroVector;
+	FVector* VectorPtr = UnsheathedSocketPositionAdjustments.Find(WeaponSocketType);
+	if (VectorPtr)
+	{
+		SocketPositionAdjustment = *VectorPtr;
+	}
+
+	FRotator SocketRotationAdjustment = FRotator::ZeroRotator;
+	FRotator* RotatorPtr = UnsheathedSocketRotationAdjustments.Find(WeaponSocketType);
+	if (RotatorPtr)
+	{
+		SocketRotationAdjustment = *RotatorPtr;
+	}
+
+	NewEquippingCharacter->Server_AttachActorToSocket(this, AttachSocketName, SocketPositionAdjustment, SocketRotationAdjustment);
 }
 
 void AWeapon::MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
 {
 	Super::MulticastOnEquip_Implementation(NewEquippingCharacter, EquipmentSlot);
+	GetRootMeshComponent()->SetSimulatePhysics(false);
 }
 
 void AWeapon::ServerOnUnequip_Implementation()
@@ -123,6 +138,7 @@ void AWeapon::ServerOnUnequip_Implementation()
 void AWeapon::MulticastOnUnequip_Implementation()
 {
 	Super::MulticastOnUnequip_Implementation();
+	GetRootMeshComponent()->SetSimulatePhysics(true);
 }
 
 //void AWeapon::OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter)

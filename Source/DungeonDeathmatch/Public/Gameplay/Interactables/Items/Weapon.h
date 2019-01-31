@@ -35,28 +35,25 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	EWeaponType WeaponType;
 
-	/** The combat state of the weapon, determines when it is able to be used and do damage */
-	EWeaponState WeaponState;
-
 	/** The socket type this weapon uses when sheathed and drawn. Determined by the equipment slot it is in. Determines the sockets to attach the weapon to when equipped. */
 	UPROPERTY(Replicated)
 	EWeaponSocketType WeaponSocketType;
 
-	/** The relative position adjustment for this weapon when attached to its sheathed socket. */
+	/** The relative position adjustments for this weapon when attached to each sheathed socket. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
-	FVector SheathedSocketPositionAdjustment;
+	TMap<EWeaponSocketType, FVector> SheathedSocketPositionAdjustments;
 
-	/** The relative rotation adjustment for this weapon when attached to its sheathed socket. */
+	/** The relative rotation adjustments for this weapon when attached to each sheathed socket. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
-	FRotator SheathedSocketRotationAdjustment;
+	TMap<EWeaponSocketType, FRotator> SheathedSocketRotationAdjustments;
 
-	/** The relative position adjustment for this weapon when attached to its unsheathed socket. */
+	/** The relative position adjustments for this weapon when attached to each unsheathed socket. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
-	FVector UnsheathedSocketPositionAdjustment;
+	TMap<EWeaponSocketType, FVector> UnsheathedSocketPositionAdjustments;
 
-	/** The relative rotation adjustment for this weapon when attached to its unsheathed socket. */
+	/** The relative rotation adjustments for this weapon when attached to each unsheathed socket. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
-	FRotator UnsheathedSocketRotationAdjustment;
+	TMap<EWeaponSocketType, FRotator> UnsheathedSocketRotationAdjustments;
 
 public:
 	// Sets default values for this actor's properties
@@ -74,9 +71,6 @@ public:
 
 	/** Gets the type of the weapon */
 	EWeaponType GetWeaponType();
-
-	/** Gets the combat state of the weapon */
-	EWeaponState GetWeaponState();
 
 	/** Gets The location where this weapon is sheathed. */
 	EWeaponSocketType GetWeaponSocketType();

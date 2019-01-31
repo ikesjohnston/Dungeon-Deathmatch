@@ -177,14 +177,18 @@ public:
 	virtual FText GetInteractableName_Implementation() override;
 	// ------------------------ END INTERACTABLE INTERFACE FUNCTIONS ------------------------
 
+	/** Server side function to set if an interactable can be interacted with */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_SetCanInteract(bool CanInteract);
+
 	/** Server side function that "despawns" the item by hiding its mesh(es), disabling physics and collision, and moving it to the world origin */
-	UFUNCTION(Server, Unreliable, WithValidation)
+	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_Despawn();
 
 	/** Server side function that "spawns" the item at the specified location; showing all meshes and enabling physics and collision.
 	 *  An optional ejection force vector can be used, which may be desired for things like ejecting loot from a chest 
 	 */
-	UFUNCTION(Server, Unreliable, WithValidation)
+	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_SpawnAtLocation(const FVector Location, const FVector EjectionForce = FVector(0, 0, 0));
 
 protected:
@@ -194,13 +198,13 @@ protected:
 	void SetMeshStencilValue();
 
 	/** Multicast function that "despawns" the item by hiding its mesh(es), disabling physics and collision, and moving it to the world origin */
-	UFUNCTION(NetMulticast, Unreliable)
+	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_Despawn();
 
 	/** Multicast function that "spawns" the item at the specified location; showing all meshes and enabling physics and collision.
 	 *  An optional ejection force vector can be used, which may be desired for things like ejecting loot from a chest
 	 */
-	UFUNCTION(NetMulticast, Unreliable)
+	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SpawnAtLocation(const FVector Location, const FVector EjectionForce = FVector(0, 0, 0));
 
 };

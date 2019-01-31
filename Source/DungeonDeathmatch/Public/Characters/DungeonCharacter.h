@@ -358,6 +358,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
 	USphereComponent* FistColliderRight;
 
+	UPROPERTY(VisibleAnywhere, Replicated)
+	ECombatState CombatState;
+
 	/** Represents the index of the ability to use next in the MeleeCombatAbilities array for the current active weapon */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
 	uint8 CurrentMeleeComboState;
@@ -373,6 +376,7 @@ protected:
 	TSubclassOf<ACharacterRenderCapture2D> RenderCaptureClass;
 
 	/** The 2DRenderCapture actor for displaying the character mesh in the UI */
+	UPROPERTY()
 	ACharacterRenderCapture2D* RenderCaptureActor;
 
 private:
@@ -809,6 +813,14 @@ public:
 	 */
 	USphereComponent* GetRightFistCollider();
 
+	/* Toggles the character's active loadout and attaches or detaches weapons */
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
+	void Server_ToggleActiveLoadout();
+
+	/** Sets the characters combat state and replicates it to all clients. Calls appropriate multicast functions based on state. */
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
+	void Server_SetCombatState(ECombatState NewCombatSate);
+
 	/**
 	 * Sets flag to allow or disallow the character to perform their next melee combo attack.
 	 * Only runs on the server.
@@ -1017,6 +1029,10 @@ protected:
 	/** Processes Interact key presses */
 	UFUNCTION()
 	void OnInteractKeyPressed();
+
+	/** Processes LoadoutSwitch key presses */
+	UFUNCTION()
+	void OnLoadoutSwitchKeyPressed();
 
 	/** Processes Sheathe key presses */
 	UFUNCTION()
