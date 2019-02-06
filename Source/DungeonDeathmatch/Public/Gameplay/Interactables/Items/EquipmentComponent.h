@@ -40,7 +40,7 @@ protected:
 	TMap<EEquipmentSlot, AEquippable*> Equipment;
 
 	/** Is the first loadout active, or is it the second? Determines combat animations and weapon placement. */
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Equipment|\Weapons")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment|\Weapons")
 	bool bIsPrimaryLoadoutActive;
 
 public:	
@@ -112,6 +112,10 @@ public:
 
 	/** Is the primary loadout active, or is the second? */
 	bool IsPrimaryLoadoutActive();
+
+	/** Gets the active weapon loadout, which contains pointers to the weapons in each hand */
+	UFUNCTION(BlueprintCallable)
+	FWeaponLoadout GetActiveWeaponLoadout();
 
 protected:
 	/**

@@ -47,6 +47,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay Globals - Loot")
 	float LootEjectionUpForce;
 
+	/** Mapping of animation montages to play when sheathing different weapons */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation Globals")
+	TMap<EWeaponSocketType, UAnimMontage*> SheatheAnimationMontages;
+
+	/** Mapping of animation montages to play when unsheathing different weapons */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation Globals")
+	TMap<EWeaponSocketType, UAnimMontage*> UnsheatheAnimationMontages;
+
 public:
 	UDungeonGameInstance(const FObjectInitializer& ObjectInitializer);
 
@@ -60,6 +68,12 @@ public:
 
 	UFUNCTION(BlueprintPure)
 	TSubclassOf<UDraggableItemWidget> GetDragAndDropItemWidgetClass();
+
+	UFUNCTION(BlueprintPure)
+	TMap<EWeaponSocketType, UAnimMontage*> GetSheatheAnimationMontages();
+
+	UFUNCTION(BlueprintPure)
+	TMap<EWeaponSocketType, UAnimMontage*> GetUnsheatheAnimationMontages();
 
 	UFUNCTION(BlueprintPure)
 	float GetInventoryGridSlotSize();

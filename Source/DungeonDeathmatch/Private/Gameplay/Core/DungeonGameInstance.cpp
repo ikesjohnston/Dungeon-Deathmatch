@@ -28,6 +28,16 @@ TSubclassOf<UDraggableItemWidget> UDungeonGameInstance::GetDragAndDropItemWidget
 	return DragAndDropItemWidgetClass;
 }
 
+TMap<EWeaponSocketType, UAnimMontage*> UDungeonGameInstance::GetSheatheAnimationMontages()
+{
+	return SheatheAnimationMontages;
+}
+
+TMap<EWeaponSocketType, UAnimMontage*> UDungeonGameInstance::GetUnsheatheAnimationMontages()
+{
+	return UnsheatheAnimationMontages;
+}
+
 float UDungeonGameInstance::GetInventoryGridSlotSize()
 {
 	return InventoryGridSlotSize;

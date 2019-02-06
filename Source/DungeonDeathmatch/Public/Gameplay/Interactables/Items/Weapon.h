@@ -9,6 +9,8 @@
 
 class UCapsuleComponent;
 class UStaticMeshComponent;
+class UBlendSpace;
+class UBlendSpace1D;
 
 /**
  * The base class for all weapons in the game. Stores damaging effects and generates hit events for melee weapons when they are set in an attacking state.
@@ -38,6 +40,14 @@ protected:
 	/** The socket type this weapon uses when sheathed and drawn. Determined by the equipment slot it is in. Determines the sockets to attach the weapon to when equipped. */
 	UPROPERTY(Replicated)
 	EWeaponSocketType WeaponSocketType;
+	
+	/** Any sheathing animation montages this weapon uses that override the default montages to use */
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	TMap<EWeaponSocketType, UAnimMontage*> SheatheAnimationMontageOverrides;
+
+	/** Any unsheathing animation montages this weapon uses that override the default montages to use */
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	TMap<EWeaponSocketType, UAnimMontage*> UnsheatheAnimationMontageOverrides;
 
 	/** The relative position adjustments for this weapon when attached to each sheathed socket. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
@@ -55,6 +65,26 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	TMap<EWeaponSocketType, FRotator> UnsheathedSocketRotationAdjustments;
 
+	/** Standing movement animation blend space to use when weapon is unsheathed, overrides any blend spaces set by the equipping character */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UBlendSpace* CombatStandingMovementBlendSpaceOverride;
+
+	/** Crouching movement animation blend space to use when weapon is unsheathed, overrides any blend spaces set by the equipping character */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UBlendSpace* CombatCrouchingMovementBlendSpaceOverride;
+
+	/** Jumping animation sequence to use when weapon is unsheathed, overrides any animation set by the equipping character */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UAnimSequence* CombatJumpAnimationOverride;
+
+	/** Falling animation blend space to use when weapon is unsheathed, overrides any blend spaces set by the equipping character */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UBlendSpace1D* CombatFallingBlendSpaceOverride;
+
+	/** Landing animation blend space to use when weapon is unsheathed, overrides any blend spaces set by the equipping character */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UBlendSpace* CombatLandingBlendSpaceOverride;
+
 public:
 	// Sets default values for this actor's properties
 	AWeapon(const FObjectInitializer& ObjectInitializer);
@@ -67,13 +97,60 @@ protected:
 
 public:
 	/** Gets the hand(s) required to use this weapon */
+	UFUNCTION(BlueprintPure)
 	EWeaponHand GetWeaponHand();
 
 	/** Gets the type of the weapon */
+	UFUNCTION(BlueprintPure)
 	EWeaponType GetWeaponType();
 
 	/** Gets The location where this weapon is sheathed. */
+	UFUNCTION(BlueprintPure)
 	EWeaponSocketType GetWeaponSocketType();
+
+	/** Gets the sheathe animation montage to use for this weapon based on the current socket type */
+	UFUNCTION(BlueprintPure)
+	UAnimMontage* GetSheatheAnimationMontage();
+
+	/** Gets the sheathe animation montage to use for this weapon based on the current socket type */
+	UFUNCTION(BlueprintPure)
+	UAnimMontage* GetUnsheatheAnimationMontage();
+
+	/** Gets the sheathed socket position adjustment vector based on the current socket type of the weapon */
+	UFUNCTION(BlueprintPure)
+	FVector GetSheathedSocketPositionAdjustment();
+
+	/** Gets the sheathed socket rotation adjustment rotator based on the current socket type of the weapon */
+	UFUNCTION(BlueprintPure)
+	FRotator GetSheathedSocketRotationAdjustment();
+
+	/** Gets the unsheathed socket position adjustment vector based on the current socket type of the weapon */
+	UFUNCTION(BlueprintPure)
+	FVector GetUnsheathedSocketPositionAdjustment();
+
+	/** Gets the unsheathed socket rotation adjustment rotator based on the current socket type of the weapon */
+	UFUNCTION(BlueprintPure)
+	FRotator GetUnsheathedSocketRotationAdjustment();
+
+	/** Get the standing movement animation blend space to use when weapon is unsheathed, overrides any blend spaces set by the equipping character */
+	UFUNCTION(BlueprintPure, Category = "Animation\|Movement")
+	UBlendSpace* GetCombatStandingMovementBlendSpaceOverride();
+
+	/** Get the crouching movement animation blend space to use when weapon is unsheathed, overrides any blend spaces set by the equipping character */
+	UFUNCTION(BlueprintPure, Category = "Animation\|Movement")
+	UBlendSpace* GetCombatCrouchingMovementBlendSpaceOverride();
+
+	/** Get the jumping animation sequence to use when weapon is unsheathed, overrides any animation set by the equipping character */
+	UFUNCTION(BlueprintPure, Category = "Animation\|Movement")
+	UAnimSequence* GetCombatJumpAnimationOverride();
+
+	/** Get the falling animation blend space to use when weapon is unsheathed, overrides any blend spaces set by the equipping character */
+	UFUNCTION(BlueprintPure, Category = "Animation\|Movement")
+	UBlendSpace1D* GetCombatFallingBlendSpaceOverride();
+
+	/** Get the landing animation blend space to use when weapon is unsheathed, overrides any blend spaces set by the equipping character */
+	UFUNCTION(BlueprintPure, Category = "Animation\|Movement")
+	UBlendSpace* GetCombatLandingBlendSpaceOverride();
 
 protected:
 	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------

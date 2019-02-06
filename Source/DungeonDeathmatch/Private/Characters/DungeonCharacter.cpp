@@ -22,7 +22,6 @@
 #include "Armor.h"
 #include "Weapon.h"
 #include "CharacterRenderCapture2D.h"
-#include "EquipmentGlobals.h"
 
 // Console command for logging melee combo states
 static int32 LogCombos = 0;
@@ -147,6 +146,7 @@ ADungeonCharacter::ADungeonCharacter()
 	
 
 	bIsMeleeComboReady = true;
+	CombatState = ECombatState::Sheathed;
 	CurrentMeleeComboState = -1;
 
 	// Initialize Inventory & Equipment systems
@@ -243,6 +243,18 @@ void ADungeonCharacter::BeginPlay()
 			{
 				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(StopFreeLookAbility.GetDefaultObject()), 1, 0));
 			}
+			if (SheatheWeaponsAbility)
+			{
+				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(SheatheWeaponsAbility.GetDefaultObject()), 1, 0));
+			}
+			if (UnsheatheWeaponsAbility)
+			{
+				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(UnsheatheWeaponsAbility.GetDefaultObject()), 1, 0));
+			}
+			if (SwitchWeaponLoadoutAbility)
+			{
+				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(SwitchWeaponLoadoutAbility.GetDefaultObject()), 1, 0));
+			}
 		}
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 		AddStartupGameplayAbilities();
@@ -292,7 +304,7 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 	// Action Inputs
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &ADungeonCharacter::OnInteractKeyPressed);
-	PlayerInputComponent->BindAction("LoadoutSwitch", IE_Pressed, this, &ADungeonCharacter::OnLoadoutSwitchKeyPressed);
+	PlayerInputComponent->BindAction("SwitchLoadout", IE_Pressed, this, &ADungeonCharacter::OnLoadoutSwitchKeyPressed);
 	PlayerInputComponent->BindAction("Sheathe", IE_Pressed, this, &ADungeonCharacter::OnSheatheKeyPressed);
 	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &ADungeonCharacter::OnAttackKeyPressed);
 	PlayerInputComponent->BindAction("Block", IE_Pressed, this, &ADungeonCharacter::OnBlockKeyPressed);
@@ -721,15 +733,28 @@ void ADungeonCharacter::OnInteractKeyPressed()
 
 void ADungeonCharacter::OnLoadoutSwitchKeyPressed()
 {
-	Server_ToggleActiveLoadout();
+	if (SwitchWeaponLoadoutAbility)
+	{
+		AbilitySystemComponent->TryActivateAbilityByClass(SwitchWeaponLoadoutAbility);
+	}
 }
 
 void ADungeonCharacter::OnSheatheKeyPressed()
 {
 	if (CombatState == ECombatState::Sheathed)
-		Server_SetCombatState(ECombatState::ReadyToUse);
-	else if (CombatState == ECombatState::ReadyToUse)
-		Server_SetCombatState(ECombatState::Sheathed);
+	{
+		if (UnsheatheWeaponsAbility)
+		{
+			AbilitySystemComponent->TryActivateAbilityByClass(UnsheatheWeaponsAbility);
+		}
+	}
+	else if (CombatState == ECombatState::ReadyToUse) 
+	{
+		if (SheatheWeaponsAbility)
+		{
+			AbilitySystemComponent->TryActivateAbilityByClass(SheatheWeaponsAbility);
+		}
+	}
 }
 
 void ADungeonCharacter::OnAttackKeyPressed()
@@ -900,6 +925,201 @@ void ADungeonCharacter::SetIsAutoFreeLooking(bool IsAutoFreeLooking)
 bool ADungeonCharacter::GetIsReorientingBody()
 {
 	return bIsReorientingBody;
+}
+
+UBlendSpace* ADungeonCharacter::GetDefaultStandingMovementBlendSpace()
+{
+	return DefaultStandingMovementBlendSpace;
+}
+
+UBlendSpace* ADungeonCharacter::GetDefaultCrouchingMovementBlendSpace()
+{
+	return DefaultCrouchingMovementBlendSpace;
+}
+
+UAnimSequence* ADungeonCharacter::GetDefaultJumpingAnimation()
+{
+	return DefaultJumpingAnimation;
+}
+
+UBlendSpace1D* ADungeonCharacter::GetDefaultFallingBlendSpace()
+{
+	return DefaultFallingBlendSpace;
+}
+
+UBlendSpace* ADungeonCharacter::GetDefaultLandingBlendSpace()
+{
+	return DefaultLandingBlendSpace;
+}
+
+UBlendSpace* ADungeonCharacter::GetCombatStandingMovementBlendSpace()
+{
+	if (CombatState != ECombatState::Sheathed)
+	{
+		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
+
+		if (ActiveLoadout.MainHandWeapon)
+		{
+			UBlendSpace* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatStandingMovementBlendSpaceOverride();
+			if (BlendSpace)
+			{
+				return BlendSpace;
+			}
+		}
+		else if (ActiveLoadout.OffHandWeapon)
+		{
+			UBlendSpace* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatStandingMovementBlendSpaceOverride();
+			if (BlendSpace)
+			{
+				return BlendSpace;
+			}
+		}
+
+		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
+		UBlendSpace** BlendSpacePtr = CombatStandingMovementBlendSpaceMap.Find(LoadoutType);
+		if (BlendSpacePtr)
+		{
+			return *BlendSpacePtr;
+		}
+	}
+
+	return DefaultStandingMovementBlendSpace;
+}
+
+UBlendSpace* ADungeonCharacter::GetCombatCrouchingMovementBlendSpace()
+{
+	if (CombatState != ECombatState::Sheathed)
+	{
+		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
+
+		if (ActiveLoadout.MainHandWeapon)
+		{
+			UBlendSpace* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatCrouchingMovementBlendSpaceOverride();
+			if (BlendSpace)
+			{
+				return BlendSpace;
+			}
+		}
+		else if (ActiveLoadout.OffHandWeapon)
+		{
+			UBlendSpace* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatCrouchingMovementBlendSpaceOverride();
+			if (BlendSpace)
+			{
+				return BlendSpace;
+			}
+		}
+
+		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
+		UBlendSpace** BlendSpacePtr = CombatCrouchingMovementBlendSpaceMap.Find(LoadoutType);
+		if (BlendSpacePtr)
+		{
+			return *BlendSpacePtr;
+		}
+	}
+
+	return DefaultCrouchingMovementBlendSpace;
+}
+
+UAnimSequence* ADungeonCharacter::GetCombatJumpingAnimation()
+{
+	if (CombatState != ECombatState::Sheathed)
+	{
+		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
+
+		if (ActiveLoadout.MainHandWeapon)
+		{
+			UAnimSequence* AnimSequence = ActiveLoadout.MainHandWeapon->GetCombatJumpAnimationOverride();
+			if (AnimSequence)
+			{
+				return AnimSequence;
+			}
+		}
+		else if (ActiveLoadout.OffHandWeapon)
+		{
+			UAnimSequence* AnimSequence = ActiveLoadout.OffHandWeapon->GetCombatJumpAnimationOverride();
+			if (AnimSequence)
+			{
+				return AnimSequence;
+			}
+		}
+
+		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
+		UAnimSequence** AnimSequencePtr = CombatJumpingAnimationMap.Find(LoadoutType);
+		if (AnimSequencePtr)
+		{
+			return *AnimSequencePtr;
+		}
+	}
+
+	return DefaultJumpingAnimation;
+}
+
+UBlendSpace1D* ADungeonCharacter::GetCombatFallingBlendSpace()
+{
+	if (CombatState != ECombatState::Sheathed)
+	{
+		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
+
+		if (ActiveLoadout.MainHandWeapon)
+		{
+			UBlendSpace1D* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatFallingBlendSpaceOverride();
+			if (BlendSpace)
+			{
+				return BlendSpace;
+			}
+		}
+		else if (ActiveLoadout.OffHandWeapon)
+		{
+			UBlendSpace1D* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatFallingBlendSpaceOverride();
+			if (BlendSpace)
+			{
+				return BlendSpace;
+			}
+		}
+
+		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
+		UBlendSpace1D** BlendSpacePtr = CombatFallingBlendSpaceMap.Find(LoadoutType);
+		if (BlendSpacePtr)
+		{
+			return *BlendSpacePtr;
+		}
+	}
+
+	return DefaultFallingBlendSpace;
+}
+
+UBlendSpace* ADungeonCharacter::GetCombatLandingBlendSpace()
+{
+	if (CombatState != ECombatState::Sheathed)
+	{
+		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
+
+		if (ActiveLoadout.MainHandWeapon)
+		{
+			UBlendSpace* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatLandingBlendSpaceOverride();
+			if (BlendSpace)
+			{
+				return BlendSpace;
+			}
+		}
+		else if (ActiveLoadout.OffHandWeapon)
+		{
+			UBlendSpace* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatLandingBlendSpaceOverride();
+			if (BlendSpace)
+			{
+				return BlendSpace;
+			}
+		}
+
+		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
+		UBlendSpace** BlendSpacePtr = CombatLandingBlendSpaceMap.Find(LoadoutType);
+		if (BlendSpacePtr)
+		{
+			return *BlendSpacePtr;
+		}
+	}
+
+	return DefaultLandingBlendSpace;
 }
 
 float ADungeonCharacter::GetAimYaw()
@@ -1091,16 +1311,14 @@ USphereComponent* ADungeonCharacter::GetRightFistCollider()
 	return FistColliderRight;
 }
 
-void ADungeonCharacter::Server_ToggleActiveLoadout_Implementation()
+ECombatState ADungeonCharacter::GetCombatState()
 {
-	EquipmentComponent->ToggleActiveLoadout();
-
-
+	return CombatState;
 }
 
-bool ADungeonCharacter::Server_ToggleActiveLoadout_Validate()
+void ADungeonCharacter::ToggleActiveLoadout()
 {
-	return true;
+	EquipmentComponent->ToggleActiveLoadout();
 }
 
 void ADungeonCharacter::Server_SetCombatState_Implementation(ECombatState NewCombatSate)

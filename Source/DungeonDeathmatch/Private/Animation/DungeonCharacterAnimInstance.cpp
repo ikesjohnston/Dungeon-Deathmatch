@@ -4,6 +4,7 @@
 #include "DungeonDeathmatch.h"
 #include <Kismet/KismetMathLibrary.h>
 #include "AnimationProfile.h"
+#include "DungeonCharacter.h"
 
 UDungeonCharacterAnimInstance::UDungeonCharacterAnimInstance(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -11,6 +12,8 @@ UDungeonCharacterAnimInstance::UDungeonCharacterAnimInstance(const FObjectInitia
 	AimYawDeltaLerpStart = 90;
 	AimYawDeltaLerpStop = 5;
 	AimLerpAlpha = .05f;
+
+	BlendSpaceChangeBlendTime = .4f;
 }
 
 void UDungeonCharacterAnimInstance::NativeInitializeAnimation()
@@ -18,6 +21,10 @@ void UDungeonCharacterAnimInstance::NativeInitializeAnimation()
 	Super::NativeInitializeAnimation();
 
 	OwningCharacter = Cast<ADungeonCharacter>(TryGetPawnOwner());
+	if (OwningCharacter)
+	{
+		OwningCharacterMovement = Cast<UCharacterMovementComponent>(OwningCharacter->GetMovementComponent());
+	}
 }
 
 void UDungeonCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
@@ -29,7 +36,40 @@ void UDungeonCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		MovementSpeed = OwningCharacter->GetMovementVelocity().Size();
 		MovementDirection = OwningCharacter->GetMovementDirection();
 
+		if (OwningCharacterMovement)
+		{
+			bIsFalling = OwningCharacterMovement->IsFalling();
+			if (bIsFalling)
+			{
+				FallTime += DeltaSeconds;
+			}
+			else
+			{
+				FallTime = 0;
+			}
+		}
+
 		bIsReorientingBody = OwningCharacter->GetIsReorientingBody();
+		bIsCrouched = OwningCharacter->bIsCrouched;
+		bIsJumping = OwningCharacter->GetIsJumping();
+		bIsMontagePlaying = IsAnyMontagePlaying();
+		bIsFreeLooking = OwningCharacter->GetIsFreeLooking();
+
+		if (MovementSpeed == 0 || bIsFreeLooking)
+		{
+			bShouldBlendAimOffset = true;
+		}
+
+		if (AimYaw < 0)
+		{
+			bShouldPlayLeftTurnAnimation = true;
+		}
+		else
+		{
+			bShouldPlayLeftTurnAnimation = false;
+		}
+
+		UpdateAnimationResources();
 
 		// Calculate how much the yaw has changed from the previous frame
 		float PreviousAimYawTarget = AimYawTarget;
@@ -59,19 +99,114 @@ void UDungeonCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	}
 }
 
-UBlendSpace* UDungeonCharacterAnimInstance::GetMovementBlendSpace()
+void UDungeonCharacterAnimInstance::UpdateAnimationResources()
 {
-	UBlendSpace* BlendSpace = nullptr;
-
-	/*if (OwningCharacter)
+	if (OwningCharacter)
 	{
-		UAnimationProfile* AnimProfile = OwningCharacter->GetAnimationProfile();
-		if (AnimProfile)
+		// Check if any animations or blend spaces have changed since the last frame, and set timers for proper blending
+		UBlendSpace* NewStandingMovementBlendSpace = OwningCharacter->GetCombatStandingMovementBlendSpace();
+		if (StandingMovementBlendSpace == nullptr)
 		{
-			BlendSpace = AnimProfile->GetMovementBlendSpace();
+			StandingMovementBlendSpace = NewStandingMovementBlendSpace;
+			PreviousStandingMovementBlendSpace = NewStandingMovementBlendSpace;
 		}
-	}*/
+		else if (NewStandingMovementBlendSpace != StandingMovementBlendSpace)
+		{
+			PreviousStandingMovementBlendSpace = StandingMovementBlendSpace;
+			StandingMovementBlendSpace = NewStandingMovementBlendSpace;
+			bDidStandingMovementBlendSpaceChange = true;
+			GetWorld()->GetTimerManager().ClearTimer(ResetStandingBlendSpaceChangeHandle);
+			GetWorld()->GetTimerManager().SetTimer(ResetStandingBlendSpaceChangeHandle, this, &UDungeonCharacterAnimInstance::ResetStandingBlendSpaceChange, BlendSpaceChangeBlendTime, false);
+		}
 
-	return BlendSpace;
+		UBlendSpace* NewCrouchingMovementBlendSpace = OwningCharacter->GetCombatCrouchingMovementBlendSpace();
+		if (CrouchingMovementBlendSpace == nullptr)
+		{
+			CrouchingMovementBlendSpace = NewCrouchingMovementBlendSpace;
+			PreviousCrouchingMovementBlendSpace = NewCrouchingMovementBlendSpace;
+		}
+		else if (NewCrouchingMovementBlendSpace != CrouchingMovementBlendSpace)
+		{
+			PreviousCrouchingMovementBlendSpace = CrouchingMovementBlendSpace;
+			CrouchingMovementBlendSpace = NewCrouchingMovementBlendSpace;
+			bDidCrouchingMovementBlendSpaceChange = true;
+			GetWorld()->GetTimerManager().ClearTimer(ResetCrouchingBlendSpaceChangeHandle);
+			GetWorld()->GetTimerManager().SetTimer(ResetCrouchingBlendSpaceChangeHandle, this, &UDungeonCharacterAnimInstance::ResetCrouchingBlendSpaceChange, BlendSpaceChangeBlendTime, false);
+		}
+
+		UAnimSequence* NewJumpingAnimation = OwningCharacter->GetCombatJumpingAnimation();
+		if (JumpingAnimation == nullptr)
+		{
+			JumpingAnimation = NewJumpingAnimation;
+			PreviousJumpingAnimation = NewJumpingAnimation;
+		}
+		else if (NewJumpingAnimation != JumpingAnimation)
+		{
+			PreviousJumpingAnimation = JumpingAnimation;
+			JumpingAnimation = NewJumpingAnimation;
+			bDidJumpAnimationChange = true;
+			GetWorld()->GetTimerManager().ClearTimer(ResetJumpingAnimationChangeHandle);
+			GetWorld()->GetTimerManager().SetTimer(ResetJumpingAnimationChangeHandle, this, &UDungeonCharacterAnimInstance::ResetJumpingAnimationChange, BlendSpaceChangeBlendTime, false);
+		}
+
+		UBlendSpace1D* NewFallingBlendSpace = OwningCharacter->GetCombatFallingBlendSpace();
+		if (FallingBlendSpace == nullptr)
+		{
+			FallingBlendSpace = NewFallingBlendSpace;
+			PreviousFallingBlendSpace = NewFallingBlendSpace;
+		}
+		else if (NewFallingBlendSpace != FallingBlendSpace)
+		{
+			PreviousFallingBlendSpace = FallingBlendSpace;
+			FallingBlendSpace = NewFallingBlendSpace;
+			bDidFallingBlendSpaceChange = true;
+			GetWorld()->GetTimerManager().ClearTimer(ResetFallingBlendSpaceChangeHandle);
+			GetWorld()->GetTimerManager().SetTimer(ResetFallingBlendSpaceChangeHandle, this, &UDungeonCharacterAnimInstance::ResetFallingBlendSpaceChange, BlendSpaceChangeBlendTime, false);
+		}
+
+		UBlendSpace* NewLandingBlendSpace = OwningCharacter->GetCombatLandingBlendSpace();
+		if (LandingBlendSpace == nullptr)
+		{
+			LandingBlendSpace = NewLandingBlendSpace;
+			PreviousLandingBlendSpace = NewLandingBlendSpace;
+		}
+		else if (NewLandingBlendSpace != LandingBlendSpace)
+		{
+			PreviousLandingBlendSpace = LandingBlendSpace;
+			LandingBlendSpace = NewLandingBlendSpace;
+			bDidLandingBlendSpaceChange = true;
+			GetWorld()->GetTimerManager().ClearTimer(ResetLandingBlendSpaceChangeHandle);
+			GetWorld()->GetTimerManager().SetTimer(ResetLandingBlendSpaceChangeHandle, this, &UDungeonCharacterAnimInstance::ResetLandingBlendSpaceChange, BlendSpaceChangeBlendTime, false);
+		}
+	}
 }
 
+void UDungeonCharacterAnimInstance::ResetStandingBlendSpaceChange()
+{
+	PreviousStandingMovementBlendSpace = StandingMovementBlendSpace;
+	bDidStandingMovementBlendSpaceChange = false;
+}
+
+void UDungeonCharacterAnimInstance::ResetCrouchingBlendSpaceChange()
+{
+	PreviousCrouchingMovementBlendSpace = CrouchingMovementBlendSpace;
+	bDidCrouchingMovementBlendSpaceChange = false;
+}
+
+void UDungeonCharacterAnimInstance::ResetJumpingAnimationChange()
+{
+	PreviousJumpingAnimation = JumpingAnimation;
+	bDidJumpAnimationChange = false;
+}
+
+void UDungeonCharacterAnimInstance::ResetFallingBlendSpaceChange()
+{
+	PreviousFallingBlendSpace = FallingBlendSpace;
+	bDidFallingBlendSpaceChange = false;
+}
+
+void UDungeonCharacterAnimInstance::ResetLandingBlendSpaceChange()
+{
+	PreviousLandingBlendSpace = LandingBlendSpace;
+	bDidLandingBlendSpaceChange = false;
+}

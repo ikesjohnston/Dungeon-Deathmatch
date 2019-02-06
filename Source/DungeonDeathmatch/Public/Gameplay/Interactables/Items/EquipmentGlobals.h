@@ -105,6 +105,17 @@ enum class ERequestedHand : uint8
 	Both		UMETA(DisplayName = "Both")
 };
 
+/** Represents a specific loadout type based on equipped weapons */
+UENUM(BlueprintType)
+enum class ELoadoutType : uint8
+{
+	Unarmed				UMETA(DisplayName = "Unarmed"),
+	OneHand				UMETA(DisplayName = "One Hand"),
+	DualWield			UMETA(DisplayName = "Dual Wield"),
+	OneHandAndShield	UMETA(DisplayName = "One Hand & Shield"),
+	TwoHand				UMETA(DisplayName = "Two Hand")
+};
+
 /** Struct that stores the details of an individual weapon loadout */
 USTRUCT(BlueprintType)
 struct FWeaponLoadout
@@ -123,4 +134,22 @@ struct FWeaponLoadout
 	{
 
 	}
+
+	FWeaponLoadout(AWeapon* MainHandWeaponPtr, AWeapon* OffHandWeaponPtr)
+	{
+		MainHandWeapon = MainHandWeaponPtr;
+		OffHandWeapon = OffHandWeaponPtr;
+	}
+};
+
+/** Blueprint library class for static equipment functions */
+UCLASS()
+class DUNGEONDEATHMATCH_API UDungeonEquipmentLibrary : public UBlueprintFunctionLibrary
+{
+	GENERATED_UCLASS_BODY()
+
+public:
+
+	UFUNCTION(BlueprintCallable , Category = "Equipment\|Weapons")
+	static ELoadoutType GetLoadoutType(const FWeaponLoadout Loadout);
 };

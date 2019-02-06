@@ -9,6 +9,7 @@
 #include "EquipmentGlobals.h"
 #include <GameplayTagAssetInterface.h>
 #include "InventoryGlobals.h"
+#include "EquipmentGlobals.h"
 #include "DungeonCharacter.generated.h"
 
 class UCameraComponent;
@@ -29,6 +30,8 @@ class AInteractableActor;
 class AArmor;
 
 class ACharacterRenderCapture2D;
+class UBlendSpace;
+class UBlendSpace1D;
 
 /**
  * Enum for movement direction used for implementing certain gameplay abilities in blueprint
@@ -226,6 +229,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UDungeonGameplayAbility> StopFreeLookAbility;
 
+	/** The GameplayAbility to use when sheathing weapons */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UDungeonGameplayAbility> SheatheWeaponsAbility;
+
+	/** The GameplayAbility to use when unsheathing weapons */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UDungeonGameplayAbility> UnsheatheWeaponsAbility;
+
+	/** The GameplayAbility to use when switching weapon loadouts */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UDungeonGameplayAbility> SwitchWeaponLoadoutAbility;
+
 	/** The GameplayTag used to send custom melee hit events to hit actors */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	FGameplayTag UnarmedMeleeHitEventTag;
@@ -313,6 +328,47 @@ protected:
 	/** The maximum value to clamp the aim rotation pitch to */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
 	float AimPitchClampMax;
+
+	/** Standing movement animation blend space to use when weapons are sheathed*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UBlendSpace* DefaultStandingMovementBlendSpace;
+
+	/** Crouching movement animation blend space to use when weapons are sheathed*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UBlendSpace* DefaultCrouchingMovementBlendSpace;
+
+	/** Jumping animation sequence to use when weapons are sheathed*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UAnimSequence* DefaultJumpingAnimation;
+
+	/** Falling animation blend space to use when weapons are sheathed*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UBlendSpace1D* DefaultFallingBlendSpace;
+
+	/** Landing animation blend space to use when weapons are sheathed*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UBlendSpace* DefaultLandingBlendSpace;
+
+	/** Mapping of blend spaces to use for standing movement animations when weapons are unsheathed based on loadout type */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	TMap<ELoadoutType, UBlendSpace*> CombatStandingMovementBlendSpaceMap;
+
+	/** Mapping of blend spaces to use for crouching movement animations when weapons are unsheathed based on loadout type */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	TMap<ELoadoutType, UBlendSpace*> CombatCrouchingMovementBlendSpaceMap;
+
+	/** Mapping of animation sequences to use for jumping when weapons are unsheathed based on loadout type */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	TMap<ELoadoutType, UAnimSequence*> CombatJumpingAnimationMap;
+
+	/** Mapping of blend spaces to use for falling animations when weapons are unsheathed based on loadout type */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	TMap<ELoadoutType, UBlendSpace1D*> CombatFallingBlendSpaceMap;
+
+	/** Mapping of blend spaces to use for landing animations when weapons are unsheathed based on loadout type */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	TMap<ELoadoutType, UBlendSpace*> CombatLandingBlendSpaceMap;
+
 
 	/********************************************************* END ANIMATION VARIABLES ************************************************************************/
 
@@ -658,6 +714,46 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Animation|\Aim")
 	void UseControllerDesiredRotation(bool UseRotation);
 
+	/** Gets the standing movement animation blend space to use when weapons are sheathed*/
+	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UBlendSpace* GetDefaultStandingMovementBlendSpace();
+
+	/** Gets the crouching movement animation blend space to use when weapons are sheathed*/
+	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UBlendSpace* GetDefaultCrouchingMovementBlendSpace();
+
+	/** Gets the jumping animation sequence to use when weapons are sheathed*/
+	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UAnimSequence* GetDefaultJumpingAnimation();
+
+	/** Gets the falling animation blend space to use when weapons are sheathed*/
+	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UBlendSpace1D* GetDefaultFallingBlendSpace();
+
+	/** Gets the landing animation blend space to use when weapons are sheathed*/
+	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UBlendSpace* GetDefaultLandingBlendSpace();
+
+	/** Gets the blend space to use for standing movement animations when weapons are unsheathed based on loadout type */
+	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UBlendSpace* GetCombatStandingMovementBlendSpace();
+
+	/** Gets the blend space to use for crouching movement animations when weapons are unsheathed based on loadout type */
+	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UBlendSpace* GetCombatCrouchingMovementBlendSpace();
+
+	/** Gets the animation sequence to use for jumping when weapons are unsheathed based on loadout type */
+	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UAnimSequence* GetCombatJumpingAnimation();
+
+	/** Gets the blend space to use for falling animations when weapons are unsheathed based on loadout type */
+	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UBlendSpace1D* GetCombatFallingBlendSpace();
+
+	/** Gets the blend space to use for landing animations when weapons are unsheathed based on loadout type */
+	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UBlendSpace* GetCombatLandingBlendSpace();
+
 	/********************************************************* END PUBLIC ANIMATION FUNCTIONS ********************************************************************/
 
 	/********************************************************* BEGIN PUBLIC INVENTORY & EQUIPMENT FUNCTIONS ******************************************************/
@@ -813,9 +909,13 @@ public:
 	 */
 	USphereComponent* GetRightFistCollider();
 
-	/* Toggles the character's active loadout and attaches or detaches weapons */
-	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
-	void Server_ToggleActiveLoadout();
+	/* Toggles the character's active loadout between primary and secondary */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void ToggleActiveLoadout();
+
+	/** Gets the characters current combat state */
+	UFUNCTION(BlueprintPure)
+	ECombatState GetCombatState();
 
 	/** Sets the characters combat state and replicates it to all clients. Calls appropriate multicast functions based on state. */
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")

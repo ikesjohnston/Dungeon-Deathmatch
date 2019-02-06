@@ -28,13 +28,6 @@ void UEquipmentComponent::BeginPlay()
 	}
 }
 
-void UEquipmentComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(UEquipmentComponent, bIsPrimaryLoadoutActive);
-}
-
 TMap<EEquipmentSlot, AEquippable*> UEquipmentComponent::GetEquipment() const
 {
 	return Equipment;
@@ -192,6 +185,27 @@ void UEquipmentComponent::ToggleActiveLoadout()
 bool UEquipmentComponent::IsPrimaryLoadoutActive()
 {
 	return bIsPrimaryLoadoutActive;
+}
+
+FWeaponLoadout UEquipmentComponent::GetActiveWeaponLoadout()
+{
+	AWeapon* MainHandWeapon = nullptr;
+	AWeapon* OffHandWeapon = nullptr;
+
+	if (bIsPrimaryLoadoutActive)
+	{
+		MainHandWeapon = Cast<AWeapon>(GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutOneMainHand));
+		OffHandWeapon = Cast<AWeapon>(GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutOneOffHand));
+	}
+	else
+	{
+		MainHandWeapon = Cast<AWeapon>(GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutTwoMainHand));
+		OffHandWeapon = Cast<AWeapon>(GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutTwoOffHand));
+	}
+
+	FWeaponLoadout Loadout = FWeaponLoadout(MainHandWeapon, OffHandWeapon);
+
+	return Loadout;
 }
 
 void UEquipmentComponent::EquipItem(AEquippable* Equippable, EEquipmentSlot Slot)

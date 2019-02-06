@@ -8,6 +8,8 @@
 #include "Item.h"
 #include "InteractTooltipWidget.h"
 #include "ItemTooltipWidget.h"
+#include "DungeonGameInstance.h"
+#include "DungeonCharacter.h"
 
 // Sets default values
 AWeapon::AWeapon(const FObjectInitializer& ObjectInitializer)
@@ -53,6 +55,117 @@ EWeaponType AWeapon::GetWeaponType()
 EWeaponSocketType AWeapon::GetWeaponSocketType()
 {
 	return WeaponSocketType;
+}
+
+UAnimMontage* AWeapon::GetSheatheAnimationMontage()
+{
+	UAnimMontage** MontagePtr = SheatheAnimationMontageOverrides.Find(WeaponSocketType);
+	if (MontagePtr)
+	{
+		return *MontagePtr;
+	}
+	else
+	{
+		UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
+		if (GameInstance)
+		{
+			MontagePtr = GameInstance->GetSheatheAnimationMontages().Find(WeaponSocketType);
+			if (MontagePtr)
+			{
+				return *MontagePtr;
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+UAnimMontage* AWeapon::GetUnsheatheAnimationMontage()
+{
+	UAnimMontage** MontagePtr = UnsheatheAnimationMontageOverrides.Find(WeaponSocketType);
+	if (MontagePtr)
+	{
+		return *MontagePtr;
+	}
+	else
+	{
+		UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
+		if (GameInstance)
+		{
+			MontagePtr = GameInstance->GetUnsheatheAnimationMontages().Find(WeaponSocketType);
+			if (MontagePtr)
+			{
+				return *MontagePtr;
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+FVector AWeapon::GetSheathedSocketPositionAdjustment()
+{
+	FVector* VectorPtr = SheathedSocketPositionAdjustments.Find(WeaponSocketType);
+	if (VectorPtr)
+	{
+		return *VectorPtr;
+	}
+	return FVector::ZeroVector;
+}
+
+FRotator AWeapon::GetSheathedSocketRotationAdjustment()
+{
+	FRotator* RotatorPtr = SheathedSocketRotationAdjustments.Find(WeaponSocketType);
+	if (RotatorPtr)
+	{
+		return *RotatorPtr;
+	}
+	return FRotator::ZeroRotator;
+}
+
+FVector AWeapon::GetUnsheathedSocketPositionAdjustment()
+{
+	FVector* VectorPtr = UnsheathedSocketPositionAdjustments.Find(WeaponSocketType);
+	if (VectorPtr)
+	{
+		return *VectorPtr;
+	}
+	return FVector::ZeroVector;
+}
+
+FRotator AWeapon::GetUnsheathedSocketRotationAdjustment()
+{
+	FRotator* RotatorPtr = UnsheathedSocketRotationAdjustments.Find(WeaponSocketType);
+	if (RotatorPtr)
+	{
+		return *RotatorPtr;
+	}
+	return FRotator::ZeroRotator;
+}
+
+UBlendSpace* AWeapon::GetCombatStandingMovementBlendSpaceOverride()
+{
+	return CombatStandingMovementBlendSpaceOverride;
+}
+
+UBlendSpace* AWeapon::GetCombatCrouchingMovementBlendSpaceOverride()
+{
+	return CombatCrouchingMovementBlendSpaceOverride;
+}
+
+UAnimSequence* AWeapon::GetCombatJumpAnimationOverride()
+{
+	return CombatJumpAnimationOverride;
+}
+
+UBlendSpace1D* AWeapon::GetCombatFallingBlendSpaceOverride()
+{
+	return CombatFallingBlendSpaceOverride;
+}
+
+UBlendSpace* AWeapon::GetCombatLandingBlendSpaceOverride()
+{
+	return CombatLandingBlendSpaceOverride;
 }
 
 void AWeapon::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
@@ -107,20 +220,57 @@ void AWeapon::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharac
 
 	Server_SpawnAtLocation(NewEquippingCharacter->GetActorLocation());
 	Server_SetCanInteract(false);
-	FName AttachSocketName = NewEquippingCharacter->GetNameForWeaponSocket(WeaponSocketType);
+	FName AttachSocketName = NAME_None;
+
+	FWeaponLoadout ActiveLoadout = NewEquippingCharacter->GetEquipmentComponent()->GetActiveWeaponLoadout();
+	ECombatState CombatState = NewEquippingCharacter->GetCombatState();
+	
+	if (CombatState != ECombatState::Sheathed && ActiveLoadout.MainHandWeapon == this)
+	{
+		AttachSocketName = FName("MainHand");
+	}
+	else if (CombatState != ECombatState::Sheathed && ActiveLoadout.OffHandWeapon == this)
+	{
+		AttachSocketName = FName("OffHand");
+	}
+	else {
+		AttachSocketName = NewEquippingCharacter->GetNameForWeaponSocket(WeaponSocketType);
+	}
 
 	FVector SocketPositionAdjustment = FVector::ZeroVector;
-	FVector* VectorPtr = UnsheathedSocketPositionAdjustments.Find(WeaponSocketType);
-	if (VectorPtr)
+	if (CombatState != ECombatState::Sheathed && (ActiveLoadout.MainHandWeapon == this || ActiveLoadout.OffHandWeapon == this))
 	{
-		SocketPositionAdjustment = *VectorPtr;
+		FVector* VectorPtr = UnsheathedSocketPositionAdjustments.Find(WeaponSocketType);
+		if (VectorPtr)
+		{
+			SocketPositionAdjustment = *VectorPtr;
+		}
+	}
+	else
+	{
+		FVector* VectorPtr = SheathedSocketPositionAdjustments.Find(WeaponSocketType);
+		if (VectorPtr)
+		{
+			SocketPositionAdjustment = *VectorPtr;
+		}
 	}
 
 	FRotator SocketRotationAdjustment = FRotator::ZeroRotator;
-	FRotator* RotatorPtr = UnsheathedSocketRotationAdjustments.Find(WeaponSocketType);
-	if (RotatorPtr)
+	if (CombatState != ECombatState::Sheathed && (ActiveLoadout.MainHandWeapon == this || ActiveLoadout.OffHandWeapon == this))
 	{
-		SocketRotationAdjustment = *RotatorPtr;
+		FRotator* RotatorPtr = UnsheathedSocketRotationAdjustments.Find(WeaponSocketType);
+		if (RotatorPtr)
+		{
+			SocketRotationAdjustment = *RotatorPtr;
+		}
+	}
+	else
+	{
+		FRotator* RotatorPtr = SheathedSocketRotationAdjustments.Find(WeaponSocketType);
+		if (RotatorPtr)
+		{
+			SocketRotationAdjustment = *RotatorPtr;
+		}
 	}
 
 	NewEquippingCharacter->Server_AttachActorToSocket(this, AttachSocketName, SocketPositionAdjustment, SocketRotationAdjustment);
