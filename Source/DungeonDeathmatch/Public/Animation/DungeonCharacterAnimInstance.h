@@ -4,6 +4,7 @@
 
 #include "Animation/AnimInstance.h"
 #include "DungeonCharacter.h"
+#include "AnimGlobals.h"
 #include "DungeonCharacterAnimInstance.generated.h"
 
 class UBlendSpace;
@@ -156,6 +157,26 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Locomotion")
 	float BlendSpaceChangeBlendTime;
 
+	/* Is an animation montage currently being played in the default slot? */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	bool bIsAnimPlayingInDefaultSlot;
+
+	/* Is an animation montage currently being played in the upper body slot? */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	bool bIsAnimPlayingInUpperBodySlot;
+
+	/* Is an animation montage currently being played in the main hand slot? */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	bool bIsAnimPlayingInMainHandSlot;
+
+	/* Is an animation montage currently being played in the off hand slot? */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	bool bIsAnimPlayingInOffHandSlot;
+
+	/* Mapping of the number of animation montages being played for each slot */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	TMap<EAnimSlot, int32> SlotAnimsBeingPlayed;
+
 private:
 	/** Timer handles and functions for reseting animation change flags, so that additional changes can be blended */
 	FTimerHandle ResetStandingBlendSpaceChangeHandle;
@@ -179,4 +200,8 @@ public:
 
 	UFUNCTION()
 	void UpdateAnimationResources();
+
+	void SetMontageStartedInSlot(EAnimSlot Slot);
+
+	void SetMontageStoppedInSlot(EAnimSlot Slot);
 };

@@ -28,4 +28,3 @@ bool UChestAnimInstance::GetIsOpen()
  {
 	 bIsOpen = IsOpen;
  }
-

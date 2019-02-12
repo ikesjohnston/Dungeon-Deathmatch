@@ -10,17 +10,16 @@
 #include "ItemTooltipWidget.h"
 #include "DungeonGameInstance.h"
 #include "DungeonCharacter.h"
+#include "WeaponTraceComponent.h"
+#include "DungeonDeathmatch.h"
 
 // Sets default values
 AWeapon::AWeapon(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	PrimaryActorTick.bCanEverTick = false;
+	bReplicates = true;
 
-	DamagingVolume = CreateDefaultSubobject<UCapsuleComponent>(TEXT("DamagingVolume"));
-	DamagingVolume->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
-	DamagingVolume->SetCollisionResponseToChannel(TRACE_INTERACTABLE, ECR_Ignore);
-	DamagingVolume->SetupAttachment(RootMeshComponent);
+	PrimaryActorTick.bCanEverTick = false;
 }
 
 AWeapon::~AWeapon()
@@ -168,6 +167,83 @@ UBlendSpace* AWeapon::GetCombatLandingBlendSpaceOverride()
 	return CombatLandingBlendSpaceOverride;
 }
 
+TArray<TSubclassOf<UDungeonGameplayAbility>> AWeapon::GetMainHandAbilities()
+{
+	return MainHandAbilities;
+}
+
+TArray<TSubclassOf<UDungeonGameplayAbility>> AWeapon::GetMainHandAltAbilities()
+{
+	return MainHandAltAbilities;
+}
+
+TArray<TSubclassOf<UDungeonGameplayAbility>> AWeapon::GetOffHandAbilities()
+{
+	return OffHandAbilities;
+}
+
+TArray<TSubclassOf<UDungeonGameplayAbility>> AWeapon::GetOffHandAltAbilities()
+{
+	return OffHandAltAbilities;
+}
+
+void AWeapon::StartSwing()
+{
+	if (SwingSounds.Num() > 0)
+	{
+		int SoundIndex = FMath::RandRange(0, SwingSounds.Num() - 1);
+		USoundCue* SwingSoundToPlay = SwingSounds[SoundIndex];
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), SwingSoundToPlay, GetActorLocation());
+	}
+	if (SwingParticles)
+	{
+		//SwingParticleSystemComponent = UGameplayStatics::SpawnEmitterAttached(SwingParticles, DamagingVolume, NAME_None, FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::SnapToTarget);
+	}
+
+	// Activate all attached hit trace components on the server
+	AActor* Owner = GetOwner();
+	if (Owner && Owner->Role == ROLE_Authority)
+	{
+		TArray<UActorComponent*> WeaponTraceComponents = GetComponentsByClass(UWeaponTraceComponent::StaticClass());
+		for (UActorComponent* ActorComponent : WeaponTraceComponents)
+		{
+			UWeaponTraceComponent* WeaponTraceComponent = Cast<UWeaponTraceComponent>(ActorComponent);
+			if (WeaponTraceComponent)
+			{
+				WeaponTraceComponent->SetIsHitTracing(true);
+			}
+		}
+	}
+}
+
+void AWeapon::StopSwing()
+{
+	if (SwingParticleSystemComponent)
+	{
+		//SwingParticleSystemComponent->DestroyComponent(true);
+	}
+
+	// Deactivate all attached hit trace components on the server
+	// Activate all attached hit trace components on server
+	AActor* Owner = GetOwner();
+	if (Owner && Owner->Role == ROLE_Authority)
+	{
+		TArray<UActorComponent*> WeaponTraceComponents = GetComponentsByClass(UWeaponTraceComponent::StaticClass());
+		for (UActorComponent* ActorComponent : WeaponTraceComponents)
+		{
+			UWeaponTraceComponent* WeaponTraceComponent = Cast<UWeaponTraceComponent>(ActorComponent);
+			if (WeaponTraceComponent)
+			{
+				WeaponTraceComponent->SetIsHitTracing(false);
+			}
+		}
+	}
+
+	HitActorsThisSwing.Empty();
+	DamagedActorsThisSwing.Empty();
+	BlockingActorsThisSwing.Empty();
+}
+
 void AWeapon::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
 {
 	Super::ServerOnEquip_Implementation(NewEquippingCharacter, EquipmentSlot);
@@ -289,7 +365,25 @@ void AWeapon::MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCha
 		if (MeshComp)
 		{
 			MeshComp->SetCollisionResponseToChannel(TRACE_INTERACTABLE, ECR_Ignore);
+			MeshComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECR_Ignore);
 		}
+	}
+
+	for (TSubclassOf<UGameplayAbility> Ability : MainHandAbilities)
+	{
+		NewEquippingCharacter->GiveAbility(Ability);
+	}
+	for (TSubclassOf<UGameplayAbility> Ability : MainHandAltAbilities)
+	{
+		NewEquippingCharacter->GiveAbility(Ability);
+	}
+	for (TSubclassOf<UGameplayAbility> Ability : OffHandAbilities)
+	{
+		NewEquippingCharacter->GiveAbility(Ability);
+	}
+	for (TSubclassOf<UGameplayAbility> Ability : OffHandAltAbilities)
+	{
+		NewEquippingCharacter->GiveAbility(Ability);
 	}
 }
 
@@ -312,6 +406,7 @@ void AWeapon::MulticastOnUnequip_Implementation()
 		if (MeshComp)
 		{
 			MeshComp->SetCollisionResponseToChannel(TRACE_INTERACTABLE, ECR_Block);
+			MeshComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECR_Block);
 		}
 	}
 
@@ -329,3 +424,103 @@ void AWeapon::MulticastOnUnequip_Implementation()
 	}
 }
 
+void AWeapon::OnHitDetected(FWeaponHitResult WeaponHitResult)
+{
+	if (Role == ROLE_Authority)
+	{
+		Server_OnHitDetected(WeaponHitResult);
+	}
+}
+
+void AWeapon::Server_OnHitDetected_Implementation(FWeaponHitResult WeaponHitResult)
+{
+	Multicast_OnHitDetected(WeaponHitResult);
+}
+
+bool AWeapon::Server_OnHitDetected_Validate(FWeaponHitResult WeaponHitResult)
+{
+	return true;
+}
+
+void AWeapon::Multicast_OnHitDetected_Implementation(FWeaponHitResult WeaponHitResult)
+{
+	AActor* HitActor = WeaponHitResult.HitResult.GetActor();
+	if (!HitActorsThisSwing.Contains(HitActor))
+	{
+		HitActorsThisSwing.Add(HitActor);
+
+		FVector HitDirection = WeaponHitResult.HitResult.TraceEnd - WeaponHitResult.HitResult.TraceStart;
+		HitDirection.Normalize();
+
+		HitActor->TakeDamage(100000, FDamageEvent(), EquippingCharacter->GetController(), this);
+		UPrimitiveComponent* HitComponent = WeaponHitResult.HitResult.GetComponent();
+		if (HitComponent)
+		{
+			HitComponent->AddForceAtLocation(HitDirection * -10000, WeaponHitResult.HitResult.ImpactPoint);
+		}
+
+		UMeshComponent* MeshComponent = Cast<UMeshComponent>(WeaponHitResult.HitResult.GetComponent());
+		if (MeshComponent)
+		{
+			EPhysicalSurface PhysicalSurface = WeaponHitResult.HitResult.PhysMaterial->SurfaceType;
+			USoundCue* SoundToPlay = nullptr;
+			int SoundIndex = 0;
+			switch (PhysicalSurface)
+			{
+			case PHYSICAL_SURFACE_METAL:
+				SoundIndex = FMath::RandRange(0, MetalHitSounds.Num() - 1);
+				SoundToPlay = MetalHitSounds[SoundIndex];
+				break;
+			case PHYSICAL_SURFACE_STONE:
+				SoundIndex = FMath::RandRange(0, StoneHitSounds.Num() - 1);
+				SoundToPlay = StoneHitSounds[SoundIndex];
+				break;
+			case PHYSICAL_SURFACE_WOOD:
+				SoundIndex = FMath::RandRange(0, WoodHitSounds.Num() - 1);
+				SoundToPlay = WoodHitSounds[SoundIndex];
+				break;
+			case PHYSICAL_SURFACE_LEATHER:
+				SoundIndex = FMath::RandRange(0, LeatherHitSounds.Num() - 1);
+				SoundToPlay = LeatherHitSounds[SoundIndex];
+				break;
+			case PHYSICAL_SURFACE_CLOTH:
+				SoundIndex = FMath::RandRange(0, ClothHitSounds.Num() - 1);
+				SoundToPlay = ClothHitSounds[SoundIndex];
+				break;
+			case PHYSICAL_SURFACE_FLESH:
+				SoundIndex = FMath::RandRange(0, FleshHitSounds.Num() - 1);
+				SoundToPlay = FleshHitSounds[SoundIndex];
+				break;
+			default:
+				break;
+			}
+			if (SoundToPlay)
+			{
+				UGameplayStatics::PlaySoundAtLocation(GetWorld(), SoundToPlay, WeaponHitResult.HitResult.ImpactPoint);
+			}
+			if (HitParticles)
+			{
+				FRotator ParticleRotation = FVector::CrossProduct(WeaponHitResult.HitResult.ImpactNormal, HitDirection).Rotation();
+				FTransform EmitterTransform = FTransform(ParticleRotation, WeaponHitResult.HitResult.ImpactPoint, FVector::OneVector);
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticles, EmitterTransform);
+			}
+		}
+
+		switch (WeaponHitResult.WeaponTraceType)
+		{
+		case EWeaponTraceType::Edge:
+			break;
+		case EWeaponTraceType::Center:
+			break;
+		case EWeaponTraceType::Base:
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+bool AWeapon::Multicast_OnHitDetected_Validate(FWeaponHitResult WeaponHitResult)
+{
+	return true;
+}

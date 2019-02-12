@@ -5,11 +5,19 @@
 #include "Engine.h"
 #include "Net/UnrealNetwork.h"
 
-#define TRACE_INTERACTABLE ECC_GameTraceChannel1
+#define TRACE_INTERACTABLE	ECC_GameTraceChannel1
+#define TRACE_ATTACK		ECC_GameTraceChannel2
+
+#define PHYSICAL_SURFACE_METAL		SurfaceType1
+#define PHYSICAL_SURFACE_STONE		SurfaceType2
+#define PHYSICAL_SURFACE_WOOD		SurfaceType3
+#define PHYSICAL_SURFACE_LEATHER	SurfaceType4
+#define PHYSICAL_SURFACE_CLOTH		SurfaceType5
+#define PHYSICAL_SURFACE_FLESH		SurfaceType6
 
 /* Stencil index mapping for outline post processing */
-#define STENCIL_ITEM_DEFAULT	255;
-#define STENCIL_ITEM_UNCOMMON	254;
-#define STENCIL_ITEM_RARE		253;
-#define STENCIL_ITEM_EPIC		252;
-#define STENCIL_ITEM_LEGENDARY	251;
+#define STENCIL_ITEM_DEFAULT	255
+#define STENCIL_ITEM_UNCOMMON	254
+#define STENCIL_ITEM_RARE		253
+#define STENCIL_ITEM_EPIC		252
+#define STENCIL_ITEM_LEGENDARY	251

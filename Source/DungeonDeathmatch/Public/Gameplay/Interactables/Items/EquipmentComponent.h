@@ -40,7 +40,7 @@ protected:
 	TMap<EEquipmentSlot, AEquippable*> Equipment;
 
 	/** Is the first loadout active, or is it the second? Determines combat animations and weapon placement. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment|\Weapons")
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Equipment|\Weapons")
 	bool bIsPrimaryLoadoutActive;
 
 public:	
@@ -107,8 +107,9 @@ public:
 	 */
 	bool RequestUnequipItem(AEquippable* Equippable, EEquipmentSlot Slot);
 
-	/** Toggles which loadout is the current active loadout */
-	void ToggleActiveLoadout();
+	/** Server side function that toggles which loadout is the current active loadout */
+	UFUNCTION(Server, Reliable, WithValidation, Category = "Equipment")
+	void Server_ToggleActiveLoadout();
 
 	/** Is the primary loadout active, or is the second? */
 	bool IsPrimaryLoadoutActive();
@@ -151,4 +152,8 @@ protected:
 	 */
 	UFUNCTION(NetMulticast, Reliable, Category = "Equipment")
 	void Multicast_OnItemUnequipped(AEquippable* Equippable, EEquipmentSlot EquipmentSlot);
+
+	/** Toggles which loadout is the current active loadout */
+	UFUNCTION(NetMulticast, Reliable, Category = "Equipment")
+	void Multicast_ToggleActiveLoadout();
 };

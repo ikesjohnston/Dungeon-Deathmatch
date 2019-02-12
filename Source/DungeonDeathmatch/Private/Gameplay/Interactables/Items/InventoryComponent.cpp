@@ -172,6 +172,8 @@ void UInventoryComponent::AddItem(AItem* Item, FInventoryGridPair OriginSlot)
 			}
 		}
 
+		Item->SetOwner(GetOwner());
+
 		Multicast_OnItemAdd(Item, OriginSlot);
 	}
 }
@@ -203,6 +205,8 @@ void UInventoryComponent::RemoveItem(int32 InventoryIndex)
 				}
 			}
 		}
+
+		ItemToRemove->SetOwner(nullptr);
 
 		Multicast_OnItemRemove(ItemToRemove, OriginSlot);
 	}

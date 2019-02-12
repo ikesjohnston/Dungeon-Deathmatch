@@ -4,20 +4,24 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimNotifies/AnimNotifyState.h"
-#include "AnimNotifyState_AttachWeapon.generated.h"
-
-class USkeletalMeshComponent;
+#include "AnimGlobals.h"
+#include "AnimNotifyState_SlotAnimPlaying.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API UAnimNotifyState_AttachWeapon : public UAnimNotifyState
+class DUNGEONDEATHMATCH_API UAnimNotifyState_SlotAnimPlaying : public UAnimNotifyState
 {
 	GENERATED_BODY()
-	
+
+protected:
+	/** The slot that the animation occupies */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AnimNotify")
+	EAnimSlot AnimSlot;
+
 public:
-	UAnimNotifyState_AttachWeapon(const FObjectInitializer& ObjectInitializer);
+	UAnimNotifyState_SlotAnimPlaying(const FObjectInitializer& ObjectInitializer);
 
 	virtual void NotifyBegin(class USkeletalMeshComponent* MeshComp, class UAnimSequenceBase* Animation, float TotalDuration) override;
 	virtual void NotifyEnd(class USkeletalMeshComponent* MeshComp, class UAnimSequenceBase* Animation) override;

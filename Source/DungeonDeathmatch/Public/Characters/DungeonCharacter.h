@@ -16,7 +16,6 @@ class UCameraComponent;
 class USpringArmComponent;
 class USkeletalMeshComponent;
 class UWidgetComponent;
-class USphereComponent;
 
 class UDungeonAbilitySystemComponent;
 class UDungeonAttributeSet;
@@ -190,13 +189,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Abilities")
 	TArray<TSubclassOf<UDungeonGameplayAbility>> GameplayAbilities;
 
-	/** 
-	 * Abilities to grant to this character on creation for melee combos.
-	 * These will be activated based on the current combo state.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Abilities")
-	TArray<TSubclassOf<UDungeonGameplayAbility>> UnarmedMeleeComboAbilities;
-
 	/** Passive gameplay effects applied on creation */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TArray<TSubclassOf<UGameplayEffect>> StartingGameplayEffects;
@@ -369,7 +361,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
 	TMap<ELoadoutType, UBlendSpace*> CombatLandingBlendSpaceMap;
 
-
 	/********************************************************* END ANIMATION VARIABLES ************************************************************************/
 
 	/********************************************************* BEGIN INVENTORY & EQUIPMENT VARIABLES **********************************************************/
@@ -406,20 +397,32 @@ protected:
 
 	/********************************************************* BEGIN COMBAT VARIABLES *************************************************************************/
 
-	/** Volume for detecting unarmed attack hits with left fist */
+	/** The Weapon class to use for the main hand when no other weapon is equipped. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
-	USphereComponent* FistColliderLeft;
+	TSubclassOf<AWeapon> MainHandUnarmedWeaponClass;
 
-	/** Volume for detecting unarmed attack hits with right fist */
+	/** The Weapon to use for the main hand when no other weapon is equipped. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	AWeapon* MainHandUnarmedWeapon;
+
+	/** The Weapon class to use for the off hand when no other weapon is equipped. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
-	USphereComponent* FistColliderRight;
+	TSubclassOf<AWeapon> OffHandUnarmedWeaponClass;
+
+	/** The Weapon to use for the off hand when no other weapon is equipped. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	AWeapon* OffHandUnarmedWeapon;
 
 	UPROPERTY(VisibleAnywhere, Replicated)
 	ECombatState CombatState;
 
-	/** Represents the index of the ability to use next in the MeleeCombatAbilities array for the current active weapon */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
-	uint8 CurrentMeleeComboState;
+	/** The active combo type, if any. Used for determining what melee attack abilities to use. */
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	EMeleeComboType ActiveMeleeComboType;
+
+	/** Running tally of the combo count for the currently active combo type, if any */
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	uint8 ActiveMeleeComboCount;
 
 	/** Flag to determine if character can begin a new melee combo attack */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
@@ -895,20 +898,6 @@ public:
 
 	/********************************************************* BEGIN PUBLIC COMBAT FUNCTIONS ******************************************************************/
 
-	/**
-	 * Get the sphere component used for left fist collisions
-	 *
-	 * @return The left fist sphere component
-	 */
-	USphereComponent* GetLeftFistCollider();
-
-	/**
-	 * Get the sphere component used for right fist collisions
-	 *
-	 * @return The right fist sphere component
-	 */
-	USphereComponent* GetRightFistCollider();
-
 	/* Toggles the character's active loadout between primary and secondary */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void ToggleActiveLoadout();
@@ -921,37 +910,29 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
 	void Server_SetCombatState(ECombatState NewCombatSate);
 
-	/**
-	 * Sets flag to allow or disallow the character to perform their next melee combo attack.
-	 * Only runs on the server.
-	 *
-	 * @param ComboReady Can perform next attack?
-	 */
-	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
-	void Server_SetMeleeComboReady(bool ComboReady);
+	/** Server side function to set the active melee combo type, used for determining what melee ability to use next if the same attack type is repeated */
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Combat")
+	void Server_SetActiveMeleeComboType(EMeleeComboType ComboType);
 
-	/**
-	 * Increases the melee combo state to determine the next attack ability to use.
-	 * Only runs on the server.
-	 */
-	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
-	void Server_IncreaseMeleeComboState();
+	/** Sets the active melee combo type, used for determining what melee ability to use next if the same attack type is repeated */
+	UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Combat")
+	void Multicast_SetActiveMeleeComboType(EMeleeComboType ComboType);
 
-	/**
-	 * Sets the melee combo state back to zero. This should happen after a full combo has been performed, or after
-	 * the MeleeComboEndTimer expires.
-	 * Only runs on the server.
-	 */
-	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
-	void Server_ResetMeleeComboState();
+	/** Server side function that clears the melee combo counter, used when switching to a different combo type */
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Combat")
+	void Server_ClearMeleeComboCounter();
 
-	/**
-	 * Starts an internal timer that will disallow the character from performing the next combo attack once expired.
-	 * Only runs on the server.
-	 * @param TimeToComboEnd The amount of time, in seconds, to set the timer for
-	 */
-	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
-	void Server_BeginMeleeComboEndTimer(float TimeToComboEnd);
+	/** Clears the melee combo counter, used when switching to a different combo type */
+	UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Combat")
+	void Multicast_ClearMeleeComboCounter();
+
+	/** Server side function that increments the melee combo counter, used for accessing the next melee ability when the same attack type is repeated */
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Combat")
+	void Server_IncrementMeleeComboCounter();
+
+	/** Increments the melee combo counter, used for accessing the next melee ability when the same attack type is repeated */
+	UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Combat")
+	void Multicast_IncrementMeleeComboCounter();
 
 	/********************************************************* END PUBLIC COMBAT FUNCTIONS ********************************************************************/
 
@@ -1138,17 +1119,37 @@ protected:
 	UFUNCTION()
 	void OnSheatheKeyPressed();
 
-	/** Processes Attack key presses */
+	/** Processes Main Hand Attack key presses */
 	UFUNCTION()
-	void OnAttackKeyPressed();
+	void OnMainHandAttackKeyPressed();
 
-	/** Processes Block key presses */
+	/** Processes Main Hand Attack key releases */
 	UFUNCTION()
-	void OnBlockKeyPressed();
+	void OnMainHandAttackKeyReleased();
 
-	/** Processes Block key releases */
+	/** Processes Main Hand Alt Attack key presses */
 	UFUNCTION()
-	void OnBlockKeyReleased();
+	void OnMainHandAltAttackKeyPressed();
+
+	/** Processes Main Hand Alt Attack key releases */
+	UFUNCTION()
+	void OnMainHandAltAttackKeyReleased();
+
+	/** Processes Off Hand Attack key presses */
+	UFUNCTION()
+	void OnOffHandAttackKeyPressed();
+
+	/** Processes Off Hand Attack key releases */
+	UFUNCTION()
+	void OnOffHandAttackKeyReleased();
+
+	/** Processes Off Hand Alt Attack key presses */
+	UFUNCTION()
+	void OnOffHandAltAttackKeyPressed();
+
+	/** Processes Off Hand Alt Attack key releases */
+	UFUNCTION()
+	void OnOffHandAltAttackKeyReleased();
 
 	/** Processes Inventory key presses */
 	UFUNCTION()
@@ -1163,50 +1164,6 @@ protected:
 	/** Interacts with whatever the character is currently focusing. */
 	UFUNCTION()
 	void Interact();
-
-	/********************************************************* BEGIN PROTECTED COMBAT FUNCTIONS **********************************************************/
-
-	/** Sheathes the character's weapon. Only runs on the server. */
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_SheatheWeapon();
-
-	/** Unsheathes the character's weapon. Only runs on the server. */
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_UnsheatheWeapon();
-
-	/**
-	 * Gets whether or not the character is able to attack
-	 *
-	 * @return Can the character attack?
-	 */
-	UFUNCTION(BlueprintPure, Category = "Combat")
-	bool CanAttack();
-
-	/** Performs an attack. Only runs on the server. */
-	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
-	void Server_Attack();
-
-	/** Cancels an attack. Only runs on the server. */
-	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
-	void Server_CancelAttack();
-
-	/** Processes overlap events for the character's left fist during a melee attack. Will only be processed on the server.*/
-	UFUNCTION()
-	void OnFistColliderLeftBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
-
-	/** Processes overlap events for the character's right fist during a melee attack. Will only be processed on the server.*/
-	UFUNCTION()
-	void OnFistColliderRightBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
-
-	/**
-	 * Sends a melee hit Gameplay Event to an Actor hit by this character's unarmed attack. Will only be processed on the server.
-	 *
-	 * @param HitActor The Actor hit by this character's unarmed attack.
-	 */
-	UFUNCTION()
-	void SendUnarmedMeleeHitEvent(AActor* HitActor);
-
-	/********************************************************* END PROTECTED COMBAT FUNCTIONS ************************************************************/
 
 	/********************************************************* BEGIN PROTECTED INVENTORY & EQUIPMENT FUNCTIONS ************************************************************/
 

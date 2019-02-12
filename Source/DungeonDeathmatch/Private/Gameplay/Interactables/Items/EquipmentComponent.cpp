@@ -28,6 +28,13 @@ void UEquipmentComponent::BeginPlay()
 	}
 }
 
+void UEquipmentComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UEquipmentComponent, bIsPrimaryLoadoutActive);
+}
+
 TMap<EEquipmentSlot, AEquippable*> UEquipmentComponent::GetEquipment() const
 {
 	return Equipment;
@@ -177,9 +184,14 @@ bool UEquipmentComponent::RequestUnequipItem(AEquippable* Equippable, EEquipment
 	return Result;
 }
 
-void UEquipmentComponent::ToggleActiveLoadout()
+void UEquipmentComponent::Server_ToggleActiveLoadout_Implementation()
 {
-	bIsPrimaryLoadoutActive = !bIsPrimaryLoadoutActive;
+	Multicast_ToggleActiveLoadout();
+}
+
+bool UEquipmentComponent::Server_ToggleActiveLoadout_Validate()
+{
+	return true;
 }
 
 bool UEquipmentComponent::IsPrimaryLoadoutActive()
@@ -215,6 +227,7 @@ void UEquipmentComponent::EquipItem(AEquippable* Equippable, EEquipmentSlot Slot
 		Equipment.Add(TTuple<EEquipmentSlot, AEquippable*>(Slot, Equippable));
 		Multicast_OnItemEquipped(Equippable, Slot);
 		Equippable->Server_OnEquip(OwningCharacter, Slot);
+		Equippable->SetOwner(GetOwner());
 	}
 }
 
@@ -226,7 +239,13 @@ void UEquipmentComponent::UnequipItem(AEquippable* Equippable, EEquipmentSlot Sl
 		Equipment.Remove(Slot);
 		Multicast_OnItemUnequipped(Equippable, Slot);
 		Equippable->Server_OnUnequip();
+		Equippable->SetOwner(nullptr);
 	}
+}
+
+void UEquipmentComponent::Multicast_ToggleActiveLoadout_Implementation()
+{
+	bIsPrimaryLoadoutActive = !bIsPrimaryLoadoutActive;
 }
 
 void UEquipmentComponent::Multicast_OnItemEquipped_Implementation(AEquippable* Equippable, EEquipmentSlot EquipmentSlot)

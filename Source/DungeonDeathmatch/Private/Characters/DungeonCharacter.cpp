@@ -147,7 +147,6 @@ ADungeonCharacter::ADungeonCharacter()
 
 	bIsMeleeComboReady = true;
 	CombatState = ECombatState::Sheathed;
-	CurrentMeleeComboState = -1;
 
 	// Initialize Inventory & Equipment systems
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
@@ -178,7 +177,8 @@ void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ADungeonCharacter, CombatState);
-	DOREPLIFETIME(ADungeonCharacter, CurrentMeleeComboState);
+	DOREPLIFETIME(ADungeonCharacter, ActiveMeleeComboType);
+	DOREPLIFETIME(ADungeonCharacter, ActiveMeleeComboCount);
 	DOREPLIFETIME(ADungeonCharacter, bIsMeleeComboReady);
 
 	DOREPLIFETIME(ADungeonCharacter, AimYaw);
@@ -306,9 +306,14 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &ADungeonCharacter::OnInteractKeyPressed);
 	PlayerInputComponent->BindAction("SwitchLoadout", IE_Pressed, this, &ADungeonCharacter::OnLoadoutSwitchKeyPressed);
 	PlayerInputComponent->BindAction("Sheathe", IE_Pressed, this, &ADungeonCharacter::OnSheatheKeyPressed);
-	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &ADungeonCharacter::OnAttackKeyPressed);
-	PlayerInputComponent->BindAction("Block", IE_Pressed, this, &ADungeonCharacter::OnBlockKeyPressed);
-	PlayerInputComponent->BindAction("Block", IE_Released, this, &ADungeonCharacter::OnBlockKeyReleased);
+	PlayerInputComponent->BindAction("MainHandAttack", IE_Pressed, this, &ADungeonCharacter::OnMainHandAttackKeyPressed);
+	PlayerInputComponent->BindAction("MainHandAttack", IE_Released, this, &ADungeonCharacter::OnMainHandAttackKeyReleased);
+	PlayerInputComponent->BindAction("MainHandAltAttack", IE_Pressed, this, &ADungeonCharacter::OnMainHandAltAttackKeyPressed);
+	PlayerInputComponent->BindAction("MainHandAltAttack", IE_Released, this, &ADungeonCharacter::OnMainHandAltAttackKeyReleased);
+	PlayerInputComponent->BindAction("OffHandAttack", IE_Pressed, this, &ADungeonCharacter::OnOffHandAttackKeyPressed);
+	PlayerInputComponent->BindAction("OffHandAttack", IE_Released, this, &ADungeonCharacter::OnOffHandAttackKeyReleased);
+	PlayerInputComponent->BindAction("OffHandAltAttack", IE_Pressed, this, &ADungeonCharacter::OnOffHandAltAttackKeyPressed);
+	PlayerInputComponent->BindAction("OffHandAltAttack", IE_Released, this, &ADungeonCharacter::OnOffHandAltAttackKeyReleased);
 
 	// Menu Inputs
 	PlayerInputComponent->BindAction("Inventory", IE_Pressed, this, &ADungeonCharacter::OnInventoryKeyPressed);
@@ -362,14 +367,6 @@ void ADungeonCharacter::AddStartupGameplayAbilities()
 		for (TSubclassOf<UDungeonGameplayAbility>& StartupAbility : GameplayAbilities)
 		{
 			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(StartupAbility, GetCharacterLevel(), INDEX_NONE, this));
-		}
-		if (UnarmedMeleeComboAbilities.Num() > 0)
-		{
-			CurrentMeleeComboState = 0;
-			for (TSubclassOf<UDungeonGameplayAbility>& ComboAbility : UnarmedMeleeComboAbilities)
-			{
-				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(ComboAbility, GetCharacterLevel(), INDEX_NONE, this));
-			}
 		}
 
 		// Now apply passives
@@ -757,17 +754,174 @@ void ADungeonCharacter::OnSheatheKeyPressed()
 	}
 }
 
-void ADungeonCharacter::OnAttackKeyPressed()
+void ADungeonCharacter::OnMainHandAttackKeyPressed()
 {
-	Server_Attack();
+	if (CombatState == ECombatState::Sheathed)
+	{
+		if (UnsheatheWeaponsAbility)
+		{
+			AbilitySystemComponent->TryActivateAbilityByClass(UnsheatheWeaponsAbility);
+		}
+	}
+	else if (CombatState == ECombatState::ReadyToUse)
+	{
+		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
+		AWeapon* MainHandWeapon = ActiveLoadout.MainHandWeapon;
+		if (MainHandWeapon)
+		{
+			TArray<TSubclassOf<UDungeonGameplayAbility>> MainHandAbilities = MainHandWeapon->GetMainHandAbilities();
+			if (ActiveMeleeComboType != EMeleeComboType::MainHand)
+			{
+				// Make multicast calls first to ensure they happen on the client before proceeding
+				Multicast_SetActiveMeleeComboType(EMeleeComboType::MainHand);
+				Server_SetActiveMeleeComboType(EMeleeComboType::MainHand);
+
+				Multicast_ClearMeleeComboCounter();
+				Server_ClearMeleeComboCounter();
+			}
+			if (MainHandAbilities.Num() > 0)
+			{
+				if (ActiveMeleeComboCount >= MainHandAbilities.Num())
+				{
+					Multicast_ClearMeleeComboCounter();
+					Server_ClearMeleeComboCounter();
+				}
+				AbilitySystemComponent->TryActivateAbilityByClass(MainHandAbilities[ActiveMeleeComboCount]);
+			}
+		}
+	}
 }
 
-void ADungeonCharacter::OnBlockKeyPressed()
+void ADungeonCharacter::OnMainHandAttackKeyReleased()
 {
 
 }
 
-void ADungeonCharacter::OnBlockKeyReleased()
+void ADungeonCharacter::OnMainHandAltAttackKeyPressed()
+{
+	if (CombatState == ECombatState::Sheathed)
+	{
+		if (UnsheatheWeaponsAbility)
+		{
+			AbilitySystemComponent->TryActivateAbilityByClass(UnsheatheWeaponsAbility);
+		}
+	}
+	else if (CombatState == ECombatState::ReadyToUse)
+	{
+		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
+		AWeapon* MainHandWeapon = ActiveLoadout.MainHandWeapon;
+		if (MainHandWeapon)
+		{
+			TArray<TSubclassOf<UDungeonGameplayAbility>> MainHandAltAbilities = MainHandWeapon->GetMainHandAltAbilities();
+			if (ActiveMeleeComboType != EMeleeComboType::MainHandAlt)
+			{
+				// Make multicast calls first to ensure they happen on the client before proceeding
+				Multicast_SetActiveMeleeComboType(EMeleeComboType::MainHandAlt);
+				Server_SetActiveMeleeComboType(EMeleeComboType::MainHandAlt);
+
+				Multicast_ClearMeleeComboCounter();
+				Server_ClearMeleeComboCounter();
+			}
+			if (MainHandAltAbilities.Num() > 0)
+			{
+				if (ActiveMeleeComboCount >= MainHandAltAbilities.Num())
+				{
+					Multicast_ClearMeleeComboCounter();
+					Server_ClearMeleeComboCounter();
+				}
+				AbilitySystemComponent->TryActivateAbilityByClass(MainHandAltAbilities[ActiveMeleeComboCount]);
+			}
+		}
+	}
+}
+
+void ADungeonCharacter::OnMainHandAltAttackKeyReleased()
+{
+
+}
+
+void ADungeonCharacter::OnOffHandAttackKeyPressed()
+{
+	if (CombatState == ECombatState::Sheathed)
+	{
+		if (UnsheatheWeaponsAbility)
+		{
+			AbilitySystemComponent->TryActivateAbilityByClass(UnsheatheWeaponsAbility);
+		}
+	}
+	else if (CombatState == ECombatState::ReadyToUse)
+	{
+		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
+		AWeapon* OffHandWeapon = ActiveLoadout.OffHandWeapon;
+		if (OffHandWeapon)
+		{
+			TArray<TSubclassOf<UDungeonGameplayAbility>> OffHandAbilities = OffHandWeapon->GetOffHandAbilities();
+			if (ActiveMeleeComboType != EMeleeComboType::OffHand)
+			{
+				// Make multicast calls first to ensure they happen on the client before proceeding
+				Multicast_SetActiveMeleeComboType(EMeleeComboType::OffHand);
+				Server_SetActiveMeleeComboType(EMeleeComboType::OffHand);
+
+				Multicast_ClearMeleeComboCounter();
+				Server_ClearMeleeComboCounter();
+			}
+			if (OffHandAbilities.Num() > 0)
+			{
+				if (ActiveMeleeComboCount >= OffHandAbilities.Num())
+				{
+					Multicast_ClearMeleeComboCounter();
+					Server_ClearMeleeComboCounter();
+				}
+				AbilitySystemComponent->TryActivateAbilityByClass(OffHandAbilities[ActiveMeleeComboCount]);
+			}
+		}
+	}
+}
+
+void ADungeonCharacter::OnOffHandAttackKeyReleased()
+{
+
+}
+
+void ADungeonCharacter::OnOffHandAltAttackKeyPressed()
+{
+	if (CombatState == ECombatState::Sheathed)
+	{
+		if (UnsheatheWeaponsAbility)
+		{
+			AbilitySystemComponent->TryActivateAbilityByClass(UnsheatheWeaponsAbility);
+		}
+	}
+	else if (CombatState == ECombatState::ReadyToUse)
+	{
+		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
+		AWeapon* OffHandWeapon = ActiveLoadout.OffHandWeapon;
+		if (OffHandWeapon)
+		{
+			TArray<TSubclassOf<UDungeonGameplayAbility>> OffHandAltAbilities = OffHandWeapon->GetOffHandAltAbilities();
+			if (ActiveMeleeComboType != EMeleeComboType::OffHandAlt)
+			{
+				// Make multicast calls first to ensure they happen on the client before proceeding
+				Multicast_SetActiveMeleeComboType(EMeleeComboType::OffHandAlt);
+				Server_SetActiveMeleeComboType(EMeleeComboType::OffHandAlt);
+
+				Multicast_ClearMeleeComboCounter();
+				Server_ClearMeleeComboCounter();
+			}
+			if (OffHandAltAbilities.Num() > 0)
+			{
+				if (ActiveMeleeComboCount >= OffHandAltAbilities.Num())
+				{
+					Multicast_ClearMeleeComboCounter();
+					Server_ClearMeleeComboCounter();
+				}
+				AbilitySystemComponent->TryActivateAbilityByClass(OffHandAltAbilities[ActiveMeleeComboCount]);
+			}
+		}
+	}
+}
+
+void ADungeonCharacter::OnOffHandAltAttackKeyReleased()
 {
 
 }
@@ -1175,150 +1329,59 @@ void ADungeonCharacter::CalculateAimRotation()
 	}
 }
 
-void ADungeonCharacter::Server_SheatheWeapon_Implementation()
-{
-	/*AItem* Item = EquipmentComponent->GetEquipmentInSlot(EEquipmentSlot::MainHand);
-
-	if (Item)
-	{
-		CombatState = ECombatState::SheathingWeapon;
-	}*/
-}
-
-bool ADungeonCharacter::Server_SheatheWeapon_Validate()
-{
-	return true;
-}
-
-void ADungeonCharacter::Server_UnsheatheWeapon_Implementation()
-{
-	/*AItem* Item = EquipmentComponent->GetEquipmentInSlot(EEquipmentSlot::MainHand);
-
-	if (Item)
-	{
-		CombatState = ECombatState::UnsheathingWeapon;
-	}*/
-}
-
-bool ADungeonCharacter::Server_UnsheatheWeapon_Validate()
-{
-	return true;
-}
-
-bool ADungeonCharacter::CanAttack()
-{
-	if (!bIsMeleeComboReady)
-		return false;
-
-	return true;
-}
-
-void ADungeonCharacter::Server_Attack_Implementation()
-{
-	if (CanAttack() && CurrentMeleeComboState < UnarmedMeleeComboAbilities.Num())
-	{
-		TSubclassOf<UDungeonGameplayAbility> ComboAbility = UnarmedMeleeComboAbilities[CurrentMeleeComboState];
-		if (AbilitySystemComponent->TryActivateAbilityByClass(ComboAbility))
-		{
-			bIsMeleeComboReady = false;
-		};
-	}
-}
-
-bool ADungeonCharacter::Server_Attack_Validate()
-{
-	return true;
-}
-
-void ADungeonCharacter::Server_IncreaseMeleeComboState_Implementation()
-{
-	CurrentMeleeComboState++;
-	Server_SetMeleeComboReady(true);
-	if (LogCombos)
-	{
-		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::Server_IncreaseCombo - Melee combo count increased to %d for %s"), CurrentMeleeComboState, *GetName());
-	}
-	if (CurrentMeleeComboState > (UnarmedMeleeComboAbilities.Num() - 1))
-	{
-		if (LogCombos)
-		{
-			UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::Server_IncreaseCombo - Max melee combo count reached for %s"), *GetName());
-		}
-		Server_ResetMeleeComboState();
-	}
-}
-
-bool ADungeonCharacter::Server_IncreaseMeleeComboState_Validate()
-{
-	return true;
-}
-
-void ADungeonCharacter::Server_SetMeleeComboReady_Implementation(bool ComboReady)
-{
-	bIsMeleeComboReady = ComboReady;
-}
-
-bool ADungeonCharacter::Server_SetMeleeComboReady_Validate(bool ComboReady)
-{
-	return true;
-}
-
-void ADungeonCharacter::Server_BeginMeleeComboEndTimer_Implementation(float TimeToComboEnd)
-{
-	if (LogCombos)
-	{
-		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::Server_BeginMeleeComboEndTimer - Starting melee combo end timer with %f seconds for %s"), TimeToComboEnd, *GetName());
-	}
-	GetWorldTimerManager().SetTimer(MeleeComboEndTimer, this, &ADungeonCharacter::Server_ResetMeleeComboState, TimeToComboEnd, false);
-}
-
-bool ADungeonCharacter::Server_BeginMeleeComboEndTimer_Validate(float TimeToComboEnd)
-{
-	return true;
-}
-
-void ADungeonCharacter::Server_ResetMeleeComboState_Implementation()
-{
-	CurrentMeleeComboState = 0;
-	if (LogCombos)
-	{
-		UE_LOG(LogTemp, Log, TEXT("DungeonCharacter::Server_ResetCombo - Combo count reset for %s"), *GetName());
-	}
-}
-
-bool ADungeonCharacter::Server_ResetMeleeComboState_Validate()
-{
-	return true;
-}
-
-void ADungeonCharacter::Server_CancelAttack_Implementation()
-{
-
-}
-
-bool ADungeonCharacter::Server_CancelAttack_Validate()
-{
-	return true;
-}
-
-USphereComponent* ADungeonCharacter::GetLeftFistCollider()
-{
-	return FistColliderLeft;
-}
-
-USphereComponent* ADungeonCharacter::GetRightFistCollider()
-{
-	return FistColliderRight;
-}
-
 ECombatState ADungeonCharacter::GetCombatState()
 {
 	return CombatState;
 }
 
+void ADungeonCharacter::Server_SetActiveMeleeComboType_Implementation(EMeleeComboType ComboType)
+{
+	Multicast_SetActiveMeleeComboType(ComboType);
+}
+
+bool ADungeonCharacter::Server_SetActiveMeleeComboType_Validate(EMeleeComboType ComboType)
+{
+	return true;
+}
+
+void ADungeonCharacter::Multicast_SetActiveMeleeComboType_Implementation(EMeleeComboType ComboType)
+{
+	ActiveMeleeComboType = ComboType;
+}
+
+void ADungeonCharacter::Server_ClearMeleeComboCounter_Implementation()
+{
+	Multicast_ClearMeleeComboCounter();
+}
+
+bool ADungeonCharacter::Server_ClearMeleeComboCounter_Validate()
+{
+	return true;
+}
+
+void ADungeonCharacter::Multicast_ClearMeleeComboCounter_Implementation()
+{
+	ActiveMeleeComboCount = 0;
+}
+
+void ADungeonCharacter::Server_IncrementMeleeComboCounter_Implementation()
+{
+	Multicast_IncrementMeleeComboCounter();
+}
+
+bool ADungeonCharacter::Server_IncrementMeleeComboCounter_Validate()
+{
+	return true;
+}
+
+void ADungeonCharacter::Multicast_IncrementMeleeComboCounter_Implementation()
+{
+	ActiveMeleeComboCount++;
+}
+
 void ADungeonCharacter::ToggleActiveLoadout()
 {
-	EquipmentComponent->ToggleActiveLoadout();
+	EquipmentComponent->Server_ToggleActiveLoadout();
 }
 
 void ADungeonCharacter::Server_SetCombatState_Implementation(ECombatState NewCombatSate)
@@ -1396,43 +1459,6 @@ FName ADungeonCharacter::GetNameForWeaponSocket(EWeaponSocketType WeaponSocketTy
 	}
 
 	return FName();
-}
-
-void ADungeonCharacter::OnFistColliderLeftBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
-{
-	if (Role == ROLE_Authority)
-	{
-		if (OtherActor == this)
-		{
-			return;
-		}
-		SendUnarmedMeleeHitEvent(OtherActor);
-	}
-}
-
-void ADungeonCharacter::OnFistColliderRightBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
-{
-	if (Role == ROLE_Authority)
-	{
-		if (OtherActor == this)
-		{
-			return;
-		}
-		SendUnarmedMeleeHitEvent(OtherActor);
-	}
-}
-
-void ADungeonCharacter::SendUnarmedMeleeHitEvent(AActor* HitActor)
-{
-	if (Role == ROLE_Authority)
-	{
-		FGameplayEventData HitEventData = FGameplayEventData();
-		HitEventData.EventTag = UnarmedMeleeHitEventTag;
-		HitEventData.Instigator = this;
-		HitEventData.Target = HitActor;
-
-		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, UnarmedMeleeHitEventTag, HitEventData);
-	}
 }
 
 UInventoryComponent* ADungeonCharacter::GetInventoryComponent()

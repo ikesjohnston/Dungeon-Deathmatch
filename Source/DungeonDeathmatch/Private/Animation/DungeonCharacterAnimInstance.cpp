@@ -14,6 +14,11 @@ UDungeonCharacterAnimInstance::UDungeonCharacterAnimInstance(const FObjectInitia
 	AimLerpAlpha = .05f;
 
 	BlendSpaceChangeBlendTime = .4f;
+
+	SlotAnimsBeingPlayed.Add(TTuple<EAnimSlot, int32>(EAnimSlot::Default, 0));
+	SlotAnimsBeingPlayed.Add(TTuple<EAnimSlot, int32>(EAnimSlot::UpperBody, 0));
+	SlotAnimsBeingPlayed.Add(TTuple<EAnimSlot, int32>(EAnimSlot::MainHand, 0));
+	SlotAnimsBeingPlayed.Add(TTuple<EAnimSlot, int32>(EAnimSlot::OffHand, 0));
 }
 
 void UDungeonCharacterAnimInstance::NativeInitializeAnimation()
@@ -179,6 +184,73 @@ void UDungeonCharacterAnimInstance::UpdateAnimationResources()
 			GetWorld()->GetTimerManager().SetTimer(ResetLandingBlendSpaceChangeHandle, this, &UDungeonCharacterAnimInstance::ResetLandingBlendSpaceChange, BlendSpaceChangeBlendTime, false);
 		}
 	}
+
+	for (TTuple<EAnimSlot, int32> Tuple : SlotAnimsBeingPlayed)
+	{
+		int32* IntPtr = nullptr;
+		switch (Tuple.Key)
+		{
+
+		case EAnimSlot::Default:
+			IntPtr = SlotAnimsBeingPlayed.Find(EAnimSlot::Default);
+			if (*(IntPtr) > 0)
+			{
+				bIsAnimPlayingInDefaultSlot = true;
+			}
+			else
+			{
+				bIsAnimPlayingInDefaultSlot = false;
+			}
+			break;
+		case EAnimSlot::UpperBody:
+			IntPtr = SlotAnimsBeingPlayed.Find(EAnimSlot::UpperBody);
+			if (*(IntPtr) > 0)
+			{
+				bIsAnimPlayingInUpperBodySlot = true;
+			}
+			else
+			{
+				bIsAnimPlayingInUpperBodySlot = false;
+			}
+			break;
+		case EAnimSlot::MainHand:
+			IntPtr = SlotAnimsBeingPlayed.Find(EAnimSlot::MainHand);
+			if (*(IntPtr) > 0)
+			{
+				bIsAnimPlayingInMainHandSlot = true;
+			}
+			else
+			{
+				bIsAnimPlayingInMainHandSlot = false;
+			}
+			break;
+		case EAnimSlot::OffHand:
+			IntPtr = SlotAnimsBeingPlayed.Find(EAnimSlot::OffHand);
+			if (*(IntPtr) > 0)
+			{
+				bIsAnimPlayingInOffHandSlot = true;
+			}
+			else
+			{
+				bIsAnimPlayingInOffHandSlot = false;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+void UDungeonCharacterAnimInstance::SetMontageStartedInSlot(EAnimSlot Slot)
+{
+	int32* IntPtr = SlotAnimsBeingPlayed.Find(Slot);
+	*(IntPtr)++;
+}
+
+void UDungeonCharacterAnimInstance::SetMontageStoppedInSlot(EAnimSlot Slot)
+{
+	int32* IntPtr = SlotAnimsBeingPlayed.Find(Slot);
+	*(IntPtr)--;
 }
 
 void UDungeonCharacterAnimInstance::ResetStandingBlendSpaceChange()
