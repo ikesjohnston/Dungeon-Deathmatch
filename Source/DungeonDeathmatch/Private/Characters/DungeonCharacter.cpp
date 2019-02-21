@@ -786,6 +786,7 @@ void ADungeonCharacter::OnMainHandAttackKeyPressed()
 					Multicast_ClearMeleeComboCounter();
 					Server_ClearMeleeComboCounter();
 				}
+				Server_SetCombatState(ECombatState::AttackInProgress);
 				AbilitySystemComponent->TryActivateAbilityByClass(MainHandAbilities[ActiveMeleeComboCount]);
 			}
 		}
@@ -829,6 +830,7 @@ void ADungeonCharacter::OnMainHandAltAttackKeyPressed()
 					Multicast_ClearMeleeComboCounter();
 					Server_ClearMeleeComboCounter();
 				}
+				Server_SetCombatState(ECombatState::AttackInProgress);
 				AbilitySystemComponent->TryActivateAbilityByClass(MainHandAltAbilities[ActiveMeleeComboCount]);
 			}
 		}
@@ -872,6 +874,7 @@ void ADungeonCharacter::OnOffHandAttackKeyPressed()
 					Multicast_ClearMeleeComboCounter();
 					Server_ClearMeleeComboCounter();
 				}
+				Server_SetCombatState(ECombatState::AttackInProgress);
 				AbilitySystemComponent->TryActivateAbilityByClass(OffHandAbilities[ActiveMeleeComboCount]);
 			}
 		}
@@ -915,6 +918,7 @@ void ADungeonCharacter::OnOffHandAltAttackKeyPressed()
 					Multicast_ClearMeleeComboCounter();
 					Server_ClearMeleeComboCounter();
 				}
+				Server_SetCombatState(ECombatState::AttackInProgress);
 				AbilitySystemComponent->TryActivateAbilityByClass(OffHandAltAbilities[ActiveMeleeComboCount]);
 			}
 		}

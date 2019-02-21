@@ -6,6 +6,42 @@ UDungeonGameInstance::UDungeonGameInstance(const FObjectInitializer& ObjectIniti
 	: Super(ObjectInitializer)
 {
 	InventoryGridSlotSize = 40.0f;
+
+	UE_LOG(LogTemp, Warning, TEXT("Called UDungeonGameInstance::UDungeonGameInstance"))
+}
+
+void UDungeonGameInstance::Init()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Called UDungeonGameInstance::Init"))
+}
+
+void UDungeonGameInstance::Host()
+{
+	UEngine* Engine = GetEngine();
+	if (Engine)
+	{
+		Engine->AddOnScreenDebugMessage(0, 2, FColor::Green, TEXT("Hosting"));
+	}
+
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		World->ServerTravel("/Game/Levels/TraversalTestMap?listen");
+	}
+}
+
+void UDungeonGameInstance::Join(const FString& Address)
+{
+	UEngine* Engine = GetEngine();
+	if (Engine)
+	{
+		Engine->AddOnScreenDebugMessage(0, 5, FColor::Green, FString::Printf(TEXT("Joining %s"), *Address));
+	}
+	APlayerController* PlayerController = GetFirstLocalPlayerController(GetWorld());
+	if (PlayerController)
+	{
+		PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);
+	}
 }
 
 FStreamableManager& UDungeonGameInstance::GetAssetLoader()

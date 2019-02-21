@@ -12,6 +12,7 @@
 #include "Item.h"
 #include "DraggableItemWidget.h"
 #include "CharacterRenderCapture2D.h"
+#include "InGameOverlayWidget.h"
 
 // Console command for drawing interaction cast debug shapes
 static int32 DebugInteraction = 0;
@@ -116,10 +117,14 @@ void ADungeonPlayerController::FocusUIAndGame()
 	if (DungeonHUD)
 	{
 		FInputModeGameAndUI InputMode = FInputModeGameAndUI();
-		TSharedPtr<SWidget> WidgetPtr = DungeonHUD->GetInGameOverlay()->TakeWidget();
-		InputMode.SetWidgetToFocus(WidgetPtr);
-		InputMode.SetHideCursorDuringCapture(false);
-		SetInputMode(InputMode);
+		UInGameOverlayWidget* OverlayWidget = DungeonHUD->GetInGameOverlay();
+		if (OverlayWidget)
+		{
+			TSharedPtr<SWidget> WidgetPtr = OverlayWidget->TakeWidget();
+			InputMode.SetWidgetToFocus(WidgetPtr);
+			InputMode.SetHideCursorDuringCapture(false);
+			SetInputMode(InputMode);
+		}
 		DungeonHUD->BlurBackground();
 	}
 }

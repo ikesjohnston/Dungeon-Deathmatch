@@ -16,6 +16,7 @@ void UAnimNotifyState_MeleeComboReady::NotifyBegin(class USkeletalMeshComponent*
 	ADungeonCharacter* Character = Cast<ADungeonCharacter>(MeshComp->GetOwner());
 	if (Character && Character->Role == ROLE_Authority)
 	{
+		Character->Server_SetCombatState(ECombatState::ReadyToUse);
 		Character->Multicast_IncrementMeleeComboCounter();
 	}
 }

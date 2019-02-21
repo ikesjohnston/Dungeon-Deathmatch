@@ -58,6 +58,14 @@ protected:
 public:
 	UDungeonGameInstance(const FObjectInitializer& ObjectInitializer);
 
+	void Init() override;
+
+	UFUNCTION(Exec)
+	void Host();
+
+	UFUNCTION(Exec)
+	void Join(const FString& Address);
+
 	FStreamableManager& GetAssetLoader();
 
 	UFUNCTION(BlueprintPure)

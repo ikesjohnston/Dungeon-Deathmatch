@@ -68,40 +68,64 @@ void ADungeonHUD::HideInventoryMenu()
 
 void ADungeonHUD::ShowReticle()
 {
-	InGameOverlay->ShowReticle();
+	if (InGameOverlay)
+	{
+		InGameOverlay->ShowReticle();
+	}
 }
 
 void ADungeonHUD::HideReticle()
 {
-	InGameOverlay->HideReticle();
+	if (InGameOverlay)
+	{
+		InGameOverlay->HideReticle();
+	}
 }
 
 void ADungeonHUD::ShowTooltipAtLocation(FVector2D ScreenLocation, AItem* Item)
 {
-	InGameOverlay->ShowTooltipAtLocation(ScreenLocation, Item);
+	if (InGameOverlay)
+	{
+		InGameOverlay->ShowTooltipAtLocation(ScreenLocation, Item);
+	}
 }
 
 void ADungeonHUD::HideTooltip()
 {
-	InGameOverlay->HideTooltip();
+	if (InGameOverlay)
+	{
+		InGameOverlay->HideTooltip();
+	}
 }
 
 void ADungeonHUD::StartDragAndDropOperation(AItem* Item)
 {
-	InGameOverlay->StartDragAndDropOperation(Item);
+	if (InGameOverlay)
+	{
+		InGameOverlay->StartDragAndDropOperation(Item);
+	}
 }
 
 void ADungeonHUD::StopDragAndDropOperation(bool WasCanceled)
 {
-	InGameOverlay->StopDragAndDropOperation(WasCanceled);
+	if (InGameOverlay)
+	{
+		InGameOverlay->StopDragAndDropOperation(WasCanceled);
+	}
 }
 
 void ADungeonHUD::BlurBackground()
 {
-	InGameOverlay->BlurBackground();
+	if (InGameOverlay)
+	{
+		InGameOverlay->BlurBackground();
+	}
 }
 
 void ADungeonHUD::UnblurBackground()
 {
-	InGameOverlay->UnblurBackground();
+	if (InGameOverlay)
+	{
+		InGameOverlay->UnblurBackground();
+	}
 }
