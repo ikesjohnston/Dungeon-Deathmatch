@@ -13,6 +13,7 @@
 #include "DraggableItemWidget.h"
 #include "CharacterRenderCapture2D.h"
 #include "InGameOverlayWidget.h"
+#include "DungeonGameInstance.h"
 
 // Console command for drawing interaction cast debug shapes
 static int32 DebugInteraction = 0;
@@ -95,13 +96,21 @@ void ADungeonPlayerController::OnInventoryKeyPressed()
 void ADungeonPlayerController::OnEscapeKeyPressed()
 {
 	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
-	if (DungeonHUD)
+	if (DungeonHUD && DungeonHUD->AreMenusVisible())
 	{
 		DungeonHUD->HideCharacterMenu();
 		bShowMouseCursor = false;
 		SetPawnCanLook(false);	
 		StopDraggingItem(true);
 		FocusGame();
+	}
+	else
+	{
+		UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
+		if (GameInstance)
+		{
+			GameInstance->LoadInGameMenu();
+		}
 	}
 }
 

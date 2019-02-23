@@ -7,15 +7,18 @@
 #include <Engine/StreamableManager.h>
 #include "Item.h"
 #include "Equippable.h"
+#include "MenuInterface.h"
+#include "DungeonMenuWidget.h"
 #include "DungeonGameInstance.generated.h"
 
 class UDraggableItemWidget;
+class UUserWidget;
 
 /**
  * 
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API UDungeonGameInstance : public UGameInstance
+class DUNGEONDEATHMATCH_API UDungeonGameInstance : public UGameInstance, public IMenuInterface
 {
 	GENERATED_BODY()
 	
@@ -55,16 +58,35 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation Globals")
 	TMap<EWeaponSocketType, UAnimMontage*> UnsheatheAnimationMontages;
 
+private:
+	TSubclassOf<UUserWidget> MainMenuWidgetClass;
+
+	UDungeonMenuWidget* MainMenuWidget;
+
+	TSubclassOf<UUserWidget> InGameMenuWidgetClass;
+
+	UDungeonMenuWidget* InGameMenuWidget;
+
 public:
 	UDungeonGameInstance(const FObjectInitializer& ObjectInitializer);
 
 	void Init() override;
 
-	UFUNCTION(Exec)
-	void Host();
+	UFUNCTION(BlueprintCallable)
+	void LoadMainMenu();
+
+	UFUNCTION(BlueprintCallable)
+	void LoadInGameMenu();
 
 	UFUNCTION(Exec)
-	void Join(const FString& Address);
+	void HostGame();
+
+	UFUNCTION(Exec)
+	void JoinGame(const FString& Address);
+
+	void ExitToMainMenu();
+
+	void ExitToDesktop();
 
 	FStreamableManager& GetAssetLoader();
 
