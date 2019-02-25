@@ -10,6 +10,8 @@ class UButton;
 class IMenuInterface;
 class UWidgetSwitcher;
 class UEditableTextBox;
+class UPanelWidget;
+class UServerBrowserLineWidget;
 
 /**
  * 
@@ -36,14 +38,20 @@ protected:
 	UWidget* JoinMenu;
 
 	UPROPERTY(meta = (BindWidget))
-	UEditableTextBox* IPAddressField;
+	UPanelWidget* ServerList;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* JoinMenuJoinButton;
 
 	UPROPERTY(meta = (BindWidget))
+	UButton* JoinMenuRefreshButton;
+
+	UPROPERTY(meta = (BindWidget))
 	UButton* JoinMenuBackButton;
 	
+	UPROPERTY(meta = (BindWidget))
+	UWidget* ServerListRefreshDisplay;
+
 	UPROPERTY(meta = (BindWidget))
 	UButton* SettingsButton;
 
@@ -65,6 +73,21 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* ExitCancelButton;
 
+private:
+	TSubclassOf<UUserWidget> ServerDetailsWidgetClass;
+
+	UPROPERTY()
+	UServerBrowserLineWidget* ServerDetailsWidget;
+
+	TOptional<uint32> SelectedServerIndex;
+
+public:
+	UMainMenuWidget(const FObjectInitializer& ObjectInitializer);
+
+	void PopulateServerList(TArray<FOnlineSessionSearchResult> SearchResults);
+
+	void SelectServerIndex(uint32 Index);
+
 protected:
 	virtual bool Initialize() override;
 
@@ -76,6 +99,9 @@ protected:
 
 	UFUNCTION()
 	void OnJoinMenuJoinButtonPressed();
+
+	UFUNCTION()
+	void OnJoinMenuRefreshButtonPressed();
 
 	UFUNCTION()
 	void OnJoinMenuBackButtonPressed();
@@ -94,4 +120,7 @@ protected:
 
 	UFUNCTION()
 	void OnExitCancelButtonPressed();
+
+	UFUNCTION()
+	void RefreshServerList();
 };

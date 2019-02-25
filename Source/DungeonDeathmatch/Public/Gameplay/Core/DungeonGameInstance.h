@@ -5,10 +5,13 @@
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
 #include <Engine/StreamableManager.h>
+#include <OnlineSessionInterface.h>
+
 #include "Item.h"
 #include "Equippable.h"
 #include "MenuInterface.h"
 #include "DungeonMenuWidget.h"
+
 #include "DungeonGameInstance.generated.h"
 
 class UDraggableItemWidget;
@@ -61,11 +64,17 @@ protected:
 private:
 	TSubclassOf<UUserWidget> MainMenuWidgetClass;
 
+	UPROPERTY()
 	UDungeonMenuWidget* MainMenuWidget;
 
 	TSubclassOf<UUserWidget> InGameMenuWidgetClass;
 
+	UPROPERTY()
 	UDungeonMenuWidget* InGameMenuWidget;
+
+	IOnlineSessionPtr SessionInterface;
+
+	TSharedPtr<FOnlineSessionSearch> SessionSearch;
 
 public:
 	UDungeonGameInstance(const FObjectInitializer& ObjectInitializer);
@@ -82,11 +91,13 @@ public:
 	void HostGame();
 
 	UFUNCTION(Exec)
-	void JoinGame(const FString& Address);
+	void JoinGame(uint32 Index);
 
 	void ExitToMainMenu();
 
 	void ExitToDesktop();
+
+	void RefreshServerList();
 
 	FStreamableManager& GetAssetLoader();
 
@@ -110,4 +121,16 @@ public:
 
 	UFUNCTION(BlueprintPure)
 	FVector GetRandomLootEjectionForce();
+
+protected:
+
+	void CreateSession();
+
+	void OnCreateSessionComplete(FName SessionName, bool WasSessionCreated);
+
+	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+
+	void OnDestroySessionComplete(FName SessionName, bool WasSessionDestroyed);
+
+	void OnFindSessionsComplete(bool WasSearchSuccessful);
 };

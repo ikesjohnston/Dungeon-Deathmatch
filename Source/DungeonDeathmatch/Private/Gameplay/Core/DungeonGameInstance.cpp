@@ -4,9 +4,14 @@
 
 #include <ConstructorHelpers.h>
 #include <UserWidget.h>
+#include <OnlineSubsystem.h>
+#include <OnlineSessionSettings.h>
+
 #include "MainMenuWidget.h"
 #include "InGameMenuWidget.h"
 #include "DungeonMenuWidget.h"
+
+const static FName SESSION_NAME = TEXT("My Game Session");
 
 UDungeonGameInstance::UDungeonGameInstance(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -30,6 +35,30 @@ void UDungeonGameInstance::Init()
 	if (InGameMenuWidgetClass)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::Init - Found in game menu class %s"), *InGameMenuWidgetClass->GetName());
+	}
+	
+	IOnlineSubsystem* OSS = IOnlineSubsystem::Get();
+	if (OSS)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::Init - Found online subsystem %s"), *OSS->GetSubsystemName().ToString());
+		SessionInterface = OSS->GetSessionInterface();
+		if (SessionInterface.IsValid())
+		{
+			SessionInterface->OnCreateSessionCompleteDelegates.AddUObject(this, &UDungeonGameInstance::OnCreateSessionComplete);
+			SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UDungeonGameInstance::OnJoinSessionComplete);
+			SessionInterface->OnDestroySessionCompleteDelegates.AddUObject(this, &UDungeonGameInstance::OnDestroySessionComplete);
+			SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(this, &UDungeonGameInstance::OnFindSessionsComplete);
+
+			SessionSearch = MakeShareable(new FOnlineSessionSearch());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::Init - No session interface found"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::Init - No online subsystem found"));
 	}
 }
 
@@ -61,41 +90,43 @@ void UDungeonGameInstance::LoadInGameMenu()
 
 void UDungeonGameInstance::HostGame()
 {
-	if (MainMenuWidget)
+	if (SessionInterface.IsValid())
 	{
-		MainMenuWidget->Teardown();
+		FNamedOnlineSession* ExistingSession = SessionInterface->GetNamedSession(SESSION_NAME);
+		if (ExistingSession)
+		{
+			SessionInterface->DestroySession(SESSION_NAME);
+		}
+		else
+		{
+			CreateSession();
+		}
 	}
-
-	UEngine* Engine = GetEngine();
-	if (Engine)
+	else
 	{
-		Engine->AddOnScreenDebugMessage(0, 2, FColor::Green, TEXT("Hosting"));
-	}
-
-	UWorld* World = GetWorld();
-	if (World)
-	{
-		World->ServerTravel("/Game/Levels/TraversalTestMap?listen");
+		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::HostGame - No session interface found"));
+		UEngine* Engine = GetEngine();
+		if (Engine)
+		{
+			Engine->AddOnScreenDebugMessage(0, 5, FColor::Green, FString::Printf(TEXT("No session interface found")));
+		}
 	}
 }
 
-void UDungeonGameInstance::JoinGame(const FString& Address)
+void UDungeonGameInstance::JoinGame(uint32 Index)
 {
-	if (MainMenuWidget)
+	if (SessionInterface.IsValid() && SessionSearch.IsValid())
 	{
-		MainMenuWidget->Teardown();
-	}
+		if (MainMenuWidget)
+		{
+			MainMenuWidget->Teardown();
+		}
 
-	UEngine* Engine = GetEngine();
-	if (Engine)
-	{
-		Engine->AddOnScreenDebugMessage(0, 5, FColor::Green, FString::Printf(TEXT("Joining %s"), *Address));
+		SessionInterface->JoinSession(0, SESSION_NAME, SessionSearch->SearchResults[Index]);
 	}
-
-	APlayerController* PlayerController = GetFirstLocalPlayerController(GetWorld());
-	if (PlayerController)
+	else
 	{
-		PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);
+		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::JoinGame - No session interface found"));
 	}
 }
 
@@ -114,6 +145,24 @@ void UDungeonGameInstance::ExitToDesktop()
 	if (PlayerController)
 	{
 		PlayerController->ConsoleCommand("quit");
+	}
+}
+
+void UDungeonGameInstance::RefreshServerList()
+{
+	if (SessionInterface.IsValid())
+	{
+		if (SessionSearch.IsValid())
+		{
+			SessionSearch->bIsLanQuery = true;
+
+			SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
+			UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::RefreshServerList - Started session search"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::RefreshServerList - No session interface found"));
 	}
 }
 
@@ -160,4 +209,125 @@ FVector UDungeonGameInstance::GetRandomLootEjectionForce()
 	EjectionVector.RotateAngleAxis(RandomForwardAngle, FVector::UpVector);
 
 	return EjectionVector;
+}
+
+void UDungeonGameInstance::CreateSession()
+{
+	if (SessionInterface.IsValid())
+	{
+		FOnlineSessionSettings SessionSettings;
+
+		SessionSettings.bIsLANMatch = true;
+		SessionSettings.NumPublicConnections = 2;
+		SessionSettings.bShouldAdvertise = true;
+
+		SessionInterface->CreateSession(0, SESSION_NAME, SessionSettings);
+	}
+}
+
+void UDungeonGameInstance::OnCreateSessionComplete(FName SessionName, bool WasSessionCreated)
+{
+	if (WasSessionCreated)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnCreateSessionComplete - Created online session %s"), *SessionName.ToString());
+		UEngine* Engine = GetEngine();
+		if (Engine)
+		{
+			Engine->AddOnScreenDebugMessage(0, 5, FColor::Green, FString::Printf(TEXT("Created online session %s"), *SessionName.ToString()));
+		}
+
+		if (MainMenuWidget)
+		{
+			MainMenuWidget->Teardown();
+		}
+
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			World->ServerTravel("/Game/Levels/TraversalTestMap?listen");
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnCreateSessionComplete - Failed to create online session %s"), *SessionName.ToString());
+		UEngine* Engine = GetEngine();
+		if (Engine)
+		{
+			Engine->AddOnScreenDebugMessage(0, 5, FColor::Green, FString::Printf(TEXT("Failed to create online session %s"), *SessionName.ToString()));
+		}
+	}
+}
+
+void UDungeonGameInstance::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
+{
+	if (Result == EOnJoinSessionCompleteResult::Success && SessionInterface && SessionSearch.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnJoinSessionComplete - Joined session %s, traveling to level..."), *SessionName.ToString());
+		UEngine* Engine = GetEngine();
+		if (Engine)
+		{
+			Engine->AddOnScreenDebugMessage(0, 5, FColor::Green, FString::Printf(TEXT("Joined session %s, traveling to level..."), *SessionName.ToString()));
+		}
+
+		FString ConnectInfo;
+		if (!SessionInterface->GetResolvedConnectString(SessionName, ConnectInfo))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnJoinSessionComplete - Couldn't not resolve connection string"));
+			return;
+		}
+
+		APlayerController* PlayerController = GetFirstLocalPlayerController(GetWorld());
+		if (PlayerController)
+		{
+			PlayerController->ClientTravel(ConnectInfo, ETravelType::TRAVEL_Absolute);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnJoinSessionComplete - Couldn't travel to level, no player controller found"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnJoinSessionComplete - Failed to join session"));
+	}
+}
+
+void UDungeonGameInstance::OnDestroySessionComplete(FName SessionName, bool WasSessionDestroyed)
+{
+	if (WasSessionDestroyed)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnDestroySessionComplete - Destroyed online session %s"), *SessionName.ToString());
+		UEngine* Engine = GetEngine();
+		if (Engine)
+		{
+			Engine->AddOnScreenDebugMessage(0, 5, FColor::Green, FString::Printf(TEXT("Created online session %s"), *SessionName.ToString()));
+		}
+		CreateSession();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnDestroySessionComplete - Failed to destroy online session %s"), *SessionName.ToString());
+		UEngine* Engine = GetEngine();
+		if (Engine)
+		{
+			Engine->AddOnScreenDebugMessage(0, 5, FColor::Green, FString::Printf(TEXT("Failed to create online session %s"), *SessionName.ToString()));
+		}
+	}
+}
+
+void UDungeonGameInstance::OnFindSessionsComplete(bool WasSearchSuccessful)
+{
+	UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnFindSessionsComplete - Stopped session search"));
+	if (WasSearchSuccessful && SessionSearch.IsValid())
+	{
+		UMainMenuWidget* MainMenu = Cast<UMainMenuWidget>(MainMenuWidget);
+		if (MainMenu)
+		{
+			MainMenu->PopulateServerList(SessionSearch->SearchResults);
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnFindSessionsComplete - No sessions found"));
+	}
 }

@@ -18,7 +18,9 @@ public class DungeonDeathmatch : ModuleRules
             "InputCore",
             "UMG",
             "Slate",
-            "SlateCore"
+            "SlateCore",
+            "OnlineSubsystem",
+            "OnlineSubsystemSteam"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {});

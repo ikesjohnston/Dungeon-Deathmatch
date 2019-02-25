@@ -5,12 +5,28 @@
 #include "MenuInterface.h"
 #include <WidgetSwitcher.h>
 #include <EditableTextBox.h>
+#include <ConstructorHelpers.h>
+#include "ServerBrowserLineWidget.h"
+#include <TextBlock.h>
+#include <OnlineSessionSettings.h>
+
+UMainMenuWidget::UMainMenuWidget(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	ConstructorHelpers::FClassFinder<UUserWidget> ServerDetailsClass(TEXT("/Game/UI/Menus/WBP_ServerBrowserLine"));
+	ServerDetailsWidgetClass = ServerDetailsClass.Class;
+}
 
 bool UMainMenuWidget::Initialize()
 {
 	bool Result = Super::Initialize();
 
-	if (!MainMenuHostButton || !MainMenuJoinButton || !JoinMenuJoinButton || !JoinMenuBackButton)
+	if (!ensure(ServerDetailsWidgetClass != nullptr))
+	{
+		return false;
+	}
+
+	if (!ensure(ServerListRefreshDisplay != nullptr))
 	{
 		return false;
 	}
@@ -32,6 +48,12 @@ bool UMainMenuWidget::Initialize()
 		return false;
 	}
 	JoinMenuJoinButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnJoinMenuJoinButtonPressed);
+
+	if (!ensure(JoinMenuRefreshButton != nullptr))
+	{
+		return false;
+	}
+	JoinMenuRefreshButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnJoinMenuRefreshButtonPressed);
 
 	if (!ensure(JoinMenuBackButton != nullptr))
 	{
@@ -85,21 +107,34 @@ void UMainMenuWidget::OnMainMenuJoinButtonPressed()
 	if (MenuSwitcher)
 	{
 		MenuSwitcher->SetActiveWidget(JoinMenu);
+		RefreshServerList();
 	}
 }
 
 void UMainMenuWidget::OnJoinMenuJoinButtonPressed()
 {
-	if (MenuInterface && IPAddressField)
+	if (SelectedServerIndex.IsSet() && MenuInterface)
 	{
-		MenuInterface->JoinGame(IPAddressField->GetText().ToString());
+		UE_LOG(LogTemp, Warning, TEXT("UMainMenuWidget::OnJoinMenuJoinButtonPressed - Selected server index %d"), SelectedServerIndex.GetValue());
+		MenuInterface->JoinGame(SelectedServerIndex.GetValue());
 	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UMainMenuWidget::OnJoinMenuJoinButtonPressed - Selected server index not set"));
+	}
+}
+
+void UMainMenuWidget::OnJoinMenuRefreshButtonPressed()
+{
+	RefreshServerList();
 }
 
 void UMainMenuWidget::OnJoinMenuBackButtonPressed()
 {
 	if (MenuSwitcher)
 	{
+		SelectedServerIndex.Reset();
+		JoinMenuJoinButton->SetIsEnabled(false);
 		MenuSwitcher->SetActiveWidget(MainMenu);
 	}
 }
@@ -140,3 +175,50 @@ void UMainMenuWidget::OnExitCancelButtonPressed()
 		MenuSwitcher->SetActiveWidget(MainMenu);
 	}
 }
+
+
+void UMainMenuWidget::RefreshServerList()
+{
+	if (MenuInterface)
+	{
+		SelectedServerIndex.Reset();
+		JoinMenuJoinButton->SetIsEnabled(false);
+		ServerList->SetVisibility(ESlateVisibility::Collapsed);
+		ServerListRefreshDisplay->SetVisibility(ESlateVisibility::Visible);
+		MenuInterface->RefreshServerList();
+	}
+}
+
+void UMainMenuWidget::PopulateServerList(TArray<FOnlineSessionSearchResult> SearchResults)
+{
+	ServerList->ClearChildren();
+	ServerList->SetVisibility(ESlateVisibility::Visible);
+	ServerListRefreshDisplay->SetVisibility(ESlateVisibility::Collapsed);
+
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		uint32 ServerIndex = 0;
+		for (const FOnlineSessionSearchResult& Result : SearchResults)
+		{
+			UServerBrowserLineWidget* ServerDetailsLine = CreateWidget<UServerBrowserLineWidget>(World, ServerDetailsWidgetClass);
+			if (ServerDetailsLine)
+			{
+				ServerDetailsLine->SetSessionNameText(FText::FromString(Result.GetSessionIdStr()));
+				ServerDetailsLine->SetPlayerCountText(FText::FromString(FString::FromInt(Result.Session.NumOpenPublicConnections)));
+				ServerDetailsLine->SetLatencyText(FText::FromString(FString::Printf(TEXT("%d ms"), Result.PingInMs)));
+				ServerDetailsLine->Setup(this, ServerIndex);
+				ServerIndex++;
+
+				ServerList->AddChild(ServerDetailsLine);
+			}
+		}
+	}
+}
+
+void UMainMenuWidget::SelectServerIndex(uint32 Index)
+{
+	SelectedServerIndex = Index;
+	JoinMenuJoinButton->SetIsEnabled(true);
+}
+
