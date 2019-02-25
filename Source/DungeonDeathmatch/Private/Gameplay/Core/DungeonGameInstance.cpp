@@ -154,8 +154,7 @@ void UDungeonGameInstance::RefreshServerList()
 	{
 		if (SessionSearch.IsValid())
 		{
-			SessionSearch->bIsLanQuery = true;
-
+			SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
 			SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
 			UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::RefreshServerList - Started session search"));
 		}
@@ -217,9 +216,10 @@ void UDungeonGameInstance::CreateSession()
 	{
 		FOnlineSessionSettings SessionSettings;
 
-		SessionSettings.bIsLANMatch = true;
+		SessionSettings.bIsLANMatch = false;
 		SessionSettings.NumPublicConnections = 2;
 		SessionSettings.bShouldAdvertise = true;
+		SessionSettings.bUsesPresence = true;
 
 		SessionInterface->CreateSession(0, SESSION_NAME, SessionSettings);
 	}
