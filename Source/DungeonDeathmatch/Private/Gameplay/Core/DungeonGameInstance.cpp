@@ -154,6 +154,7 @@ void UDungeonGameInstance::RefreshServerList()
 	{
 		if (SessionSearch.IsValid())
 		{
+			SessionSearch->MaxSearchResults = 100; // Only needed for shared AppID
 			SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
 			SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
 			UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::RefreshServerList - Started session search"));
