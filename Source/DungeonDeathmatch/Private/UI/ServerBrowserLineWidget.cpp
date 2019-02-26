@@ -29,6 +29,11 @@ void UServerBrowserLineWidget::SetSessionNameText(FText Text)
 	SessionNameText->SetText(Text);
 }
 
+void UServerBrowserLineWidget::SetHostNameText(FText Text)
+{
+	HostNameText->SetText(Text);
+}
+
 void UServerBrowserLineWidget::SetPlayerCountText(FText Text)
 {
 	PlayerCountText->SetText(Text);

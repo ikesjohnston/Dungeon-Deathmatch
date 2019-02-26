@@ -18,12 +18,19 @@ class DUNGEONDEATHMATCH_API UServerBrowserLineWidget : public UUserWidget
 {
 	GENERATED_BODY()
 	
+public:
+	UPROPERTY(BlueprintReadOnly)
+	bool Selected;
+
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* SelectButton;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* SessionNameText;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* HostNameText;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* PlayerCountText;
@@ -44,6 +51,8 @@ public:
 	void Setup(UMainMenuWidget* Parent, uint32 Index);
 
 	void SetSessionNameText(FText Text);
+
+	void SetHostNameText(FText Text);
 
 	void SetPlayerCountText(FText Text);
 

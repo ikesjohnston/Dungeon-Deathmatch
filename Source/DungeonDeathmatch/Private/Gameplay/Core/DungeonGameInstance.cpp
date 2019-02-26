@@ -154,7 +154,7 @@ void UDungeonGameInstance::RefreshServerList()
 	{
 		if (SessionSearch.IsValid())
 		{
-			SessionSearch->MaxSearchResults = 100; // Only needed for shared AppID
+			SessionSearch->MaxSearchResults = 1000000; // Only needed for shared AppID
 			SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
 			SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
 			UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::RefreshServerList - Started session search"));
@@ -217,7 +217,7 @@ void UDungeonGameInstance::CreateSession()
 	{
 		FOnlineSessionSettings SessionSettings;
 
-		SessionSettings.bIsLANMatch = false;
+		SessionSettings.bIsLANMatch = (IOnlineSubsystem::Get()->GetSubsystemName() == "NULL");
 		SessionSettings.NumPublicConnections = 2;
 		SessionSettings.bShouldAdvertise = true;
 		SessionSettings.bUsesPresence = true;
@@ -319,12 +319,25 @@ void UDungeonGameInstance::OnDestroySessionComplete(FName SessionName, bool WasS
 void UDungeonGameInstance::OnFindSessionsComplete(bool WasSearchSuccessful)
 {
 	UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnFindSessionsComplete - Stopped session search"));
-	if (WasSearchSuccessful && SessionSearch.IsValid())
+	if (WasSearchSuccessful && SessionSearch.IsValid() && MainMenuWidget)
 	{
-		UMainMenuWidget* MainMenu = Cast<UMainMenuWidget>(MainMenuWidget);
-		if (MainMenu)
+		TArray<FServerData> ServerData;
+		for (const FOnlineSessionSearchResult& Result : SessionSearch->SearchResults)
 		{
-			MainMenu->PopulateServerList(SessionSearch->SearchResults);
+			FServerData Server;
+			Server.Name = Result.GetSessionIdStr();
+			Server.HostUsername = Result.Session.OwningUserName;
+			Server.CurrentPlayers = Result.Session.NumOpenPublicConnections - Result.Session.SessionSettings.NumPublicConnections;
+			Server.MaxPlayers = Result.Session.NumOpenPublicConnections;
+			Server.Latency = Result.PingInMs;
+
+			ServerData.Add(Server);
+
+			UMainMenuWidget* MainMenu = Cast<UMainMenuWidget>(MainMenuWidget);
+			if (MainMenu)
+			{
+				MainMenu->PopulateServerList(ServerData);
+			}
 		}
 	}
 	else

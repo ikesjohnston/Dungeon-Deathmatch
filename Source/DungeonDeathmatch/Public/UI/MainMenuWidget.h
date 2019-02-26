@@ -13,6 +13,18 @@ class UEditableTextBox;
 class UPanelWidget;
 class UServerBrowserLineWidget;
 
+USTRUCT()
+struct FServerData
+{
+	GENERATED_BODY()
+
+	FString Name;
+	uint8 CurrentPlayers;
+	uint8 MaxPlayers;
+	FString HostUsername;
+	int32 Latency;
+};
+
 /**
  * 
  */
@@ -84,7 +96,7 @@ private:
 public:
 	UMainMenuWidget(const FObjectInitializer& ObjectInitializer);
 
-	void PopulateServerList(TArray<FOnlineSessionSearchResult> SearchResults);
+	void PopulateServerList(TArray<FServerData> SearchResults);
 
 	void SelectServerIndex(uint32 Index);
 
@@ -123,4 +135,7 @@ protected:
 
 	UFUNCTION()
 	void RefreshServerList();
+
+	UFUNCTION()
+	void UpdateServerRowWidgets();
 };

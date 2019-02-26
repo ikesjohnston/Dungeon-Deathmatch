@@ -189,7 +189,7 @@ void UMainMenuWidget::RefreshServerList()
 	}
 }
 
-void UMainMenuWidget::PopulateServerList(TArray<FOnlineSessionSearchResult> SearchResults)
+void UMainMenuWidget::PopulateServerList(TArray<FServerData> SearchResults)
 {
 	ServerList->ClearChildren();
 	ServerList->SetVisibility(ESlateVisibility::Visible);
@@ -199,14 +199,15 @@ void UMainMenuWidget::PopulateServerList(TArray<FOnlineSessionSearchResult> Sear
 	if (World)
 	{
 		uint32 ServerIndex = 0;
-		for (const FOnlineSessionSearchResult& Result : SearchResults)
+		for (const FServerData& Result : SearchResults)
 		{
 			UServerBrowserLineWidget* ServerDetailsLine = CreateWidget<UServerBrowserLineWidget>(World, ServerDetailsWidgetClass);
 			if (ServerDetailsLine)
 			{
-				ServerDetailsLine->SetSessionNameText(FText::FromString(Result.GetSessionIdStr()));
-				ServerDetailsLine->SetPlayerCountText(FText::FromString(FString::FromInt(Result.Session.NumOpenPublicConnections)));
-				ServerDetailsLine->SetLatencyText(FText::FromString(FString::Printf(TEXT("%d ms"), Result.PingInMs)));
+				ServerDetailsLine->SetSessionNameText(FText::FromString(Result.Name));
+				ServerDetailsLine->SetHostNameText(FText::FromString(Result.HostUsername));
+				ServerDetailsLine->SetPlayerCountText(FText::FromString(FString::Printf(TEXT("%d/%d"), Result.CurrentPlayers, Result.MaxPlayers)));
+				ServerDetailsLine->SetLatencyText(FText::FromString(FString::Printf(TEXT("%d ms"), Result.Latency)));
 				ServerDetailsLine->Setup(this, ServerIndex);
 				ServerIndex++;
 
@@ -220,5 +221,18 @@ void UMainMenuWidget::SelectServerIndex(uint32 Index)
 {
 	SelectedServerIndex = Index;
 	JoinMenuJoinButton->SetIsEnabled(true);
+
+	UpdateServerRowWidgets();
 }
 
+void UMainMenuWidget::UpdateServerRowWidgets()
+{
+	for (int32 ChildIndex = 0; ChildIndex < ServerList->GetChildrenCount(); ChildIndex++)
+	{
+		UServerBrowserLineWidget* ServerRow = Cast<UServerBrowserLineWidget>(ServerList->GetChildAt(ChildIndex));
+		if (ServerRow)
+		{
+			ServerRow->Selected = (SelectedServerIndex.IsSet() && SelectedServerIndex.GetValue() == ChildIndex);
+		}
+	}
+}
