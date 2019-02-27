@@ -4,8 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "Item.h"
-#include "Equippable.h"
 #include "DungeonGameMode.generated.h"
 
 /*
@@ -26,13 +24,10 @@ class DUNGEONDEATHMATCH_API ADungeonGameMode : public AGameModeBase
 public:
 	ADungeonGameMode();
 
-	virtual void StartPlay() override;
+	void StartPlay() override;
 
-	virtual void Tick(float DeltaSeconds) override;
+	void Tick(float DeltaSeconds) override;
 
 	UPROPERTY(BlueprintAssignable, Category = "GameMode")
 	FOnActorKilled OnActorKilled;
-
-protected:
-	void GameOver();
 };

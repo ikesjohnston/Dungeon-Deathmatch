@@ -74,7 +74,15 @@ private:
 
 	IOnlineSessionPtr SessionInterface;
 
+	/** The name of the currently ongoing session */
+	FName SessionName;
+
+	/** The currently ongoing session search details, if any */
 	TSharedPtr<FOnlineSessionSearch> SessionSearch;
+
+	/** Desired settings for a game that is in the process of being created and hosted */
+	UPROPERTY()
+	FHostGameSettings DesiredHostGameSettings;
 
 public:
 	UDungeonGameInstance(const FObjectInitializer& ObjectInitializer);
@@ -87,10 +95,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void LoadInGameMenu();
 
-	UFUNCTION(Exec)
-	void HostGame();
+	UFUNCTION()
+	void HostGame(FHostGameSettings Settings);
 
-	UFUNCTION(Exec)
+	UFUNCTION()
 	void JoinGame(uint32 Index);
 
 	void ExitToMainMenu();
@@ -98,6 +106,8 @@ public:
 	void ExitToDesktop();
 
 	void RefreshServerList();
+
+	void StartSession();
 
 	FStreamableManager& GetAssetLoader();
 

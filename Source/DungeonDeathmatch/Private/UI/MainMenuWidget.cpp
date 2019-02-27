@@ -6,15 +6,16 @@
 #include <WidgetSwitcher.h>
 #include <EditableTextBox.h>
 #include <ConstructorHelpers.h>
-#include "ServerBrowserLineWidget.h"
-#include <TextBlock.h>
-#include <OnlineSessionSettings.h>
+#include "ServerBrowserRowWidget.h"
 
 UMainMenuWidget::UMainMenuWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	ConstructorHelpers::FClassFinder<UUserWidget> ServerDetailsClass(TEXT("/Game/UI/Menus/WBP_ServerBrowserLine"));
-	ServerDetailsWidgetClass = ServerDetailsClass.Class;
+	ConstructorHelpers::FClassFinder<UUserWidget> ServerDetailsClass(TEXT("/Game/UI/Menus/WBP_ServerBrowserRow"));
+	if (ServerDetailsClass.Class != NULL)
+	{
+		ServerDetailsWidgetClass = ServerDetailsClass.Class;
+	}
 }
 
 bool UMainMenuWidget::Initialize()
@@ -26,7 +27,17 @@ bool UMainMenuWidget::Initialize()
 		return false;
 	}
 
+	if (!ensure(ServerListDisplay != nullptr))
+	{
+		return false;
+	}
+
 	if (!ensure(ServerListRefreshDisplay != nullptr))
+	{
+		return false;
+	}
+	
+	if (!ensure(ServerListEmptyDisplay != nullptr))
 	{
 		return false;
 	}
@@ -36,6 +47,24 @@ bool UMainMenuWidget::Initialize()
 		return false;
 	}
 	MainMenuHostButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnMainMenuHostButtonPressed);
+
+	if (!ensure(HostMenuHostButton != nullptr))
+	{
+		return false;
+	}
+	HostMenuHostButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnHostMenuHostButtonPressed);
+
+	if (!ensure(HostMenuBackButton != nullptr))
+	{
+		return false;
+	}
+	HostMenuBackButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnHostMenuBackButtonPressed);
+
+	if (!ensure(HostMenuGameNameField != nullptr))
+	{
+		return false;
+	}
+	HostMenuGameNameField->OnTextChanged.AddDynamic(this, &UMainMenuWidget::OnHostMenuGameNameFieldChanged);
 
 	if (!ensure(MainMenuJoinButton != nullptr))
 	{
@@ -96,9 +125,32 @@ bool UMainMenuWidget::Initialize()
 
 void UMainMenuWidget::OnMainMenuHostButtonPressed()
 {
-	if (MenuInterface)
+	if (MenuSwitcher)
 	{
-		MenuInterface->HostGame();
+		MenuSwitcher->SetActiveWidget(HostMenu);
+		HostMenuHostButton->SetIsEnabled(false);
+	}
+}
+
+void UMainMenuWidget::OnHostMenuHostButtonPressed()
+{
+	if (MenuInterface && HostMenuGameNameField)
+	{
+		FHostGameSettings Settings;
+		Settings.Name = HostMenuGameNameField->GetText().ToString();
+		MenuInterface->HostGame(Settings);
+	}
+}
+
+void UMainMenuWidget::OnHostMenuBackButtonPressed()
+{
+	if (MenuSwitcher)
+	{
+		if (HostMenuGameNameField)
+		{
+			HostMenuGameNameField->SetText(FText::GetEmpty());
+		}
+		MenuSwitcher->SetActiveWidget(MainMenu);
 	}
 }
 
@@ -183,7 +235,8 @@ void UMainMenuWidget::RefreshServerList()
 	{
 		SelectedServerIndex.Reset();
 		JoinMenuJoinButton->SetIsEnabled(false);
-		ServerList->SetVisibility(ESlateVisibility::Collapsed);
+		ServerListDisplay->SetVisibility(ESlateVisibility::Collapsed);
+		ServerListEmptyDisplay->SetVisibility(ESlateVisibility::Collapsed);
 		ServerListRefreshDisplay->SetVisibility(ESlateVisibility::Visible);
 		MenuInterface->RefreshServerList();
 	}
@@ -192,8 +245,8 @@ void UMainMenuWidget::RefreshServerList()
 void UMainMenuWidget::PopulateServerList(TArray<FServerData> SearchResults)
 {
 	ServerList->ClearChildren();
-	ServerList->SetVisibility(ESlateVisibility::Visible);
 	ServerListRefreshDisplay->SetVisibility(ESlateVisibility::Collapsed);
+	ServerListEmptyDisplay->SetVisibility(ESlateVisibility::Collapsed);
 
 	UWorld* World = GetWorld();
 	if (World)
@@ -201,7 +254,7 @@ void UMainMenuWidget::PopulateServerList(TArray<FServerData> SearchResults)
 		uint32 ServerIndex = 0;
 		for (const FServerData& Result : SearchResults)
 		{
-			UServerBrowserLineWidget* ServerDetailsLine = CreateWidget<UServerBrowserLineWidget>(World, ServerDetailsWidgetClass);
+			UServerBrowserRowWidget* ServerDetailsLine = CreateWidget<UServerBrowserRowWidget>(World, ServerDetailsWidgetClass);
 			if (ServerDetailsLine)
 			{
 				ServerDetailsLine->SetSessionNameText(FText::FromString(Result.Name));
@@ -213,6 +266,15 @@ void UMainMenuWidget::PopulateServerList(TArray<FServerData> SearchResults)
 
 				ServerList->AddChild(ServerDetailsLine);
 			}
+		}
+
+		if (ServerList->GetChildrenCount() > 0)
+		{
+			ServerListDisplay->SetVisibility(ESlateVisibility::Visible);
+		}
+		else
+		{
+			ServerListEmptyDisplay->SetVisibility(ESlateVisibility::Visible);
 		}
 	}
 }
@@ -229,10 +291,23 @@ void UMainMenuWidget::UpdateServerRowWidgets()
 {
 	for (int32 ChildIndex = 0; ChildIndex < ServerList->GetChildrenCount(); ChildIndex++)
 	{
-		UServerBrowserLineWidget* ServerRow = Cast<UServerBrowserLineWidget>(ServerList->GetChildAt(ChildIndex));
+		UServerBrowserRowWidget* ServerRow = Cast<UServerBrowserRowWidget>(ServerList->GetChildAt(ChildIndex));
 		if (ServerRow)
 		{
 			ServerRow->Selected = (SelectedServerIndex.IsSet() && SelectedServerIndex.GetValue() == ChildIndex);
 		}
+	}
+}
+
+void UMainMenuWidget::OnHostMenuGameNameFieldChanged(const FText& Text)
+{
+	if (Text.IsEmptyOrWhitespace())
+	{
+		// Can't host a game without a valid name
+		HostMenuHostButton->SetIsEnabled(false);
+	}
+	else
+	{
+		HostMenuHostButton->SetIsEnabled(true);
 	}
 }

@@ -11,7 +11,7 @@ class UButton;
 class IMenuInterface;
 
 /**
- * 
+ * Widget class for the in game menu and all of its sub menus
  */
 UCLASS()
 class DUNGEONDEATHMATCH_API UInGameMenuWidget : public UDungeonMenuWidget

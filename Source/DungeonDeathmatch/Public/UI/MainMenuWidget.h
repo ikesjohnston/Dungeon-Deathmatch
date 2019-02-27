@@ -11,8 +11,11 @@ class IMenuInterface;
 class UWidgetSwitcher;
 class UEditableTextBox;
 class UPanelWidget;
-class UServerBrowserLineWidget;
+class UServerBrowserRowWidget;
 
+/**
+ * Struct for storing properties of a discovered server
+ */
 USTRUCT()
 struct FServerData
 {
@@ -26,7 +29,18 @@ struct FServerData
 };
 
 /**
- * 
+ * Struct for storing desired settings for a game to be hosted
+ */
+USTRUCT()
+struct FHostGameSettings
+{
+	GENERATED_BODY()
+
+	FString Name;
+};
+
+/**
+ * Widget class for the main menu and all sub menus
  */
 UCLASS()
 class DUNGEONDEATHMATCH_API UMainMenuWidget : public UDungeonMenuWidget
@@ -38,10 +52,22 @@ protected:
 	UWidgetSwitcher* MenuSwitcher;
 
 	UPROPERTY(meta = (BindWidget))
+	UWidget* MainMenu;
+
+	UPROPERTY(meta = (BindWidget))
 	UButton* MainMenuHostButton;
 
 	UPROPERTY(meta = (BindWidget))
-	UWidget* MainMenu;
+	UWidget* HostMenu;
+
+	UPROPERTY(meta = (BindWidget))
+	UEditableTextBox* HostMenuGameNameField;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* HostMenuHostButton;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* HostMenuBackButton;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* MainMenuJoinButton;
@@ -62,7 +88,13 @@ protected:
 	UButton* JoinMenuBackButton;
 	
 	UPROPERTY(meta = (BindWidget))
+	UWidget* ServerListDisplay;
+
+	UPROPERTY(meta = (BindWidget))
 	UWidget* ServerListRefreshDisplay;
+
+	UPROPERTY(meta = (BindWidget))
+	UWidget* ServerListEmptyDisplay;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* SettingsButton;
@@ -86,16 +118,19 @@ protected:
 	UButton* ExitCancelButton;
 
 private:
+	/** Widget class to display properties for a single server in the server browser */
 	TSubclassOf<UUserWidget> ServerDetailsWidgetClass;
 
 	UPROPERTY()
-	UServerBrowserLineWidget* ServerDetailsWidget;
+	UServerBrowserRowWidget* ServerDetailsWidget;
 
+	/** The index of the currently selected server, if any, from the server browser */
 	TOptional<uint32> SelectedServerIndex;
 
 public:
 	UMainMenuWidget(const FObjectInitializer& ObjectInitializer);
 
+	/** Creates row widgets for each found server and adds it to the server list */
 	void PopulateServerList(TArray<FServerData> SearchResults);
 
 	void SelectServerIndex(uint32 Index);
@@ -105,6 +140,12 @@ protected:
 
 	UFUNCTION()
 	void OnMainMenuHostButtonPressed();
+
+	UFUNCTION()
+	void OnHostMenuHostButtonPressed();
+
+	UFUNCTION()
+	void OnHostMenuBackButtonPressed();
 
 	UFUNCTION()
 	void OnMainMenuJoinButtonPressed();
@@ -136,6 +177,10 @@ protected:
 	UFUNCTION()
 	void RefreshServerList();
 
+	/** Sets properties used to determine cosmetic changes to server rows in blueprint */
 	UFUNCTION()
 	void UpdateServerRowWidgets();
+
+	UFUNCTION()
+	void OnHostMenuGameNameFieldChanged(const FText& Text);
 };

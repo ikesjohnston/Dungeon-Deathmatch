@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+#include "MainMenuWidget.h"
 #include "MenuInterface.generated.h"
 
 // This class does not need to be modified.
@@ -14,7 +15,7 @@ class UMenuInterface : public UInterface
 };
 
 /**
- * 
+ * Interface for the implementation of high level, game wide menu functions
  */
 class DUNGEONDEATHMATCH_API IMenuInterface
 {
@@ -22,7 +23,7 @@ class DUNGEONDEATHMATCH_API IMenuInterface
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
-	virtual void HostGame() = 0;
+	virtual void HostGame(FHostGameSettings Settings) = 0;
 
 	virtual void JoinGame(uint32 Index) = 0;
 

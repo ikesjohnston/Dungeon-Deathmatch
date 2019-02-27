@@ -11,18 +11,25 @@
 #include "InGameMenuWidget.h"
 #include "DungeonMenuWidget.h"
 
-const static FName SESSION_NAME = TEXT("My Game Session");
+const static FName SESSION_NAME		= TEXT("My Game Session");
+const static FName KEY_GAME_NAME	= TEXT("GameName");
 
 UDungeonGameInstance::UDungeonGameInstance(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 	InventoryGridSlotSize = 40.0f;
 
-	ConstructorHelpers::FClassFinder<UUserWidget> MainMenuClass(TEXT("/Game/UI/Menus/WBP_MainMenu"));
-	MainMenuWidgetClass = MainMenuClass.Class;
+	static ConstructorHelpers::FClassFinder<UUserWidget> MainMenuClass(TEXT("/Game/UI/Menus/WBP_MainMenu"));
+	if (MainMenuClass.Class != NULL)
+	{
+		MainMenuWidgetClass = MainMenuClass.Class;
+	}
 
-	ConstructorHelpers::FClassFinder<UUserWidget> InGameMenuClass(TEXT("/Game/UI/Menus/WBP_InGameMenu"));
-	InGameMenuWidgetClass = InGameMenuClass.Class;
+	static ConstructorHelpers::FClassFinder<UUserWidget> InGameMenuClass(TEXT("/Game/UI/Menus/WBP_InGameMenu"));
+	if (InGameMenuClass.Class != NULL)
+	{
+		InGameMenuWidgetClass = InGameMenuClass.Class;
+	}
 }
 
 void UDungeonGameInstance::Init()
@@ -36,7 +43,7 @@ void UDungeonGameInstance::Init()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::Init - Found in game menu class %s"), *InGameMenuWidgetClass->GetName());
 	}
-	
+
 	IOnlineSubsystem* OSS = IOnlineSubsystem::Get();
 	if (OSS)
 	{
@@ -88,7 +95,7 @@ void UDungeonGameInstance::LoadInGameMenu()
 	}
 }
 
-void UDungeonGameInstance::HostGame()
+void UDungeonGameInstance::HostGame(FHostGameSettings Settings)
 {
 	if (SessionInterface.IsValid())
 	{
@@ -97,10 +104,9 @@ void UDungeonGameInstance::HostGame()
 		{
 			SessionInterface->DestroySession(SESSION_NAME);
 		}
-		else
-		{
-			CreateSession();
-		}
+
+		DesiredHostGameSettings = Settings;
+		CreateSession();
 	}
 	else
 	{
@@ -166,6 +172,14 @@ void UDungeonGameInstance::RefreshServerList()
 	}
 }
 
+void UDungeonGameInstance::StartSession()
+{
+	if (SessionInterface.IsValid())
+	{
+		SessionInterface->StartSession(SessionName);
+	}
+}
+
 FStreamableManager& UDungeonGameInstance::GetAssetLoader()
 {
 	return AssetLoader;
@@ -216,13 +230,22 @@ void UDungeonGameInstance::CreateSession()
 	if (SessionInterface.IsValid())
 	{
 		FOnlineSessionSettings SessionSettings;
-
-		SessionSettings.bIsLANMatch = (IOnlineSubsystem::Get()->GetSubsystemName() == "NULL");
-		SessionSettings.NumPublicConnections = 2;
+		SessionSettings.NumPublicConnections = 5;
 		SessionSettings.bShouldAdvertise = true;
 		SessionSettings.bUsesPresence = true;
+		SessionSettings.Set(KEY_GAME_NAME, DesiredHostGameSettings.Name, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-		SessionInterface->CreateSession(0, SESSION_NAME, SessionSettings);
+		if (IOnlineSubsystem::Get()->GetSubsystemName() == "NULL")
+		{
+			SessionSettings.bIsLANMatch = true;
+			SessionName = NAME_GameSession;
+		}
+		else
+		{
+			SessionSettings.bIsLANMatch = false;
+			SessionName = SESSION_NAME;
+		}
+		SessionInterface->CreateSession(0, SessionName, SessionSettings);
 	}
 }
 
@@ -245,7 +268,7 @@ void UDungeonGameInstance::OnCreateSessionComplete(FName SessionName, bool WasSe
 		UWorld* World = GetWorld();
 		if (World)
 		{
-			World->ServerTravel("/Game/Levels/TraversalTestMap?listen");
+			World->ServerTravel("/Game/Levels/LobbyMap?listen");
 		}
 	}
 	else
@@ -301,9 +324,8 @@ void UDungeonGameInstance::OnDestroySessionComplete(FName SessionName, bool WasS
 		UEngine* Engine = GetEngine();
 		if (Engine)
 		{
-			Engine->AddOnScreenDebugMessage(0, 5, FColor::Green, FString::Printf(TEXT("Created online session %s"), *SessionName.ToString()));
+			Engine->AddOnScreenDebugMessage(0, 5, FColor::Green, FString::Printf(TEXT("Destroyed online session %s"), *SessionName.ToString()));
 		}
-		CreateSession();
 	}
 	else
 	{
@@ -325,19 +347,30 @@ void UDungeonGameInstance::OnFindSessionsComplete(bool WasSearchSuccessful)
 		for (const FOnlineSessionSearchResult& Result : SessionSearch->SearchResults)
 		{
 			FServerData Server;
-			Server.Name = Result.GetSessionIdStr();
 			Server.HostUsername = Result.Session.OwningUserName;
-			Server.CurrentPlayers = Result.Session.NumOpenPublicConnections - Result.Session.SessionSettings.NumPublicConnections;
-			Server.MaxPlayers = Result.Session.NumOpenPublicConnections;
+			Server.MaxPlayers = Result.Session.SessionSettings.NumPublicConnections;
+			Server.CurrentPlayers = Server.MaxPlayers - Result.Session.NumOpenPublicConnections;
 			Server.Latency = Result.PingInMs;
 
-			ServerData.Add(Server);
-
-			UMainMenuWidget* MainMenu = Cast<UMainMenuWidget>(MainMenuWidget);
-			if (MainMenu)
+			FString GameName;
+			if (Result.Session.SessionSettings.Get(KEY_GAME_NAME, GameName))
 			{
-				MainMenu->PopulateServerList(ServerData);
+				Server.Name = GameName;
+				UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnFindSessionsComplete - Found game %s"), *Server.Name);
 			}
+			else
+			{
+				Server.Name = Result.GetSessionIdStr();
+				UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnFindSessionsComplete - No game name found for session %s"), *Server.Name);
+			}
+
+			ServerData.Add(Server);
+		}
+
+		UMainMenuWidget* MainMenu = Cast<UMainMenuWidget>(MainMenuWidget);
+		if (MainMenu)
+		{
+			MainMenu->PopulateServerList(ServerData);
 		}
 	}
 	else
