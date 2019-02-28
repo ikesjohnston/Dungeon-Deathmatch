@@ -18,6 +18,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	float GameStartDelay;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	float PlayerPercentageToStart;
+
 private:
 	uint32 NumberOfPlayers;
 

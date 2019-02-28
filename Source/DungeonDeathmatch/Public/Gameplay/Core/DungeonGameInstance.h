@@ -11,11 +11,14 @@
 #include "Equippable.h"
 #include "MenuInterface.h"
 #include "DungeonMenuWidget.h"
+#include "NetworkGlobals.h"
 
 #include "DungeonGameInstance.generated.h"
 
 class UDraggableItemWidget;
 class UUserWidget;
+class ADungeonGameMode;
+class ULobbyWidget;
 
 /**
  * 
@@ -45,12 +48,28 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI Globals")
 	TSubclassOf<UDraggableItemWidget> DragAndDropItemWidgetClass;
 
+	/** Mapping of game mode names to their actor string references, for use by UI when hosting and searching for games */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals")
+	TMap<FString, FString> GameModes;
+
+	/** Mapping of game size names to their enum representations, for use by UI when hosting and searching for games */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals")
+	TMap<FString, EGameSize> GameSizes;
+
+	/** Mapping of game size enums to their respective max player counts, for use by UI when hosting and searching for games */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals")
+	TMap<EGameSize, int32> GameSizePlayerCounts;
+
+	/** Mapping of map names to their object string references, for use by UI when hosting and searching for games */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals")
+	TMap<FString, FString> Maps;
+
 	/* The initial forward force to apply to loot when it is ejected from loot containers */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay Globals - Loot")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay Globals\|Loot")
 	float LootEjectionForwardForce;
 
 	/* The initial upward force to apply to loot when it is ejected from loot containers */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay Globals - Loot")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay Globals\|Loot")
 	float LootEjectionUpForce;
 
 	/** Mapping of animation montages to play when sheathing different weapons */
@@ -71,6 +90,11 @@ private:
 
 	UPROPERTY()
 	UDungeonMenuWidget* InGameMenuWidget;
+
+	TSubclassOf<ULobbyWidget> LobbyWidgetClass;
+
+	UPROPERTY()
+	ULobbyWidget* LobbyWidget;
 
 	IOnlineSessionPtr SessionInterface;
 
@@ -95,11 +119,23 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void LoadInGameMenu();
 
+	UFUNCTION(BlueprintCallable)
+	void LoadLobbyDisplay();
+
 	UFUNCTION()
 	void HostGame(FHostGameSettings Settings);
 
 	UFUNCTION()
 	void JoinGame(uint32 Index);
+
+	UFUNCTION()
+	void OnJoinedLobby();
+
+	UFUNCTION()
+	void OnLeftLobby();
+
+	UFUNCTION()
+	void BeginGameCountdown(float Delay);
 
 	void ExitToMainMenu();
 
@@ -109,7 +145,17 @@ public:
 
 	void StartSession();
 
+	int32 GetMaxSessionConnections();
+
+	FString GetSessionMapString();
+
 	FStreamableManager& GetAssetLoader();
+
+	UFUNCTION(BlueprintPure)
+	TMap<FString, FString> GetGameModes();
+
+	UFUNCTION(BlueprintPure)
+	TMap<FString, FString> GetMaps();
 
 	UFUNCTION(BlueprintPure)
 	TMap<EItemQualityTier, FLinearColor> GetItemQualityTierColors();
@@ -143,4 +189,13 @@ protected:
 	void OnDestroySessionComplete(FName SessionName, bool WasSessionDestroyed);
 
 	void OnFindSessionsComplete(bool WasSearchSuccessful);
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastOnJoinedLobby();
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastOnLeftLobby();
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastBeginGameCountdown(float Delay);
 };

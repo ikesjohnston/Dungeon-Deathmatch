@@ -1,12 +1,16 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "MainMenuWidget.h"
-#include <Button.h>
 #include "MenuInterface.h"
+#include "ServerBrowserRowWidget.h"
+#include "DungeonGameInstance.h"
+#include "DungeonGameMode.h"
+
+#include <Button.h>
 #include <WidgetSwitcher.h>
 #include <EditableTextBox.h>
 #include <ConstructorHelpers.h>
-#include "ServerBrowserRowWidget.h"
+#include <ComboBoxString.h>
 
 UMainMenuWidget::UMainMenuWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -65,6 +69,53 @@ bool UMainMenuWidget::Initialize()
 		return false;
 	}
 	HostMenuGameNameField->OnTextChanged.AddDynamic(this, &UMainMenuWidget::OnHostMenuGameNameFieldChanged);
+
+	UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
+	if (!ensure(GameTypeDropdown != nullptr))
+	{
+		return false;
+	}
+	if (GameInstance)
+	{
+		TMap<FString, FString> GameModes = GameInstance->GetGameModes();
+		for (TTuple<FString, FString> GameMode : GameModes)
+		{
+			GameTypeDropdown->AddOption(GameMode.Key);
+		}
+		if (GameTypeDropdown->GetOptionCount() > 0)
+		{
+			GameTypeDropdown->SetSelectedOption(GameTypeDropdown->GetOptionAtIndex(0));
+		}
+	}
+	GameTypeDropdown->OnSelectionChanged.AddDynamic(this, &UMainMenuWidget::OnGameTypeSelectionChanged);
+
+	if (!ensure(GameSizeDropdown != nullptr))
+	{
+		return false;
+	}
+	GameSizeDropdown->AddOption(FString("Small"));
+	GameSizeDropdown->AddOption(FString("Medium"));
+	GameSizeDropdown->AddOption(FString("Large"));
+	GameSizeDropdown->SetSelectedOption(GameSizeDropdown->GetOptionAtIndex(0));
+	GameSizeDropdown->OnSelectionChanged.AddDynamic(this, &UMainMenuWidget::OnGameSizeSelectionChanged);
+
+	if (!ensure(MapDropdown != nullptr))
+	{
+		return false;
+	}
+	if (GameInstance)
+	{
+		TMap<FString, FString> Maps = GameInstance->GetMaps();
+		for (TTuple<FString, FString> Map : Maps)
+		{
+			MapDropdown->AddOption(Map.Key);
+		}
+		if (MapDropdown->GetOptionCount() > 0)
+		{
+			MapDropdown->SetSelectedOption(MapDropdown->GetOptionAtIndex(0));
+		}
+	}
+	MapDropdown->OnSelectionChanged.AddDynamic(this, &UMainMenuWidget::OnMapSelectionChanged);
 
 	if (!ensure(MainMenuJoinButton != nullptr))
 	{
@@ -138,6 +189,19 @@ void UMainMenuWidget::OnHostMenuHostButtonPressed()
 	{
 		FHostGameSettings Settings;
 		Settings.Name = HostMenuGameNameField->GetText().ToString();
+		if (GameTypeDropdown)
+		{
+			Settings.GameModeString = GameTypeDropdown->GetSelectedOption();
+
+		}
+		if (GameSizeDropdown)
+		{
+			Settings.GameSize = GameSizeDropdown->GetSelectedOption();
+		}
+		if (MapDropdown)
+		{
+			Settings.MapString = MapDropdown->GetSelectedOption();
+		}
 		MenuInterface->HostGame(Settings);
 	}
 }
@@ -310,4 +374,19 @@ void UMainMenuWidget::OnHostMenuGameNameFieldChanged(const FText& Text)
 	{
 		HostMenuHostButton->SetIsEnabled(true);
 	}
+}
+
+void UMainMenuWidget::OnGameTypeSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
+{
+
+}
+
+void UMainMenuWidget::OnGameSizeSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
+{
+
+}
+
+void UMainMenuWidget::OnMapSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
+{
+
 }

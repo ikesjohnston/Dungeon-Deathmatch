@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "DungeonMenuWidget.h"
+#include "NetworkGlobals.h"
 #include "MainMenuWidget.generated.h"
 
 class UButton;
@@ -12,32 +14,7 @@ class UWidgetSwitcher;
 class UEditableTextBox;
 class UPanelWidget;
 class UServerBrowserRowWidget;
-
-/**
- * Struct for storing properties of a discovered server
- */
-USTRUCT()
-struct FServerData
-{
-	GENERATED_BODY()
-
-	FString Name;
-	uint8 CurrentPlayers;
-	uint8 MaxPlayers;
-	FString HostUsername;
-	int32 Latency;
-};
-
-/**
- * Struct for storing desired settings for a game to be hosted
- */
-USTRUCT()
-struct FHostGameSettings
-{
-	GENERATED_BODY()
-
-	FString Name;
-};
+class UComboBoxString;
 
 /**
  * Widget class for the main menu and all sub menus
@@ -62,6 +39,15 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UEditableTextBox* HostMenuGameNameField;
+
+	UPROPERTY(meta = (BindWidget))
+	UComboBoxString* GameTypeDropdown;
+
+	UPROPERTY(meta = (BindWidget))
+	UComboBoxString* GameSizeDropdown;
+
+	UPROPERTY(meta = (BindWidget))
+	UComboBoxString* MapDropdown;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* HostMenuHostButton;
@@ -183,4 +169,13 @@ protected:
 
 	UFUNCTION()
 	void OnHostMenuGameNameFieldChanged(const FText& Text);
+
+	UFUNCTION()
+	void OnGameTypeSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
+
+	UFUNCTION()
+	void OnGameSizeSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
+
+	UFUNCTION()
+	void OnMapSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
 };

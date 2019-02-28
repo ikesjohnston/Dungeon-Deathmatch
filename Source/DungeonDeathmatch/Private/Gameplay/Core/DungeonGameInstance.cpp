@@ -10,9 +10,15 @@
 #include "MainMenuWidget.h"
 #include "InGameMenuWidget.h"
 #include "DungeonMenuWidget.h"
+#include "LobbyWidget.h"
 
-const static FName SESSION_NAME		= TEXT("My Game Session");
-const static FName KEY_GAME_NAME	= TEXT("GameName");
+const static int32 DEFAULT_MAX_PLAYERS = 2;
+const static FName SESSION_NAME					= TEXT("My Game Session");
+
+const static FName SESSION_SETTING_GAME_NAME	= TEXT("GameName");
+const static FName SESSION_SETTING_GAME_MODE	= TEXT("GameMode");
+const static FName SESSION_SETTING_GAME_SIZE	= TEXT("GameSize");
+const static FName SESSION_SETTING_MAP			= TEXT("Map");
 
 UDungeonGameInstance::UDungeonGameInstance(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -30,6 +36,12 @@ UDungeonGameInstance::UDungeonGameInstance(const FObjectInitializer& ObjectIniti
 	{
 		InGameMenuWidgetClass = InGameMenuClass.Class;
 	}
+
+	static ConstructorHelpers::FClassFinder<UUserWidget> LobbyClass(TEXT("/Game/UI/Menus/WBP_LobbyDisplay"));
+	if (LobbyClass.Class != NULL)
+	{
+		LobbyWidgetClass = LobbyClass.Class;
+	}
 }
 
 void UDungeonGameInstance::Init()
@@ -42,6 +54,11 @@ void UDungeonGameInstance::Init()
 	if (InGameMenuWidgetClass)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::Init - Found in game menu class %s"), *InGameMenuWidgetClass->GetName());
+	}
+
+	if (LobbyWidgetClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::Init - Foundlobby display widget class %s"), *LobbyWidgetClass->GetName());
 	}
 
 	IOnlineSubsystem* OSS = IOnlineSubsystem::Get();
@@ -95,6 +112,23 @@ void UDungeonGameInstance::LoadInGameMenu()
 	}
 }
 
+void UDungeonGameInstance::LoadLobbyDisplay()
+{
+	if (LobbyWidgetClass)
+	{
+		LobbyWidget = CreateWidget<ULobbyWidget>(this, LobbyWidgetClass);
+		if (LobbyWidget)
+		{
+			FNamedOnlineSession* ExistingSession = SessionInterface->GetNamedSession(SessionName);
+			if (ExistingSession)
+			{
+				LobbyWidget->Setup(ExistingSession->SessionSettings.NumPublicConnections);
+			}
+			LobbyWidget->AddToViewport();
+		}
+	}
+}
+
 void UDungeonGameInstance::HostGame(FHostGameSettings Settings)
 {
 	if (SessionInterface.IsValid())
@@ -133,6 +167,45 @@ void UDungeonGameInstance::JoinGame(uint32 Index)
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::JoinGame - No session interface found"));
+	}
+}
+
+void UDungeonGameInstance::OnJoinedLobby()
+{
+	MulticastOnJoinedLobby();
+}
+
+void UDungeonGameInstance::MulticastOnJoinedLobby_Implementation()
+{
+	if (LobbyWidget)
+	{
+		LobbyWidget->OnPlayerJoined();
+	}
+}
+
+void UDungeonGameInstance::OnLeftLobby()
+{
+	MulticastOnJoinedLobby();
+}
+
+void UDungeonGameInstance::MulticastOnLeftLobby_Implementation()
+{
+	if (LobbyWidget)
+	{
+		LobbyWidget->OnPlayerLeft();
+	}
+}
+
+void UDungeonGameInstance::BeginGameCountdown(float Delay)
+{
+	MulticastBeginGameCountdown(Delay);
+}
+
+void UDungeonGameInstance::MulticastBeginGameCountdown_Implementation(float Delay)
+{
+	if (LobbyWidget)
+	{
+		LobbyWidget->BeginCountdown(Delay);
 	}
 }
 
@@ -180,9 +253,62 @@ void UDungeonGameInstance::StartSession()
 	}
 }
 
+int32 UDungeonGameInstance::GetMaxSessionConnections()
+{
+	FNamedOnlineSession* ExistingSession = SessionInterface->GetNamedSession(SessionName);
+	if (ExistingSession)
+	{
+		return ExistingSession->SessionSettings.NumPublicConnections;
+	}
+
+	return 0;
+}
+
+FString UDungeonGameInstance::GetSessionMapString()
+{
+	FNamedOnlineSession* ExistingSession = SessionInterface->GetNamedSession(SessionName);
+	if (ExistingSession)
+	{
+		FString MapKey;
+		FString GameModeKey;
+		ExistingSession->SessionSettings.Get(SESSION_SETTING_MAP, MapKey);
+		ExistingSession->SessionSettings.Get(SESSION_SETTING_GAME_MODE, GameModeKey);
+		if (!MapKey.IsEmpty())
+		{
+			FString* MapStringPtr = Maps.Find(MapKey);
+			if (MapStringPtr)
+			{
+				FString MapString = *MapStringPtr;
+				if (!GameModeKey.IsEmpty())
+				{
+					FString* GameModeStringPtr = GameModes.Find(GameModeKey);
+					if (GameModeStringPtr)
+					{
+						FString GameModeString = *GameModeStringPtr;
+						FString CompleteMapString = FString::Printf(TEXT("%s?game=%s"), *MapString, *GameModeString);
+						return CompleteMapString;
+					}
+				}
+				return *MapStringPtr;
+			}
+		}
+	}
+	return FString(TEXT(""));
+}
+
 FStreamableManager& UDungeonGameInstance::GetAssetLoader()
 {
 	return AssetLoader;
+}
+
+TMap<FString, FString> UDungeonGameInstance::GetGameModes()
+{
+	return GameModes;
+}
+
+TMap<FString, FString> UDungeonGameInstance::GetMaps()
+{
+	return Maps;
 }
 
 TMap<EItemQualityTier, FLinearColor> UDungeonGameInstance::GetItemQualityTierColors()
@@ -230,10 +356,25 @@ void UDungeonGameInstance::CreateSession()
 	if (SessionInterface.IsValid())
 	{
 		FOnlineSessionSettings SessionSettings;
-		SessionSettings.NumPublicConnections = 5;
+
+		SessionSettings.NumPublicConnections = 2;
+
+		EGameSize* GameSizePtr = GameSizes.Find(DesiredHostGameSettings.GameSize);
+		if (GameSizePtr)
+		{
+			EGameSize GameSize = *GameSizePtr;
+			int32* PlayerCountPtr = GameSizePlayerCounts.Find(GameSize);
+			if (PlayerCountPtr)
+			{
+				SessionSettings.NumPublicConnections = *PlayerCountPtr;
+			}
+		}
+
 		SessionSettings.bShouldAdvertise = true;
 		SessionSettings.bUsesPresence = true;
-		SessionSettings.Set(KEY_GAME_NAME, DesiredHostGameSettings.Name, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+		SessionSettings.Set(SESSION_SETTING_GAME_NAME, DesiredHostGameSettings.Name, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+		SessionSettings.Set(SESSION_SETTING_GAME_MODE, DesiredHostGameSettings.GameModeString, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+		SessionSettings.Set(SESSION_SETTING_MAP, DesiredHostGameSettings.MapString, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 		if (IOnlineSubsystem::Get()->GetSubsystemName() == "NULL")
 		{
@@ -353,7 +494,7 @@ void UDungeonGameInstance::OnFindSessionsComplete(bool WasSearchSuccessful)
 			Server.Latency = Result.PingInMs;
 
 			FString GameName;
-			if (Result.Session.SessionSettings.Get(KEY_GAME_NAME, GameName))
+			if (Result.Session.SessionSettings.Get(SESSION_SETTING_GAME_NAME, GameName))
 			{
 				Server.Name = GameName;
 				UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnFindSessionsComplete - Found game %s"), *Server.Name);

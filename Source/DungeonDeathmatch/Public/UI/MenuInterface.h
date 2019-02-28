@@ -27,6 +27,8 @@ public:
 
 	virtual void JoinGame(uint32 Index) = 0;
 
+	virtual void BeginGameCountdown(float Delay) = 0;
+
 	virtual void ExitToMainMenu() = 0;
 
 	virtual void ExitToDesktop() = 0;
