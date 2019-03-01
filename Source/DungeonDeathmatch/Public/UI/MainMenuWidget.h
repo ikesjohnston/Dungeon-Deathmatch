@@ -15,6 +15,7 @@ class UEditableTextBox;
 class UPanelWidget;
 class UServerBrowserRowWidget;
 class UComboBoxString;
+class UComboBox;
 
 /**
  * Widget class for the main menu and all sub menus
@@ -87,9 +88,21 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UWidget* SettingsMenu;
+	
+	UPROPERTY(meta = (BindWidget))
+	UComboBoxString* ResolutionDropdown;
+
+	UPROPERTY(meta = (BindWidget))
+	UComboBoxString* DisplayModeDropdown;
+
+	UPROPERTY(meta = (BindWidget))
+	UComboBoxString* FrameLockDropdown;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* SettingsMenuBackButton;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* SettingsMenuApplyButton;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* ExitButton;
@@ -149,6 +162,9 @@ protected:
 	void OnSettingsButtonPressed();
 
 	UFUNCTION()
+	void OnSettingsMenuApplyButtonPressed();
+
+	UFUNCTION()
 	void OnSettingsMenuBackButtonPressed();
 
 	UFUNCTION()
@@ -178,4 +194,13 @@ protected:
 
 	UFUNCTION()
 	void OnMapSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
+
+	UFUNCTION()
+	void OnResolutionSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
+
+	UFUNCTION()
+	void OnDisplayModeSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
+
+	UFUNCTION()
+	void OnFrameLockSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
 };

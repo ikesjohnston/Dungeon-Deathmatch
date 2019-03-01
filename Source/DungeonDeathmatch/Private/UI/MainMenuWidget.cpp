@@ -147,6 +147,48 @@ bool UMainMenuWidget::Initialize()
 	}
 	SettingsButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnSettingsButtonPressed);
 
+	if (!ensure(ResolutionDropdown != nullptr))
+	{
+		return false;
+	}
+	FScreenResolutionArray AvailableResolutions;
+	FString ResOption;
+	RHIGetAvailableResolutions(AvailableResolutions, true);
+	for (const FScreenResolutionRHI& Resolution : AvailableResolutions)
+	{
+		ResOption = FString::Printf(TEXT("%dx%d"), Resolution.Width, Resolution.Height);
+		ResolutionDropdown->AddOption(ResOption);
+	}
+	ResolutionDropdown->SetSelectedOption(ResOption);
+	ResolutionDropdown->OnSelectionChanged.AddDynamic(this, &UMainMenuWidget::OnResolutionSelectionChanged);
+
+	if (!ensure(DisplayModeDropdown != nullptr))
+	{
+		return false;
+	}
+	DisplayModeDropdown->AddOption("Fullscreen");
+	DisplayModeDropdown->AddOption("Windowed");
+	DisplayModeDropdown->AddOption("Borderless Windowed");
+	DisplayModeDropdown->SetSelectedOption("Fullscreen");
+	DisplayModeDropdown->OnSelectionChanged.AddDynamic(this, &UMainMenuWidget::OnDisplayModeSelectionChanged);
+
+	if (!ensure(FrameLockDropdown != nullptr))
+	{
+		return false;
+	}
+	FrameLockDropdown->AddOption("Unlimited");
+	FrameLockDropdown->AddOption("30");
+	FrameLockDropdown->AddOption("60");
+	FrameLockDropdown->SetSelectedOption("Unlimited");
+	FrameLockDropdown->OnSelectionChanged.AddDynamic(this, &UMainMenuWidget::OnFrameLockSelectionChanged);
+
+	if (!ensure(SettingsMenuApplyButton != nullptr))
+	{
+		return false;
+	}
+	SettingsMenuApplyButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnSettingsMenuApplyButtonPressed);
+	SettingsMenuApplyButton->SetIsEnabled(false);
+
 	if (!ensure(SettingsMenuBackButton != nullptr))
 	{
 		return false;
@@ -259,7 +301,42 @@ void UMainMenuWidget::OnSettingsButtonPressed()
 {
 	if (MenuSwitcher)
 	{
+		SettingsMenuApplyButton->SetIsEnabled(false);
 		MenuSwitcher->SetActiveWidget(SettingsMenu);
+	}
+}
+
+void UMainMenuWidget::OnSettingsMenuApplyButtonPressed()
+{
+	SettingsMenuApplyButton->SetIsEnabled(false);
+
+	FString Resolution = ResolutionDropdown->GetSelectedOption();
+
+	FString DisplayMode = "f";
+	FString SelectedDisplayMode = DisplayModeDropdown->GetSelectedOption();
+	if (SelectedDisplayMode.Equals("Windowed"))
+	{
+		DisplayMode = "w";
+	}
+	else if (SelectedDisplayMode.Equals("Borderless Windowed"))
+	{
+		DisplayMode = "wf";
+	}
+
+	int32 FrameLock = 0;
+	FString SelectedFrameLock = FrameLockDropdown->GetSelectedOption();
+	if (!SelectedFrameLock.Equals("Unlimited"))
+	{
+		FrameLock = FCString::Atoi(*SelectedFrameLock);
+	}
+
+	APlayerController* PlayerController = GetOwningPlayer();
+	if (PlayerController)
+	{
+		FString ResolutionCommand = FString::Printf(TEXT("r.setres %s%s"), *Resolution, *DisplayMode);
+		FString FrameRateCommand = FString::Printf(TEXT("t.MaxFPS %d"), FrameLock);
+		PlayerController->ConsoleCommand(ResolutionCommand);
+		PlayerController->ConsoleCommand(FrameRateCommand);
 	}
 }
 
@@ -291,7 +368,6 @@ void UMainMenuWidget::OnExitCancelButtonPressed()
 		MenuSwitcher->SetActiveWidget(MainMenu);
 	}
 }
-
 
 void UMainMenuWidget::RefreshServerList()
 {
@@ -389,4 +465,19 @@ void UMainMenuWidget::OnGameSizeSelectionChanged(FString SelectedItem, ESelectIn
 void UMainMenuWidget::OnMapSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
 {
 
+}
+
+void UMainMenuWidget::OnResolutionSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
+{
+	SettingsMenuApplyButton->SetIsEnabled(true);
+}
+
+void UMainMenuWidget::OnDisplayModeSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
+{
+	SettingsMenuApplyButton->SetIsEnabled(true);
+}
+
+void UMainMenuWidget::OnFrameLockSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
+{
+	SettingsMenuApplyButton->SetIsEnabled(true);
 }
