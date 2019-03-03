@@ -2,6 +2,7 @@
 
 #include "MainMenuWidget.h"
 #include "MenuInterface.h"
+#include "SettingsMenuWidget.h"
 #include "ServerBrowserRowWidget.h"
 #include "DungeonGameInstance.h"
 #include "DungeonGameMode.h"
@@ -147,53 +148,11 @@ bool UMainMenuWidget::Initialize()
 	}
 	SettingsButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnSettingsButtonPressed);
 
-	if (!ensure(ResolutionDropdown != nullptr))
+	if (!ensure(SettingsMenu != nullptr))
 	{
 		return false;
 	}
-	FScreenResolutionArray AvailableResolutions;
-	FString ResOption;
-	RHIGetAvailableResolutions(AvailableResolutions, true);
-	for (const FScreenResolutionRHI& Resolution : AvailableResolutions)
-	{
-		ResOption = FString::Printf(TEXT("%dx%d"), Resolution.Width, Resolution.Height);
-		ResolutionDropdown->AddOption(ResOption);
-	}
-	ResolutionDropdown->SetSelectedOption(ResOption);
-	ResolutionDropdown->OnSelectionChanged.AddDynamic(this, &UMainMenuWidget::OnResolutionSelectionChanged);
-
-	if (!ensure(DisplayModeDropdown != nullptr))
-	{
-		return false;
-	}
-	DisplayModeDropdown->AddOption("Fullscreen");
-	DisplayModeDropdown->AddOption("Windowed");
-	DisplayModeDropdown->AddOption("Borderless Windowed");
-	DisplayModeDropdown->SetSelectedOption("Fullscreen");
-	DisplayModeDropdown->OnSelectionChanged.AddDynamic(this, &UMainMenuWidget::OnDisplayModeSelectionChanged);
-
-	if (!ensure(FrameLockDropdown != nullptr))
-	{
-		return false;
-	}
-	FrameLockDropdown->AddOption("Unlimited");
-	FrameLockDropdown->AddOption("30");
-	FrameLockDropdown->AddOption("60");
-	FrameLockDropdown->SetSelectedOption("Unlimited");
-	FrameLockDropdown->OnSelectionChanged.AddDynamic(this, &UMainMenuWidget::OnFrameLockSelectionChanged);
-
-	if (!ensure(SettingsMenuApplyButton != nullptr))
-	{
-		return false;
-	}
-	SettingsMenuApplyButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnSettingsMenuApplyButtonPressed);
-	SettingsMenuApplyButton->SetIsEnabled(false);
-
-	if (!ensure(SettingsMenuBackButton != nullptr))
-	{
-		return false;
-	}
-	SettingsMenuBackButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnSettingsMenuBackButtonPressed);
+	SettingsMenu->OnBackButtonClicked.AddDynamic(this, &UMainMenuWidget::OnSettingsMenuBackButtonPressed);
 
 	if (!ensure(ExitButton != nullptr))
 	{
@@ -301,42 +260,7 @@ void UMainMenuWidget::OnSettingsButtonPressed()
 {
 	if (MenuSwitcher)
 	{
-		SettingsMenuApplyButton->SetIsEnabled(false);
 		MenuSwitcher->SetActiveWidget(SettingsMenu);
-	}
-}
-
-void UMainMenuWidget::OnSettingsMenuApplyButtonPressed()
-{
-	SettingsMenuApplyButton->SetIsEnabled(false);
-
-	FString Resolution = ResolutionDropdown->GetSelectedOption();
-
-	FString DisplayMode = "f";
-	FString SelectedDisplayMode = DisplayModeDropdown->GetSelectedOption();
-	if (SelectedDisplayMode.Equals("Windowed"))
-	{
-		DisplayMode = "w";
-	}
-	else if (SelectedDisplayMode.Equals("Borderless Windowed"))
-	{
-		DisplayMode = "wf";
-	}
-
-	int32 FrameLock = 0;
-	FString SelectedFrameLock = FrameLockDropdown->GetSelectedOption();
-	if (!SelectedFrameLock.Equals("Unlimited"))
-	{
-		FrameLock = FCString::Atoi(*SelectedFrameLock);
-	}
-
-	APlayerController* PlayerController = GetOwningPlayer();
-	if (PlayerController)
-	{
-		FString ResolutionCommand = FString::Printf(TEXT("r.setres %s%s"), *Resolution, *DisplayMode);
-		FString FrameRateCommand = FString::Printf(TEXT("t.MaxFPS %d"), FrameLock);
-		PlayerController->ConsoleCommand(ResolutionCommand);
-		PlayerController->ConsoleCommand(FrameRateCommand);
 	}
 }
 
@@ -467,17 +391,16 @@ void UMainMenuWidget::OnMapSelectionChanged(FString SelectedItem, ESelectInfo::T
 
 }
 
-void UMainMenuWidget::OnResolutionSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
+FReply UMainMenuWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
-	SettingsMenuApplyButton->SetIsEnabled(true);
-}
+	Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 
-void UMainMenuWidget::OnDisplayModeSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
-{
-	SettingsMenuApplyButton->SetIsEnabled(true);
-}
+	FReply Reply = FReply::Handled();
 
-void UMainMenuWidget::OnFrameLockSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
-{
-	SettingsMenuApplyButton->SetIsEnabled(true);
+	if (MenuSwitcher)
+	{
+		MenuSwitcher->SetActiveWidget(MainMenu);
+	}
+
+	return Reply;
 }

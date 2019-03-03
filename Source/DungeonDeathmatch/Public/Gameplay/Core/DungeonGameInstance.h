@@ -48,20 +48,24 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI Globals")
 	TSubclassOf<UDraggableItemWidget> DragAndDropItemWidgetClass;
 
+	/** Mapping of input keys to icons used in UI*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI Globals")
+	TMap<FKey, UTexture2D*> InputIcons;
+
 	/** Mapping of game mode names to their actor string references, for use by UI when hosting and searching for games */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals\|General")
 	TMap<FString, FString> GameModes;
 
 	/** Mapping of game size names to their enum representations, for use by UI when hosting and searching for games */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals\|General")
 	TMap<FString, EGameSize> GameSizes;
 
 	/** Mapping of game size enums to their respective max player counts, for use by UI when hosting and searching for games */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals\|General")
 	TMap<EGameSize, int32> GameSizePlayerCounts;
 
 	/** Mapping of map names to their object string references, for use by UI when hosting and searching for games */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals\|General")
 	TMap<FString, FString> Maps;
 
 	/* The initial forward force to apply to loot when it is ejected from loot containers */

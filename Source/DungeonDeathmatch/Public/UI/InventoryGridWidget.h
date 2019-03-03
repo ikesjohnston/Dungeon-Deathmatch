@@ -12,6 +12,7 @@ class UDraggableItemWidget;
 class UGridPanel;
 class UCanvasPanel;
 class AItem;
+class USoundCue;
 
 /**
  * UI widget representing the player inventory.

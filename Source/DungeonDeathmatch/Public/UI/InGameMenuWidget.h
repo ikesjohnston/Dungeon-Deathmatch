@@ -9,6 +9,7 @@
 class UWidgetSwitcher;
 class UButton;
 class IMenuInterface;
+class USettingsMenuWidget;
 
 /**
  * Widget class for the in game menu and all of its sub menus
@@ -32,10 +33,7 @@ protected:
 	UButton* SettingsButton;
 
 	UPROPERTY(meta = (BindWidget))
-	UWidget* SettingsMenu;
-
-	UPROPERTY(meta = (BindWidget))
-	UButton* SettingsMenuBackButton;
+	USettingsMenuWidget* SettingsMenu;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* LeaveGameButton;
@@ -90,4 +88,6 @@ protected:
 
 	UFUNCTION()
 	void OnExitCancelButtonPressed();
+
+	FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 };

@@ -1,9 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "InGameMenuWidget.h"
+#include "MenuInterface.h"
+#include "SettingsMenuWidget.h"
+
 #include <Button.h>
 #include <WidgetSwitcher.h>
-#include "MenuInterface.h"
 
 bool UInGameMenuWidget::Initialize()
 {
@@ -21,11 +23,11 @@ bool UInGameMenuWidget::Initialize()
 	}
 	SettingsButton->OnClicked.AddDynamic(this, &UInGameMenuWidget::OnSettingsButtonPressed);
 	
-	if (!ensure(SettingsMenuBackButton != nullptr))
+	if (!ensure(SettingsMenu != nullptr))
 	{
 		return false;
 	}
-	SettingsMenuBackButton->OnClicked.AddDynamic(this, &UInGameMenuWidget::OnSettingsMenuBackButtonPressed);
+	SettingsMenu->OnBackButtonClicked.AddDynamic(this, &UInGameMenuWidget::OnSettingsMenuBackButtonPressed);
 
 	if (!ensure(LeaveGameButton != nullptr))
 	{
@@ -115,4 +117,25 @@ void UInGameMenuWidget::OnExitAcceptButtonPressed()
 void UInGameMenuWidget::OnExitCancelButtonPressed()
 {
 	MenuSwitcher->SetActiveWidget(InGameMenu);
+}
+
+FReply UInGameMenuWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	Super::NativeOnKeyDown(InGeometry, InKeyEvent);
+
+	FReply Reply = FReply::Handled();
+
+	if (MenuSwitcher)
+	{
+		if (MenuSwitcher->GetActiveWidget() == InGameMenu)
+		{
+			Teardown();
+		}
+		else
+		{
+			MenuSwitcher->SetActiveWidget(InGameMenu);
+		}
+	}
+
+	return Reply;
 }

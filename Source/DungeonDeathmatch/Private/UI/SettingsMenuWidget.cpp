@@ -1,0 +1,462 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#include "SettingsMenuWidget.h"
+#include "InputBindingEditorRow.h"
+#include "InputGlobals.h"
+
+#include <ComboBoxString.h>
+#include <Button.h>
+#include <WidgetSwitcher.h>
+#include <CheckBox.h>
+#include <Slider.h>
+#include <TextBlock.h>
+#include <Kismet/GameplayStatics.h>
+#include <UnrealEngine.h>
+#include <Engine/Engine.h>
+#include <GameFramework/InputSettings.h>
+#include <GameFramework/PlayerInput.h>
+#include <LogMacros.h>
+
+const static FString FORMAT_RESOLUTION								= TEXT("{0}x{1}");
+
+const static FString	DISPLAY_MODE_OPTION_FULLSCREEN				= TEXT("Fullscreen");
+const static FString	DISPLAY_MODE_OPTION_WINDOWED				= TEXT("Windowed");
+const static FString	 DISPLAY_MODE_OPTION_BORDERLESSWINDOWED		= TEXT("Borderless Windowed");
+
+const static FString	DISPLAY_MODE_COMMAND_FULLSCREEN				= TEXT("f");
+const static FString	DISPLAY_MODE_COMMAND_WINDOWED				= TEXT("w");
+const static FString	DISPLAY_MODE_COMMAND_BORDERLESSWINDOWED		= TEXT("wf");
+
+const static FString	FRAME_LOCK_UNLOCKED							= TEXT("Unlimited");
+const static FString	FRAME_LOCK_30								= TEXT("30");
+const static FString	FRAME_LOCK_60								= TEXT("60");
+
+const static FString	COMMAND_SETRES								= TEXT("r.setres {0}{1}");
+const static FString	COMMAND_MAXFPS								= TEXT("t.MaxFPS {0}");
+
+const static int32		SLIDER_VALUE_MULTIPLIER						= 100;
+
+USettingsMenuWidget::USettingsMenuWidget(const FObjectInitializer& ObjectInitializer)
+: Super(ObjectInitializer)
+{
+
+}
+
+bool USettingsMenuWidget::Initialize()
+{
+	bool Result = Super::Initialize();
+
+	if (!ensure(TabSwitcher != nullptr))
+	{
+		return false;
+	}
+
+	if (!ensure(GraphicsTabButton != nullptr))
+	{
+		return false;
+	}
+	GraphicsTabButton->OnClicked.AddDynamic(this, &USettingsMenuWidget::OnGraphicsTabButtonPressed);
+
+	if (!ensure(GraphicsTab != nullptr))
+	{
+		return false;
+	}
+
+	if (!ensure(ResolutionDropdown != nullptr))
+	{
+		return false;
+	}
+
+	// Add all resolution options for current display adapter, ignoring different refresh rates
+	FScreenResolutionArray AvailableResolutions;
+	FString ResOption;
+	RHIGetAvailableResolutions(AvailableResolutions, true);
+	for (const FScreenResolutionRHI& Resolution : AvailableResolutions)
+	{
+		TArray<FStringFormatArg> FormatArgs;
+		FormatArgs.Add(FStringFormatArg(Resolution.Width));
+		FormatArgs.Add(FStringFormatArg(Resolution.Height));
+
+		ResOption = FString::Format(*FORMAT_RESOLUTION, FormatArgs);
+		ResolutionDropdown->AddOption(ResOption);
+	}
+
+	// Set the selected option to the current resolution
+	TArray<FStringFormatArg> FormatArgs;
+	FormatArgs.Add(FStringFormatArg(GSystemResolution.ResX));
+	FormatArgs.Add(FStringFormatArg(GSystemResolution.ResY));
+	ResOption = FString::Format(*FORMAT_RESOLUTION, FormatArgs);
+	ResolutionDropdown->SetSelectedOption(ResOption);
+
+	ResolutionDropdown->OnSelectionChanged.AddDynamic(this, &USettingsMenuWidget::OnResolutionSelectionChanged);
+
+	if (!ensure(DisplayModeDropdown != nullptr))
+	{
+		return false;
+	}
+	DisplayModeDropdown->AddOption(DISPLAY_MODE_OPTION_FULLSCREEN);
+	DisplayModeDropdown->AddOption(DISPLAY_MODE_OPTION_WINDOWED);
+	DisplayModeDropdown->AddOption(DISPLAY_MODE_OPTION_BORDERLESSWINDOWED);
+
+	if (GEngine)
+	{
+		EWindowMode::Type WindowMode = GEngine->GameUserSettings->GetFullscreenMode();
+		switch (WindowMode)
+		{
+		case EWindowMode::Fullscreen:
+			DisplayModeDropdown->SetSelectedOption(DISPLAY_MODE_OPTION_FULLSCREEN);
+			break;
+		case EWindowMode::WindowedFullscreen:
+			DisplayModeDropdown->SetSelectedOption(DISPLAY_MODE_OPTION_BORDERLESSWINDOWED);
+			break;
+		case EWindowMode::Windowed:
+			DisplayModeDropdown->SetSelectedOption(DISPLAY_MODE_OPTION_WINDOWED);
+			break;
+		default:
+			break;
+		}
+	}
+	else
+	{
+		DisplayModeDropdown->SetSelectedOption(DISPLAY_MODE_OPTION_FULLSCREEN);
+	}
+
+	DisplayModeDropdown->OnSelectionChanged.AddDynamic(this, &USettingsMenuWidget::OnDisplayModeSelectionChanged);
+
+	if (!ensure(FrameLockDropdown != nullptr))
+	{
+		return false;
+	}
+	FrameLockDropdown->AddOption(FRAME_LOCK_UNLOCKED);
+	FrameLockDropdown->AddOption(FRAME_LOCK_30);
+	FrameLockDropdown->AddOption(FRAME_LOCK_60);
+	FrameLockDropdown->SetSelectedOption(FRAME_LOCK_UNLOCKED);
+	FrameLockDropdown->OnSelectionChanged.AddDynamic(this, &USettingsMenuWidget::OnFrameLockSelectionChanged);
+
+	if (!ensure(SoundTabButton != nullptr))
+	{
+		return false;
+	}
+	SoundTabButton->OnClicked.AddDynamic(this, &USettingsMenuWidget::OnSoundTabButtonPressed);
+
+	if (!ensure(MasterSoundToggle != nullptr))
+	{
+		return false;
+	}
+	MasterSoundToggle->SetCheckedState(ECheckBoxState::Checked);
+	MasterSoundToggle->OnCheckStateChanged.AddDynamic(this, &USettingsMenuWidget::OnMasterSoundToggleStateChanged);
+
+	if (!ensure(MasterSoundSlider != nullptr))
+	{
+		return false;
+	}
+	MasterSoundSlider->SetValue(1.0f);
+	MasterSoundSlider->OnValueChanged.AddDynamic(this, &USettingsMenuWidget::OnMasterSoundSliderValueChanged);
+
+	if (!ensure(MasterSoundLevel != nullptr))
+	{
+		return false;
+	}
+
+	if (!ensure(EffectsSoundToggle != nullptr))
+	{
+		return false;
+	}
+	EffectsSoundToggle->SetCheckedState(ECheckBoxState::Checked);
+	EffectsSoundToggle->OnCheckStateChanged.AddDynamic(this, &USettingsMenuWidget::OnEffectsSoundToggleStateChanged);
+
+	if(!ensure(EffectsSoundSlider != nullptr))
+	{
+		return false;
+	}
+	EffectsSoundSlider->SetValue(1.0f);
+	EffectsSoundSlider->OnValueChanged.AddDynamic(this, &USettingsMenuWidget::OnEffectsSoundSliderValueChanged);
+
+	if (!ensure(EffectsSoundLevel != nullptr))
+	{
+		return false;
+	}
+
+	if (!ensure(UISoundToggle != nullptr))
+	{
+		return false;
+	}
+	UISoundToggle->SetCheckedState(ECheckBoxState::Checked);
+	UISoundToggle->OnCheckStateChanged.AddDynamic(this, &USettingsMenuWidget::OnUISoundToggleStateChanged);
+
+	if(!ensure(UISoundSlider != nullptr))
+	{
+		return false;
+	}
+	UISoundSlider->SetValue(1.0f);
+	UISoundSlider->OnValueChanged.AddDynamic(this, &USettingsMenuWidget::OnUISoundSliderValueChanged);
+
+	if (!ensure(UISoundLevel != nullptr))
+	{
+		return false;
+	}
+
+	if (!ensure(MusicSoundToggle != nullptr))
+	{
+		return false;
+	}
+	MusicSoundToggle->SetCheckedState(ECheckBoxState::Checked);
+	MusicSoundToggle->OnCheckStateChanged.AddDynamic(this, &USettingsMenuWidget::OnMusicSoundToggleStateChanged);
+
+	if (!ensure(MusicSoundSlider != nullptr))
+	{
+		return false;
+	}
+	MusicSoundSlider->SetValue(1.0f);
+	MusicSoundSlider->OnValueChanged.AddDynamic(this, &USettingsMenuWidget::OnMusicSoundSliderValueChanged);
+
+	if (!ensure(MusicSoundLevel != nullptr))
+	{
+		return false;
+	}
+
+	if (!ensure(SoundTab != nullptr))
+	{
+		return false;
+	}
+
+	if (!ensure(ControlsTabButton != nullptr))
+	{
+		return false;
+	}
+	ControlsTabButton->OnClicked.AddDynamic(this, &USettingsMenuWidget::OnControlsTabButtonPressed);
+
+	if (!ensure(ControlsTab != nullptr))
+	{
+		return false;
+	}
+
+	if (!ensure(InputBindingList != nullptr))
+	{
+		return false;
+	}
+
+	UInputSettings* Settings = const_cast<UInputSettings*>(GetDefault<UInputSettings>());
+	if (!Settings) return false;
+
+	if (InputBindingRowClass)
+	{
+		TArray<FInputActionKeyMapping>& Actions = Settings->ActionMappings;
+		TMap<FName, FDungeonKeyBind> ProcessedBindings;
+		for (FInputActionKeyMapping Action : Actions)
+		{
+			// Ignore gamepad bindings and the Escape key as it is reserved
+			if (Action.Key.IsGamepadKey() || Action.Key == EKeys::Escape)
+			{
+				continue;
+			}
+
+			FDungeonKeyBind* KeyBindPtr = ProcessedBindings.Find(Action.ActionName);
+			if (KeyBindPtr)
+			{
+				// Only add first two bindings to action
+				if (KeyBindPtr->SecondaryBinding.ActionName.IsNone())
+				{
+					KeyBindPtr->SecondaryBinding = Action;
+				}
+			}
+			else
+			{
+				FDungeonKeyBind KeyBind;
+				KeyBind.ActionName = Action.ActionName.ToString();
+				KeyBind.PrimaryBinding = Action;
+				ProcessedBindings.Add(TTuple<FName, FDungeonKeyBind>(Action.ActionName, KeyBind));
+			}
+		}
+
+		for (TTuple<FName, FDungeonKeyBind> Binding : ProcessedBindings)
+		{
+			UInputBindingEditorRow* InputBindingRow = CreateWidget<UInputBindingEditorRow>(GetWorld(), InputBindingRowClass);
+			if (InputBindingRow)
+			{
+				InputBindingRow->Setup(Binding.Value);
+				InputBindingList->AddChild(InputBindingRow);
+				//InputBindingRow->Padding = InputBindingRowMargin;
+			}
+		}
+	}
+
+	if (!ensure(GameplayTabButton != nullptr))
+	{
+		return false;
+	}
+	GameplayTabButton->OnClicked.AddDynamic(this, &USettingsMenuWidget::OnGameplayTabButtonPressed);
+
+	if (!ensure(GameplayTab != nullptr))
+	{
+		return false;
+	}
+
+	if (!ensure(ApplyButton != nullptr))
+	{
+		return false;
+	}
+	ApplyButton->OnClicked.AddDynamic(this, &USettingsMenuWidget::OnApplyButtonPressed);
+	ApplyButton->SetIsEnabled(false);
+
+	if (!ensure(BackButton != nullptr))
+	{
+		return false;
+	}
+	BackButton->OnClicked.AddDynamic(this, &USettingsMenuWidget::OnBackButtonPressed);
+
+	return Result;
+}
+
+void USettingsMenuWidget::OnGraphicsTabButtonPressed()
+{
+	TabSwitcher->SetActiveWidget(GraphicsTab);
+}
+
+void USettingsMenuWidget::OnResolutionSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
+{
+	ApplyButton->SetIsEnabled(true);
+}
+
+void USettingsMenuWidget::OnDisplayModeSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
+{
+	ApplyButton->SetIsEnabled(true);
+}
+
+void USettingsMenuWidget::OnFrameLockSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
+{
+	ApplyButton->SetIsEnabled(true);
+}
+
+void USettingsMenuWidget::OnSoundTabButtonPressed()
+{
+	TabSwitcher->SetActiveWidget(SoundTab);
+}
+
+void USettingsMenuWidget::OnMasterSoundToggleStateChanged(bool bIsChecked)
+{
+	ApplyButton->SetIsEnabled(true);
+}
+
+void USettingsMenuWidget::OnMasterSoundSliderValueChanged(float Value)
+{
+	ApplyButton->SetIsEnabled(true);
+	MasterSoundLevel->SetText(FText::FromString(FString::FromInt((int32)(Value * SLIDER_VALUE_MULTIPLIER))));
+}
+
+void USettingsMenuWidget::OnEffectsSoundToggleStateChanged(bool bIsChecked)
+{
+	ApplyButton->SetIsEnabled(true);
+}
+
+void USettingsMenuWidget::OnEffectsSoundSliderValueChanged(float Value)
+{
+	ApplyButton->SetIsEnabled(true);
+	EffectsSoundLevel->SetText(FText::FromString(FString::FromInt((int32)(Value * SLIDER_VALUE_MULTIPLIER))));
+}
+
+void USettingsMenuWidget::OnUISoundToggleStateChanged(bool bIsChecked)
+{
+	ApplyButton->SetIsEnabled(true);
+}
+
+void USettingsMenuWidget::OnUISoundSliderValueChanged(float Value)
+{
+	ApplyButton->SetIsEnabled(true);
+	UISoundLevel->SetText(FText::FromString(FString::FromInt((int32)(Value * SLIDER_VALUE_MULTIPLIER))));
+}
+
+void USettingsMenuWidget::OnMusicSoundToggleStateChanged(bool bIsChecked)
+{
+	ApplyButton->SetIsEnabled(true);
+}
+
+void USettingsMenuWidget::OnMusicSoundSliderValueChanged(float Value)
+{
+	ApplyButton->SetIsEnabled(true);
+	MusicSoundLevel->SetText(FText::FromString(FString::FromInt((int32)(Value * SLIDER_VALUE_MULTIPLIER))));
+}
+
+void USettingsMenuWidget::OnControlsTabButtonPressed()
+{
+	TabSwitcher->SetActiveWidget(ControlsTab);
+}
+
+void USettingsMenuWidget::OnGameplayTabButtonPressed()
+{
+	TabSwitcher->SetActiveWidget(GameplayTab);
+}
+
+void USettingsMenuWidget::OnApplyButtonPressed()
+{
+	ApplyButton->SetIsEnabled(false);
+
+	FString Resolution = ResolutionDropdown->GetSelectedOption();
+
+	FString DisplayMode = DISPLAY_MODE_COMMAND_FULLSCREEN;
+	FString SelectedDisplayMode = DisplayModeDropdown->GetSelectedOption();
+	if (SelectedDisplayMode.Equals(DISPLAY_MODE_OPTION_WINDOWED))
+	{
+		DisplayMode = DISPLAY_MODE_COMMAND_WINDOWED;
+	}
+	else if (SelectedDisplayMode.Equals(DISPLAY_MODE_OPTION_BORDERLESSWINDOWED))
+	{
+		DisplayMode = DISPLAY_MODE_COMMAND_BORDERLESSWINDOWED;
+	}
+
+	int32 FrameLock = 0;
+	FString SelectedFrameLock = FrameLockDropdown->GetSelectedOption();
+	if (!SelectedFrameLock.Equals(FRAME_LOCK_UNLOCKED))
+	{
+		FrameLock = FCString::Atoi(*SelectedFrameLock);
+	}
+
+	APlayerController* PlayerController = GetOwningPlayer();
+	if (PlayerController)
+	{
+		TArray<FStringFormatArg> FormatArgs;
+		FormatArgs.Add(FStringFormatArg(*Resolution));
+		FormatArgs.Add(FStringFormatArg(*DisplayMode));
+		FString ResolutionCommand = FString::Format(*COMMAND_SETRES, FormatArgs);
+
+		FormatArgs.Empty();
+		FormatArgs.Add(FStringFormatArg(FrameLock));
+		FString FrameRateCommand = FString::Format(*COMMAND_MAXFPS, FormatArgs);
+
+		PlayerController->ConsoleCommand(ResolutionCommand);
+		PlayerController->ConsoleCommand(FrameRateCommand);
+	}
+
+	float MasterVolume = 0.0f;
+	if (MasterSoundToggle->GetCheckedState() == ECheckBoxState::Checked)
+	{
+		MasterVolume = MasterSoundSlider->GetValue();
+	}
+	UGameplayStatics::SetSoundMixClassOverride(GetWorld(), SoundMixClass, MasterSoundClass, MasterVolume, 1.0f, 0.0f);
+
+	float EffectsVolume = 0.0f;
+	if (EffectsSoundToggle->GetCheckedState() == ECheckBoxState::Checked)
+	{
+		EffectsVolume = EffectsSoundSlider->GetValue();
+	}
+	UGameplayStatics::SetSoundMixClassOverride(GetWorld(), SoundMixClass, EffectsSoundClass, EffectsVolume, 1.0f, 0.0f);
+
+	float UIVolume = 0.0f;
+	if (UISoundToggle->GetCheckedState() == ECheckBoxState::Checked)
+	{
+		UIVolume = UISoundSlider->GetValue();
+	}
+	UGameplayStatics::SetSoundMixClassOverride(GetWorld(), SoundMixClass, UISoundClass, UIVolume, 1.0f, 0.0f);
+
+	float MusicVolume = 0.0f;
+	if (MusicSoundToggle->GetCheckedState() == ECheckBoxState::Checked)
+	{
+		MusicVolume = MusicSoundSlider->GetValue();
+	}
+	UGameplayStatics::SetSoundMixClassOverride(GetWorld(), SoundMixClass, MusicSoundClass, MusicVolume, 1.0f, 0.0f);
+}
+
+void USettingsMenuWidget::OnBackButtonPressed()
+{
+	OnBackButtonClicked.Broadcast();
+}
