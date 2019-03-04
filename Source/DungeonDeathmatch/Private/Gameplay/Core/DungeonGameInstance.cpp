@@ -11,6 +11,7 @@
 #include "InGameMenuWidget.h"
 #include "DungeonMenuWidget.h"
 #include "LobbyWidget.h"
+#include "DungeonSaveGame.h"
 
 const static int32 DEFAULT_MAX_PLAYERS = 2;
 const static FName SESSION_NAME					= TEXT("My Game Session");
@@ -84,6 +85,13 @@ void UDungeonGameInstance::Init()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::Init - No online subsystem found"));
 	}
+
+	LoadGameSettings();
+	ApplyAudioSettings();
+
+	UGameUserSettings* UserSettings = const_cast<UGameUserSettings*>(GetDefault<UGameUserSettings>());
+	if (!UserSettings) return;
+	UserSettings->ApplySettings(true);
 }
 
 void UDungeonGameInstance::LoadMainMenu()
@@ -223,7 +231,7 @@ void UDungeonGameInstance::ExitToDesktop()
 	APlayerController* PlayerController = GetFirstLocalPlayerController(GetWorld());
 	if (PlayerController)
 	{
-		PlayerController->ConsoleCommand("quit");
+		PlayerController->ConsoleCommand("Exit");
 	}
 }
 
@@ -349,6 +357,138 @@ FVector UDungeonGameInstance::GetRandomLootEjectionForce()
 	EjectionVector.RotateAngleAxis(RandomForwardAngle, FVector::UpVector);
 
 	return EjectionVector;
+}
+
+void UDungeonGameInstance::LoadGameSettings()
+{
+	GameSettings =  Cast<UDungeonSaveGame>(UGameplayStatics::LoadGameFromSlot(SaveGameSlotName, 0));
+	if (!GameSettings)
+	{
+		GameSettings = Cast<UDungeonSaveGame>(UDungeonSaveGame::StaticClass()->GetDefaultObject());
+		GameSettings->SetIsMasterVolumeEnabled(DEFAULT_SETTINGS_AUDIO_MASTER_VOLUME_ENABLED);
+		GameSettings->SetMasterVolume(DEFAULT_SETTINGS_AUDIO_MASTER_VOLUME);
+		GameSettings->SetIsEffectsVolumeEnabled(DEFAULT_SETTINGS_AUDIO_EFFECTS_VOLUME_ENABLED);
+		GameSettings->SetEffectsVolume(DEFAULT_SETTINGS_AUDIO_EFFECTS_VOLUME);
+		GameSettings->SetIsUIVolumeEnabled(DEFAULT_SETTINGS_AUDIO_UI_VOLUME_ENABLED);
+		GameSettings->SetUIVolume(DEFAULT_SETTINGS_AUDIO_UI_VOLUME);
+		GameSettings->SetIsMusicVolumeEnabled(DEFAULT_SETTINGS_AUDIO_MUSIC_VOLUME_ENABLED);
+		GameSettings->SetMusicVolume(DEFAULT_SETTINGS_AUDIO_MUSIC_VOLUME);
+	}
+}
+
+void UDungeonGameInstance::SaveGameSettings()
+{
+	if (GameSettings)
+	{
+		UGameplayStatics::SaveGameToSlot(GameSettings, SaveGameSlotName, 0);
+	}
+}
+
+FDungeonAudioSettings UDungeonGameInstance::GetAudioSettings()
+{
+	FDungeonAudioSettings Settings;
+	Settings.MasterVolume = DEFAULT_SETTINGS_AUDIO_MASTER_VOLUME;
+	Settings.EffectsVolume = DEFAULT_SETTINGS_AUDIO_EFFECTS_VOLUME;
+	Settings.UIVolume = DEFAULT_SETTINGS_AUDIO_UI_VOLUME;
+	Settings.MusicVolume = DEFAULT_SETTINGS_AUDIO_MUSIC_VOLUME;
+
+	if (GameSettings)
+	{
+		Settings.MasterVolumeEnabled = GameSettings->IsMasterVolumeEnabled();
+		Settings.MasterVolume = GameSettings->GetMasterVolume();
+		Settings.EffectsVolumeEnabled = GameSettings->IsEffectsVolumeEnabled();
+		Settings.EffectsVolume = GameSettings->GetEffectsVolume();
+		Settings.UIVolumeEnabled = GameSettings->IsUIVolumeEnabled();
+		Settings.UIVolume = GameSettings->GetUIVolume();
+		Settings.MusicVolumeEnabled = GameSettings->IsMusicVolumeEnabled();
+		Settings.MusicVolume = GameSettings->GetMusicVolume();
+	}
+
+	return Settings;
+}
+
+void UDungeonGameInstance::SetAudioSettings(FDungeonAudioSettings Settings, bool ApplyImmediately /*=true*/)
+{
+	if (GameSettings)
+	{
+		GameSettings->SetIsMasterVolumeEnabled(Settings.MasterVolumeEnabled);
+		GameSettings->SetMasterVolume(Settings.MasterVolume);
+		GameSettings->SetIsEffectsVolumeEnabled(Settings.EffectsVolumeEnabled);
+		GameSettings->SetEffectsVolume(Settings.EffectsVolume);
+		GameSettings->SetIsUIVolumeEnabled(Settings.UIVolumeEnabled);
+		GameSettings->SetUIVolume(Settings.UIVolume);
+		GameSettings->SetIsMusicVolumeEnabled(Settings.MusicVolumeEnabled);
+		GameSettings->SetMusicVolume(Settings.MusicVolume);
+		SaveGameSettings();
+	}
+	if (ApplyImmediately)
+	{
+		ApplyAudioSettings();
+	}
+}
+
+void UDungeonGameInstance::ApplyAudioSettings()
+{
+	float MasterVolume = DEFAULT_SETTINGS_AUDIO_MASTER_VOLUME;
+	float EffectsVolume = DEFAULT_SETTINGS_AUDIO_EFFECTS_VOLUME;
+	float UIVolume = DEFAULT_SETTINGS_AUDIO_UI_VOLUME;
+	float MusicVolume = DEFAULT_SETTINGS_AUDIO_MUSIC_VOLUME;
+
+	if (GameSettings)
+	{
+		if (GameSettings->IsMasterVolumeEnabled())
+		{
+			MasterVolume = GameSettings->GetMasterVolume();
+		}
+		else
+		{
+			MasterVolume = 0.0f;
+		}
+		if (GameSettings->IsEffectsVolumeEnabled())
+		{
+			EffectsVolume = GameSettings->GetEffectsVolume();
+		}
+		else
+		{
+			EffectsVolume = 0.0f;
+		}
+		if (GameSettings->IsUIVolumeEnabled())
+		{
+			UIVolume = GameSettings->GetUIVolume();
+		}
+		else
+		{
+			UIVolume = 0.0f;
+		}
+		if (GameSettings->IsMusicVolumeEnabled())
+		{
+			MusicVolume = GameSettings->GetMusicVolume();
+		}
+		else
+		{
+			MusicVolume = 0.0f;
+		}
+	}
+
+	if (SoundMixClass)
+	{
+		if (MasterSoundClass)
+		{
+			UGameplayStatics::SetSoundMixClassOverride(GetWorld(), SoundMixClass, MasterSoundClass, MasterVolume, 1.0f, 0.0f);
+		}
+		if (EffectsSoundClass)
+		{
+			UGameplayStatics::SetSoundMixClassOverride(GetWorld(), SoundMixClass, EffectsSoundClass, EffectsVolume, 1.0f, 0.0f);
+		}
+		if (UISoundClass)
+		{
+			UGameplayStatics::SetSoundMixClassOverride(GetWorld(), SoundMixClass, UISoundClass, UIVolume, 1.0f, 0.0f);
+		}
+		if (MusicSoundClass)
+		{
+			UGameplayStatics::SetSoundMixClassOverride(GetWorld(), SoundMixClass, MusicSoundClass, MusicVolume, 1.0f, 0.0f);
+		}
+	}
 }
 
 void UDungeonGameInstance::CreateSession()

@@ -12,6 +12,7 @@
 #include "MenuInterface.h"
 #include "DungeonMenuWidget.h"
 #include "NetworkGlobals.h"
+#include "SettingsGlobals.h"
 
 #include "DungeonGameInstance.generated.h"
 
@@ -19,6 +20,7 @@ class UDraggableItemWidget;
 class UUserWidget;
 class ADungeonGameMode;
 class ULobbyWidget;
+class UDungeonSaveGame;
 
 /**
  * 
@@ -84,7 +86,28 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation Globals")
 	TMap<EWeaponSocketType, UAnimMontage*> UnsheatheAnimationMontages;
 
+	UPROPERTY(EditDefaultsOnly)
+	FString SaveGameSlotName = FString("Settings");
+
+	UPROPERTY(EditAnywhere)
+	USoundMix* SoundMixClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	USoundClass* MasterSoundClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	USoundClass* EffectsSoundClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	USoundClass* UISoundClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	USoundClass* MusicSoundClass;
+
 private:
+	UPROPERTY()
+	UDungeonSaveGame* GameSettings;
+
 	TSubclassOf<UUserWidget> MainMenuWidgetClass;
 
 	UPROPERTY()
@@ -182,7 +205,18 @@ public:
 	UFUNCTION(BlueprintPure)
 	FVector GetRandomLootEjectionForce();
 
+	void SaveGameSettings();
+
+	UFUNCTION()
+	FDungeonAudioSettings GetAudioSettings();
+
+	UFUNCTION()
+	void SetAudioSettings(FDungeonAudioSettings Settings, bool ApplyImmediately = true);
+
 protected:
+	void LoadGameSettings();
+
+	void ApplyAudioSettings();
 
 	void CreateSession();
 

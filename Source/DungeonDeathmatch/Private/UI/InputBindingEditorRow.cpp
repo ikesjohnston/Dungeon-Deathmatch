@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "InputBindingEditorRow.h"
-#include "InputGlobals.h"
+#include "SettingsGlobals.h"
 
 #include <Button.h>
 #include <TextBlock.h>
@@ -196,7 +196,7 @@ FReply UInputBindingEditorRow::NativeOnKeyDown(const FGeometry& InGeometry, cons
 {
 	Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 
-	FReply Reply = FReply::Handled();
+	FReply Reply = FReply::Unhandled();
 
 	FKey InKey = InKeyEvent.GetKey();
 	if (InKey == EKeys::LeftShift)
@@ -235,6 +235,7 @@ FReply UInputBindingEditorRow::NativeOnKeyDown(const FGeometry& InGeometry, cons
 			{
 				BindPrimaryInput(InKeyEvent);
 			}
+			Reply = FReply::Handled();
 		}
 		else if (bIsWaitingForSecondaryBinding)
 		{
@@ -246,10 +247,7 @@ FReply UInputBindingEditorRow::NativeOnKeyDown(const FGeometry& InGeometry, cons
 			{
 				BindSecondaryInput(InKeyEvent);
 			}
-		}
-		else
-		{
-			Reply = FReply::Unhandled();
+			Reply = FReply::Handled();
 		}
 		Reply.ReleaseMouseLock();
 	}

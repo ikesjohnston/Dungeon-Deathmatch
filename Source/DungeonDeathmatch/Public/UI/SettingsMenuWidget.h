@@ -53,9 +53,6 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UWidget* SoundTab;
-	
-	UPROPERTY(EditAnywhere)
-	USoundMix* SoundMixClass;
 
 	UPROPERTY(meta = (BindWidget))
 	UCheckBox* MasterSoundToggle;
@@ -66,9 +63,6 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* MasterSoundLevel;
 
-	UPROPERTY(EditAnywhere)
-	USoundClass* MasterSoundClass;
-
 	UPROPERTY(meta = (BindWidget))
 	UCheckBox* EffectsSoundToggle;
 
@@ -77,9 +71,6 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* EffectsSoundLevel;
-
-	UPROPERTY(EditAnywhere)
-	USoundClass* EffectsSoundClass;
 
 	UPROPERTY(meta = (BindWidget))
 	UCheckBox* UISoundToggle;
@@ -90,9 +81,6 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* UISoundLevel;
 
-	UPROPERTY(EditAnywhere)
-	USoundClass* UISoundClass;
-
 	UPROPERTY(meta = (BindWidget))
 	UCheckBox* MusicSoundToggle;
 
@@ -101,9 +89,6 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* MusicSoundLevel;
-
-	UPROPERTY(EditAnywhere)
-	USoundClass* MusicSoundClass;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* ControlsTabButton;

@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "InputGlobals.h"
+#include "SettingsGlobals.h"
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"

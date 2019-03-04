@@ -123,9 +123,9 @@ FReply UInGameMenuWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKe
 {
 	Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 
-	FReply Reply = FReply::Handled();
+	FReply Reply = FReply::Unhandled();
 
-	if (MenuSwitcher)
+	if (MenuSwitcher && InKeyEvent.GetKey() == EKeys::Escape)
 	{
 		if (MenuSwitcher->GetActiveWidget() == InGameMenu)
 		{
@@ -135,6 +135,7 @@ FReply UInGameMenuWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKe
 		{
 			MenuSwitcher->SetActiveWidget(InGameMenu);
 		}
+		Reply = FReply::Handled();
 	}
 
 	return Reply;

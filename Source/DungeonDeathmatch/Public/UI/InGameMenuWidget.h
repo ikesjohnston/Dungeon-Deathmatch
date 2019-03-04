@@ -20,10 +20,10 @@ class DUNGEONDEATHMATCH_API UInGameMenuWidget : public UDungeonMenuWidget
 	GENERATED_BODY()
 	
 protected:
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	UWidgetSwitcher* MenuSwitcher;
 
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	UWidget* InGameMenu;
 
 	UPROPERTY(meta = (BindWidget))
@@ -32,13 +32,13 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* SettingsButton;
 
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	USettingsMenuWidget* SettingsMenu;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* LeaveGameButton;
 
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	UWidget* ConfirmLeaveGameMenu;
 
 	UPROPERTY(meta = (BindWidget))
@@ -50,7 +50,7 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* ExitButton;
 
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	UWidget* ConfirmExitMenu;
 
 	UPROPERTY(meta = (BindWidget))

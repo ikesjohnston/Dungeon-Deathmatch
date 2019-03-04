@@ -23,18 +23,14 @@ void UDungeonMenuWidget::Setup()
 {
 	AddToViewport();
 
-	UWorld* World = GetWorld();
-	if (World)
+	APlayerController* PlayerController = GetOwningPlayer();
+	if (PlayerController)
 	{
-		APlayerController* PlayerController = World->GetFirstPlayerController();
-		if (PlayerController)
-		{
-			FInputModeUIOnly InputMode;
-			InputMode.SetWidgetToFocus(TakeWidget());
-			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-			PlayerController->SetInputMode(InputMode);
-			PlayerController->bShowMouseCursor = true;
-		}
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(TakeWidget());
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		PlayerController->SetInputMode(InputMode);
+		PlayerController->bShowMouseCursor = true;
 	}
 }
 
