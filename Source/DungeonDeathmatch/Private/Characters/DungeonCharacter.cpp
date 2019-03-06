@@ -290,12 +290,12 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	// Movement Inputs
-	PlayerInputComponent->BindAxis("MoveForward", this, &ADungeonCharacter::MoveForward);
-	PlayerInputComponent->BindAxis("MoveRight", this, &ADungeonCharacter::MoveRight);
-	PlayerInputComponent->BindAxis("LookUp", this, &ADungeonCharacter::LookUp);
+	PlayerInputComponent->BindAxis("Move Forward", this, &ADungeonCharacter::MoveForward);
+	PlayerInputComponent->BindAxis("Move Right", this, &ADungeonCharacter::MoveRight);
+	PlayerInputComponent->BindAxis("Look Up", this, &ADungeonCharacter::LookUp);
 	PlayerInputComponent->BindAxis("Turn", this, &ADungeonCharacter::LookRight);
-	PlayerInputComponent->BindAction("FreeLook", IE_Pressed, this, &ADungeonCharacter::OnFreeLookKeyPressed);
-	PlayerInputComponent->BindAction("FreeLook", IE_Released, this, &ADungeonCharacter::OnFreeLookKeyReleased);
+	PlayerInputComponent->BindAction("Free Look", IE_Pressed, this, &ADungeonCharacter::OnFreeLookKeyPressed);
+	PlayerInputComponent->BindAction("Free Look", IE_Released, this, &ADungeonCharacter::OnFreeLookKeyReleased);
 	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &ADungeonCharacter::OnSprintKeyPressed);
 	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &ADungeonCharacter::OnSprintKeyReleased);
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ADungeonCharacter::OnCrouchKeyPressed);
@@ -304,16 +304,16 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 	// Action Inputs
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &ADungeonCharacter::OnInteractKeyPressed);
-	PlayerInputComponent->BindAction("SwitchLoadout", IE_Pressed, this, &ADungeonCharacter::OnLoadoutSwitchKeyPressed);
-	PlayerInputComponent->BindAction("Sheathe", IE_Pressed, this, &ADungeonCharacter::OnSheatheKeyPressed);
-	PlayerInputComponent->BindAction("MainHandAttack", IE_Pressed, this, &ADungeonCharacter::OnMainHandAttackKeyPressed);
-	PlayerInputComponent->BindAction("MainHandAttack", IE_Released, this, &ADungeonCharacter::OnMainHandAttackKeyReleased);
-	PlayerInputComponent->BindAction("MainHandAltAttack", IE_Pressed, this, &ADungeonCharacter::OnMainHandAltAttackKeyPressed);
-	PlayerInputComponent->BindAction("MainHandAltAttack", IE_Released, this, &ADungeonCharacter::OnMainHandAltAttackKeyReleased);
-	PlayerInputComponent->BindAction("OffHandAttack", IE_Pressed, this, &ADungeonCharacter::OnOffHandAttackKeyPressed);
-	PlayerInputComponent->BindAction("OffHandAttack", IE_Released, this, &ADungeonCharacter::OnOffHandAttackKeyReleased);
-	PlayerInputComponent->BindAction("OffHandAltAttack", IE_Pressed, this, &ADungeonCharacter::OnOffHandAltAttackKeyPressed);
-	PlayerInputComponent->BindAction("OffHandAltAttack", IE_Released, this, &ADungeonCharacter::OnOffHandAltAttackKeyReleased);
+	PlayerInputComponent->BindAction("Switch Loadout", IE_Pressed, this, &ADungeonCharacter::OnLoadoutSwitchKeyPressed);
+	PlayerInputComponent->BindAction("Sheathe Weapon", IE_Pressed, this, &ADungeonCharacter::OnSheatheKeyPressed);
+	PlayerInputComponent->BindAction("Main Hand Attack", IE_Pressed, this, &ADungeonCharacter::OnMainHandAttackKeyPressed);
+	PlayerInputComponent->BindAction("Main Hand Attack", IE_Released, this, &ADungeonCharacter::OnMainHandAttackKeyReleased);
+	PlayerInputComponent->BindAction("Main Hand Alt. Attack", IE_Pressed, this, &ADungeonCharacter::OnMainHandAltAttackKeyPressed);
+	PlayerInputComponent->BindAction("Main Hand Alt. Attack", IE_Released, this, &ADungeonCharacter::OnMainHandAltAttackKeyReleased);
+	PlayerInputComponent->BindAction("Off Hand Attack", IE_Pressed, this, &ADungeonCharacter::OnOffHandAttackKeyPressed);
+	PlayerInputComponent->BindAction("Off Hand Attack", IE_Released, this, &ADungeonCharacter::OnOffHandAttackKeyReleased);
+	PlayerInputComponent->BindAction("Off Hand Alt. Attack", IE_Pressed, this, &ADungeonCharacter::OnOffHandAltAttackKeyPressed);
+	PlayerInputComponent->BindAction("Off Hand Alt. Attack", IE_Released, this, &ADungeonCharacter::OnOffHandAltAttackKeyReleased);
 
 	// Menu Inputs
 	PlayerInputComponent->BindAction("Inventory", IE_Pressed, this, &ADungeonCharacter::OnInventoryKeyPressed);

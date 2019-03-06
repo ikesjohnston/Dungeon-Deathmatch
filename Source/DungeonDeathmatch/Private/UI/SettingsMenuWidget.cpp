@@ -25,16 +25,9 @@ const static FString	DISPLAY_MODE_OPTION_FULLSCREEN				= TEXT("Fullscreen");
 const static FString	DISPLAY_MODE_OPTION_BORDERLESSWINDOWED		= TEXT("Borderless Windowed");
 const static FString	DISPLAY_MODE_OPTION_WINDOWED				= TEXT("Windowed");
 
-const static FString	DISPLAY_MODE_COMMAND_FULLSCREEN				= TEXT("f");
-const static FString	DISPLAY_MODE_COMMAND_WINDOWED				= TEXT("w");
-const static FString	DISPLAY_MODE_COMMAND_BORDERLESSWINDOWED		= TEXT("wf");
-
 const static FString	FRAME_LOCK_UNLOCKED							= TEXT("Unlimited");
 const static FString	FRAME_LOCK_30								= TEXT("30");
 const static FString	FRAME_LOCK_60								= TEXT("60");
-
-const static FString	COMMAND_SETRES								= TEXT("r.setres {0}{1}");
-const static FString	COMMAND_MAXFPS								= TEXT("t.MaxFPS {0}");
 
 const static int32		SLIDER_VALUE_MULTIPLIER						= 100;
 
@@ -159,6 +152,20 @@ bool USettingsMenuWidget::Initialize()
 	}
 	FrameLockDropdown->OnSelectionChanged.AddDynamic(this, &USettingsMenuWidget::OnFrameLockSelectionChanged);
 
+	if (!ensure(VSyncToggle != nullptr))
+	{
+		return false;
+	}
+	if (UserSettings)
+	{
+		VSyncToggle->SetCheckedState(ECheckBoxState(UserSettings->IsVSyncEnabled()));
+	}
+	else
+	{
+		VSyncToggle->SetCheckedState(ECheckBoxState::Checked);
+	}
+	VSyncToggle->OnCheckStateChanged.AddDynamic(this, &USettingsMenuWidget::OnVSyncToggleStateChanged);
+
 	if (!ensure(SoundTabButton != nullptr))
 	{
 		return false;
@@ -166,7 +173,7 @@ bool USettingsMenuWidget::Initialize()
 	SoundTabButton->OnClicked.AddDynamic(this, &USettingsMenuWidget::OnSoundTabButtonPressed);
 
 	UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
-	if (!ensure(GameInstance != nullptr))
+	if (GameInstance == nullptr)
 	{
 		return false;
 
@@ -269,7 +276,17 @@ bool USettingsMenuWidget::Initialize()
 		return false;
 	}
 
-	if (!ensure(InputBindingList != nullptr))
+	if (!ensure(GeneralInputBindingList != nullptr))
+	{
+		return false;
+	}
+
+	if (!ensure(CombatInputBindingList != nullptr))
+	{
+		return false;
+	}
+
+	if (!ensure(UIInputBindingList != nullptr))
 	{
 		return false;
 	}
@@ -307,14 +324,40 @@ bool USettingsMenuWidget::Initialize()
 			}
 		}
 
-		for (TTuple<FName, FDungeonKeyBind> Binding : ProcessedBindings)
+		//Process categorized bindings in the order they are entered in the editor
+		for (FName GeneralInput : GeneralInputNames)
 		{
-			UInputBindingEditorRow* InputBindingRow = CreateWidget<UInputBindingEditorRow>(GetWorld(), InputBindingRowClass);
-			if (InputBindingRow)
+			FDungeonKeyBind* GeneralKeyBindPtr = ProcessedBindings.Find(GeneralInput);
+			if (GeneralKeyBindPtr)
 			{
-				InputBindingRow->Setup(Binding.Value);
-				InputBindingList->AddChild(InputBindingRow);
-				//InputBindingRow->Padding = InputBindingRowMargin;
+				UInputBindingEditorRow* InputBindingRow = CreateWidget<UInputBindingEditorRow>(GetWorld(), InputBindingRowClass);
+					
+				InputBindingRow->Setup(*GeneralKeyBindPtr);
+				GeneralInputBindingList->AddChild(InputBindingRow);
+			}
+		}
+
+		for (FName CombatInput : CombatInputNames)
+		{
+			FDungeonKeyBind* CombatKeyBindPtr = ProcessedBindings.Find(CombatInput);
+			if (CombatKeyBindPtr)
+			{
+				UInputBindingEditorRow* InputBindingRow = CreateWidget<UInputBindingEditorRow>(GetWorld(), InputBindingRowClass);
+
+				InputBindingRow->Setup(*CombatKeyBindPtr);
+				CombatInputBindingList->AddChild(InputBindingRow);
+			}
+		}
+
+		for (FName UIInput : UserInterfaceInputNames)
+		{
+			FDungeonKeyBind* UIKeyBindPtr = ProcessedBindings.Find(UIInput);
+			if (UIKeyBindPtr)
+			{
+				UInputBindingEditorRow* InputBindingRow = CreateWidget<UInputBindingEditorRow>(GetWorld(), InputBindingRowClass);
+
+				InputBindingRow->Setup(*UIKeyBindPtr);
+				UIInputBindingList->AddChild(InputBindingRow);
 			}
 		}
 	}
@@ -362,6 +405,11 @@ void USettingsMenuWidget::OnDisplayModeSelectionChanged(FString SelectedItem, ES
 }
 
 void USettingsMenuWidget::OnFrameLockSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType)
+{
+	ApplyButton->SetIsEnabled(true);
+}
+
+void USettingsMenuWidget::OnVSyncToggleStateChanged(bool bIsChecked)
 {
 	ApplyButton->SetIsEnabled(true);
 }
@@ -434,17 +482,7 @@ void USettingsMenuWidget::OnApplyButtonPressed()
 	Resolution.FindChar('x', SeparatorIndex);
 	int32 ScreenWidth = FCString::Atoi(*Resolution.Left(SeparatorIndex));
 	int32 ScreenHeight = FCString::Atoi(*Resolution.Right(Resolution.Len() - SeparatorIndex - 1));
-
-	FString DisplayMode = DISPLAY_MODE_COMMAND_FULLSCREEN;
 	FString SelectedDisplayMode = DisplayModeDropdown->GetSelectedOption();
-	if (SelectedDisplayMode.Equals(DISPLAY_MODE_OPTION_WINDOWED))
-	{
-		DisplayMode = DISPLAY_MODE_COMMAND_WINDOWED;
-	}
-	else if (SelectedDisplayMode.Equals(DISPLAY_MODE_OPTION_BORDERLESSWINDOWED))
-	{
-		DisplayMode = DISPLAY_MODE_COMMAND_BORDERLESSWINDOWED;
-	}
 	int32 DisplayModeIndex = DisplayModeDropdown->FindOptionIndex(SelectedDisplayMode);
 
 	int32 FrameLock = 0;
@@ -454,21 +492,7 @@ void USettingsMenuWidget::OnApplyButtonPressed()
 		FrameLock = FCString::Atoi(*SelectedFrameLock);
 	}
 
-	APlayerController* PlayerController = GetOwningPlayer();
-	if (PlayerController)
-	{
-		TArray<FStringFormatArg> FormatArgs;
-		FormatArgs.Add(FStringFormatArg(*Resolution));
-		FormatArgs.Add(FStringFormatArg(*DisplayMode));
-		FString ResolutionCommand = FString::Format(*COMMAND_SETRES, FormatArgs);
-
-		FormatArgs.Empty();
-		FormatArgs.Add(FStringFormatArg(FrameLock));
-		FString FrameRateCommand = FString::Format(*COMMAND_MAXFPS, FormatArgs);
-
-		PlayerController->ConsoleCommand(ResolutionCommand);
-		PlayerController->ConsoleCommand(FrameRateCommand);
-	}
+	bool VSyncEnabled = VSyncToggle->IsChecked();
 
 	UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
 	if (GameInstance)
@@ -520,6 +544,7 @@ void USettingsMenuWidget::OnApplyButtonPressed()
 		UserSettings->SetScreenResolution(FIntPoint(ScreenWidth, ScreenHeight));
 		UserSettings->SetFullscreenMode(EWindowMode::Type(DisplayModeIndex));
 		UserSettings->SetFrameRateLimit(FrameLock);
+		UserSettings->SetVSyncEnabled(VSyncEnabled);
 		UserSettings->ConfirmVideoMode();
 		UserSettings->ApplySettings(false);
 	}

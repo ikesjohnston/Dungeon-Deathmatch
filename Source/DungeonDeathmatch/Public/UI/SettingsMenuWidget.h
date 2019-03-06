@@ -49,6 +49,9 @@ protected:
 	UComboBoxString* FrameLockDropdown;
 
 	UPROPERTY(meta = (BindWidget))
+	UCheckBox* VSyncToggle;
+
+	UPROPERTY(meta = (BindWidget))
 	UButton* SoundTabButton;
 
 	UPROPERTY(meta = (BindWidget))
@@ -96,11 +99,23 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UWidget* ControlsTab;
 
+	UPROPERTY(EditAnywhere)
+	TArray<FName> GeneralInputNames;
+
 	UPROPERTY(meta = (BindWidget))
-	UPanelWidget* InputBindingList;
+	UPanelWidget* GeneralInputBindingList;
 
 	UPROPERTY(EditAnywhere)
-	FMargin InputBindingRowMargin;
+	TArray<FName>CombatInputNames;
+
+	UPROPERTY(meta = (BindWidget))
+	UPanelWidget* CombatInputBindingList;
+
+	UPROPERTY(EditAnywhere)
+	TArray<FName> UserInterfaceInputNames;
+
+	UPROPERTY(meta = (BindWidget))
+	UPanelWidget* UIInputBindingList;
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<UInputBindingEditorRow> InputBindingRowClass;
@@ -134,6 +149,9 @@ protected:
 
 	UFUNCTION()
 	void OnFrameLockSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectionType);
+
+	UFUNCTION()
+	void OnVSyncToggleStateChanged(bool bIsChecked);
 
 	UFUNCTION()
 	void OnSoundTabButtonPressed();

@@ -50,10 +50,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI Globals")
 	TSubclassOf<UDraggableItemWidget> DragAndDropItemWidgetClass;
 
-	/** Mapping of input keys to icons used in UI*/
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI Globals")
-	TMap<FKey, UTexture2D*> InputIcons;
-
 	/** Mapping of game mode names to their actor string references, for use by UI when hosting and searching for games */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals\|General")
 	TMap<FString, FString> GameModes;
@@ -71,11 +67,11 @@ protected:
 	TMap<FString, FString> Maps;
 
 	/* The initial forward force to apply to loot when it is ejected from loot containers */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay Globals\|Loot")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals\|Loot")
 	float LootEjectionForwardForce;
 
 	/* The initial upward force to apply to loot when it is ejected from loot containers */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Gameplay Globals\|Loot")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Globals\|Loot")
 	float LootEjectionUpForce;
 
 	/** Mapping of animation montages to play when sheathing different weapons */
@@ -86,22 +82,22 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation Globals")
 	TMap<EWeaponSocketType, UAnimMontage*> UnsheatheAnimationMontages;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, Category = "Game Globals\|General")
 	FString SaveGameSlotName = FString("Settings");
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Audio Globals")
 	USoundMix* SoundMixClass;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, Category = "Audio Globals")
 	USoundClass* MasterSoundClass;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, Category = "Audio Globals")
 	USoundClass* EffectsSoundClass;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, Category = "Audio Globals")
 	USoundClass* UISoundClass;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, Category = "Audio Globals")
 	USoundClass* MusicSoundClass;
 
 private:
