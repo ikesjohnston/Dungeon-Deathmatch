@@ -4,17 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "ServerBrowserRowWidget.generated.h"
+
+#include "GMSServerBrowserRowWidget.generated.h"
 
 class UTextBlock;
-class UMainMenuWidget;
+class UGMSMainMenuWidget;
 class UButton;
 
 /**
  * Widget class for displaying properties of a single server in a server browser
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API UServerBrowserRowWidget : public UUserWidget
+class GAMEMENUSYSTEM_API UGMSServerBrowserRowWidget : public UUserWidget
 {
 	GENERATED_BODY()
 	
@@ -40,7 +41,7 @@ protected:
 
 private:
 	UPROPERTY()
-	UMainMenuWidget* ParentWidget;
+	UGMSMainMenuWidget* ParentWidget;
 
 	/** The index of the server in relation to the server search results it was found in */
 	uint32 ServerIndex;
@@ -50,7 +51,7 @@ protected:
 
 public:
 	/** Performs initial setup to associate this widget with the correct server */
-	void Setup(UMainMenuWidget* Parent, uint32 Index);
+	void Setup(UGMSMainMenuWidget* Parent, uint32 Index);
 
 	void SetSessionNameText(FText Text);
 

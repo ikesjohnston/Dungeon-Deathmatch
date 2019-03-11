@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "SettingsMenuWidget.generated.h"
+
+#include "GMSMenuWidgetBase.h"
+#include "GMSSettingsMenuWidget.generated.h"
 
 class UComboBoxString;
 class UButton;
@@ -14,7 +16,8 @@ class USlider;
 class UCheckBox;
 class UTextBlock;
 class USoundMix;
-class UInputBindingEditorRow;
+
+class UGMSInputBindingEditorRow;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnBackButtonClickedEvent);
 
@@ -22,7 +25,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnBackButtonClickedEvent);
  * Widget class for the settings menu and all sub menus
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API USettingsMenuWidget : public UUserWidget
+class GAMEMENUSYSTEM_API UGMSSettingsMenuWidget : public UGMSMenuWidgetBase
 {
 	GENERATED_BODY()
 	
@@ -118,7 +121,7 @@ protected:
 	UPanelWidget* UIInputBindingList;
 
 	UPROPERTY(EditAnywhere)
-	TSubclassOf<UInputBindingEditorRow> InputBindingRowClass;
+	TSubclassOf<UGMSInputBindingEditorRow> InputBindingRowClass;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* GameplayTabButton;
@@ -132,11 +135,26 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* ApplyButton;
 
+private:
+	bool bAreSoundWidgetsInitialized;
+
 public:
-	USettingsMenuWidget(const FObjectInitializer& ObjectInitializer);
+	UGMSSettingsMenuWidget(const FObjectInitializer& ObjectInitializer);
 
 protected:
 	virtual bool Initialize() override;
+
+	bool InitializeBase();
+
+	bool InitializeGraphicsTab();
+
+	bool InitializeSoundTab();
+
+	void InitializeSoundWidgets();
+
+	bool InitializeControlsTab();
+
+	bool InitializeGameplayTab();
 
 	UFUNCTION()
 	void OnGraphicsTabButtonPressed();
@@ -188,6 +206,10 @@ protected:
 
 	UFUNCTION()
 	void OnApplyButtonPressed();
+
+	void ApplyGraphicsSettings();
+
+	void ApplyAudioSettings();
 
 	UFUNCTION()
 	void OnBackButtonPressed();

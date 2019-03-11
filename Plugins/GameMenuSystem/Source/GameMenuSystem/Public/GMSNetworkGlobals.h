@@ -1,22 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "NetworkGlobals.generated.h"
-
-/**
- * Enum representation for game size. Used to determine the size of generated levels and max player count.
- */
-UENUM(BlueprintType) enum class EGameSize : uint8 {
-	Small		UMETA(DisplayName = "Small"),
-	Medium		UMETA(DisplayName = "Medium"),
-	Large		UMETA(DisplayName = "Large")
-};
+#include "GMSNetworkGlobals.generated.h"
 
 /**
  * Struct for storing properties of a discovered server
  */
 USTRUCT()
-struct FServerData
+struct FGMSServerData
 {
 	GENERATED_BODY()
 
@@ -31,7 +22,7 @@ struct FServerData
  * Struct for storing desired settings for a game to be hosted
  */
 USTRUCT()
-struct FHostGameSettings
+struct FGMSHostGameSettings
 {
 	GENERATED_BODY()
 

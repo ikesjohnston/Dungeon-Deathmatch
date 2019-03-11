@@ -7,11 +7,11 @@
 #include <OnlineSubsystem.h>
 #include <OnlineSessionSettings.h>
 
-#include "MainMenuWidget.h"
-#include "InGameMenuWidget.h"
-#include "DungeonMenuWidget.h"
-#include "LobbyWidget.h"
 #include "DungeonSaveGame.h"
+#include "GMSMenuWidgetBase.h"
+#include "GMSMainMenuWidget.h"
+#include "GMSInGameMenuWidget.h"
+#include "GMSLobbyWidget.h"
 
 const static int32 DEFAULT_MAX_PLAYERS = 2;
 const static FName SESSION_NAME					= TEXT("My Game Session");
@@ -25,24 +25,6 @@ UDungeonGameInstance::UDungeonGameInstance(const FObjectInitializer& ObjectIniti
 	: Super(ObjectInitializer)
 {
 	InventoryGridSlotSize = 40.0f;
-
-	static ConstructorHelpers::FClassFinder<UUserWidget> MainMenuClass(TEXT("/Game/UI/Menus/WBP_MainMenu"));
-	if (MainMenuClass.Class != NULL)
-	{
-		MainMenuWidgetClass = MainMenuClass.Class;
-	}
-
-	static ConstructorHelpers::FClassFinder<UUserWidget> InGameMenuClass(TEXT("/Game/UI/Menus/WBP_InGameMenu"));
-	if (InGameMenuClass.Class != NULL)
-	{
-		InGameMenuWidgetClass = InGameMenuClass.Class;
-	}
-
-	static ConstructorHelpers::FClassFinder<UUserWidget> LobbyClass(TEXT("/Game/UI/Menus/WBP_LobbyDisplay"));
-	if (LobbyClass.Class != NULL)
-	{
-		LobbyWidgetClass = LobbyClass.Class;
-	}
 }
 
 void UDungeonGameInstance::Init()
@@ -98,7 +80,7 @@ void UDungeonGameInstance::LoadMainMenu()
 {
 	if (MainMenuWidgetClass)
 	{
-		MainMenuWidget = CreateWidget<UDungeonMenuWidget>(this, MainMenuWidgetClass);
+		MainMenuWidget = CreateWidget<UGMSMenuWidgetBase>(this, MainMenuWidgetClass);
 		if (MainMenuWidget)
 		{
 			MainMenuWidget->SetMenuInterface(this);
@@ -111,7 +93,7 @@ void UDungeonGameInstance::LoadInGameMenu()
 {
 	if (InGameMenuWidgetClass)
 	{
-		InGameMenuWidget = CreateWidget<UDungeonMenuWidget>(this, InGameMenuWidgetClass);
+		InGameMenuWidget = CreateWidget<UGMSMenuWidgetBase>(this, InGameMenuWidgetClass);
 		if (InGameMenuWidget)
 		{
 			InGameMenuWidget->SetMenuInterface(this);
@@ -124,7 +106,7 @@ void UDungeonGameInstance::LoadLobbyDisplay()
 {
 	if (LobbyWidgetClass)
 	{
-		LobbyWidget = CreateWidget<ULobbyWidget>(this, LobbyWidgetClass);
+		LobbyWidget = CreateWidget<UGMSLobbyWidget>(this, LobbyWidgetClass);
 		if (LobbyWidget)
 		{
 			FNamedOnlineSession* ExistingSession = SessionInterface->GetNamedSession(SessionName);
@@ -137,7 +119,7 @@ void UDungeonGameInstance::LoadLobbyDisplay()
 	}
 }
 
-void UDungeonGameInstance::HostGame(FHostGameSettings Settings)
+void UDungeonGameInstance::HostGame(FGMSHostGameSettings Settings)
 {
 	if (SessionInterface.IsValid())
 	{
@@ -384,9 +366,9 @@ void UDungeonGameInstance::SaveGameSettings()
 	}
 }
 
-FDungeonAudioSettings UDungeonGameInstance::GetAudioSettings()
+FGMSAudioSettings UDungeonGameInstance::GetAudioSettings()
 {
-	FDungeonAudioSettings Settings;
+	FGMSAudioSettings Settings;
 	Settings.MasterVolume = DEFAULT_SETTINGS_AUDIO_MASTER_VOLUME;
 	Settings.EffectsVolume = DEFAULT_SETTINGS_AUDIO_EFFECTS_VOLUME;
 	Settings.UIVolume = DEFAULT_SETTINGS_AUDIO_UI_VOLUME;
@@ -407,7 +389,7 @@ FDungeonAudioSettings UDungeonGameInstance::GetAudioSettings()
 	return Settings;
 }
 
-void UDungeonGameInstance::SetAudioSettings(FDungeonAudioSettings Settings, bool ApplyImmediately /*=true*/)
+void UDungeonGameInstance::SetAudioSettings(FGMSAudioSettings Settings, bool ApplyImmediately /*=true*/)
 {
 	if (GameSettings)
 	{
@@ -624,10 +606,10 @@ void UDungeonGameInstance::OnFindSessionsComplete(bool WasSearchSuccessful)
 	UE_LOG(LogTemp, Warning, TEXT("UDungeonGameInstance::OnFindSessionsComplete - Stopped session search"));
 	if (WasSearchSuccessful && SessionSearch.IsValid() && MainMenuWidget)
 	{
-		TArray<FServerData> ServerData;
+		TArray<FGMSServerData> ServerData;
 		for (const FOnlineSessionSearchResult& Result : SessionSearch->SearchResults)
 		{
-			FServerData Server;
+			FGMSServerData Server;
 			Server.HostUsername = Result.Session.OwningUserName;
 			Server.MaxPlayers = Result.Session.SessionSettings.NumPublicConnections;
 			Server.CurrentPlayers = Server.MaxPlayers - Result.Session.NumOpenPublicConnections;
@@ -648,7 +630,7 @@ void UDungeonGameInstance::OnFindSessionsComplete(bool WasSearchSuccessful)
 			ServerData.Add(Server);
 		}
 
-		UMainMenuWidget* MainMenu = Cast<UMainMenuWidget>(MainMenuWidget);
+		UGMSMainMenuWidget* MainMenu = Cast<UGMSMainMenuWidget>(MainMenuWidget);
 		if (MainMenu)
 		{
 			MainMenu->PopulateServerList(ServerData);

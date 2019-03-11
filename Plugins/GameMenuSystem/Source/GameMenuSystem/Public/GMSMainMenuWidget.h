@@ -4,25 +4,26 @@
 
 #include "CoreMinimal.h"
 
-#include "DungeonMenuWidget.h"
-#include "NetworkGlobals.h"
-#include "MainMenuWidget.generated.h"
+#include "GMSMenuWidgetBase.h"
+#include "GMSNetworkGlobals.h"
+#include "GMSMainMenuWidget.generated.h"
 
-class UButton;
-class IMenuInterface;
 class UWidgetSwitcher;
+class UButton;
 class UEditableTextBox;
 class UPanelWidget;
-class UServerBrowserRowWidget;
 class UComboBoxString;
 class UComboBox;
-class USettingsMenuWidget;
+
+class IGMSMenuInterface;
+class UGMSSettingsMenuWidget;
+class UGMSServerBrowserRowWidget;
 
 /**
  * Widget class for the main menu and all sub menus
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API UMainMenuWidget : public UDungeonMenuWidget
+class GAMEMENUSYSTEM_API UGMSMainMenuWidget : public UGMSMenuWidgetBase
 {
 	GENERATED_BODY()
 
@@ -88,7 +89,7 @@ protected:
 	UButton* SettingsButton;
 
 	UPROPERTY(meta = (BindWidget))
-	USettingsMenuWidget* SettingsMenu;
+	UGMSSettingsMenuWidget* SettingsMenu;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* ExitButton;
@@ -102,29 +103,46 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* ExitCancelButton;
 
-private:
-	/** Widget class to display properties for a single server in the server browser */
-	TSubclassOf<UUserWidget> ServerDetailsWidgetClass;
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<UGMSServerBrowserRowWidget> ServerDetailsWidgetClass;
 
+private:
 	UPROPERTY()
-	UServerBrowserRowWidget* ServerDetailsWidget;
+	UGMSServerBrowserRowWidget* ServerDetailsWidget;
 
 	/** The index of the currently selected server, if any, from the server browser */
 	TOptional<uint32> SelectedServerIndex;
 
+	bool bIsMapDropdownInitialized;
+	bool bIsGameModesDropdownInitialized;
+
 public:
-	UMainMenuWidget(const FObjectInitializer& ObjectInitializer);
+	UGMSMainMenuWidget(const FObjectInitializer& ObjectInitializer);
+
+	virtual void SetMenuInterface(IGMSMenuInterface* MenuInterface) override;
 
 	/** Creates row widgets for each found server and adds it to the server list */
-	void PopulateServerList(TArray<FServerData> SearchResults);
+	void PopulateServerList(TArray<FGMSServerData> SearchResults);
 
 	void SelectServerIndex(uint32 Index);
 
 protected:
 	virtual bool Initialize() override;
 
+	bool InitializeHostMenu();
+
+	bool InitializeJoinMenu();
+
+	bool InitializeSettingsMenu();
+
+	bool InitializeExitMenu();
+
 	UFUNCTION()
 	void OnMainMenuHostButtonPressed();
+
+	void InitializeGameModesDropdown();
+
+	void InitializeMapDropdown();
 
 	UFUNCTION()
 	void OnHostMenuHostButtonPressed();

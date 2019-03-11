@@ -46,6 +46,10 @@
 		{
 			"Name": "OnlineSubsystemSteam",
 			"Enabled": true
+		},
+		{
+			"Name": "GameMenuSystem",
+			"Enabled": true
 		}
 	]
 }

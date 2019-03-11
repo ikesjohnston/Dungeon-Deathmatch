@@ -1,25 +1,25 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "DungeonMenuWidget.h"
+#include "GMSMenuWidgetBase.h"
 
-bool UDungeonMenuWidget::Initialize()
+bool UGMSMenuWidgetBase::Initialize()
 {
 	bool Result = Super::Initialize();
 
 	return Result;
 }
 
-void UDungeonMenuWidget::OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld)
+void UGMSMenuWidgetBase::OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld)
 {
 	Teardown();
 }
 
-void UDungeonMenuWidget::SetMenuInterface(IMenuInterface* MenuInterface)
+void UGMSMenuWidgetBase::SetMenuInterface(IGMSMenuInterface* MenuInterface)
 {
 	this->MenuInterface = MenuInterface;
 }
 
-void UDungeonMenuWidget::Setup()
+void UGMSMenuWidgetBase::Setup()
 {
 	AddToViewport();
 
@@ -34,7 +34,7 @@ void UDungeonMenuWidget::Setup()
 	}
 }
 
-void UDungeonMenuWidget::Teardown()
+void UGMSMenuWidgetBase::Teardown()
 {
 	RemoveFromViewport();
 

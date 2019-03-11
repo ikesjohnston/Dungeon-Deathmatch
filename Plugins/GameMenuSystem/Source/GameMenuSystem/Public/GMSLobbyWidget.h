@@ -4,13 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "LobbyWidget.generated.h"
+
+#include "GMSLobbyWidget.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API ULobbyWidget : public UUserWidget
+class GAMEMENUSYSTEM_API UGMSLobbyWidget : public UUserWidget
 {
 	GENERATED_BODY()
 	

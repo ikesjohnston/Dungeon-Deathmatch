@@ -4,27 +4,28 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "DungeonMenuWidget.generated.h"
 
-class IMenuInterface;
+#include "GMSMenuWidgetBase.generated.h"
+
+class IGMSMenuInterface;
 
 /**
  * 
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API UDungeonMenuWidget : public UUserWidget
+class GAMEMENUSYSTEM_API UGMSMenuWidgetBase : public UUserWidget
 {
 	GENERATED_BODY()
 	
 protected:
-	IMenuInterface* MenuInterface;
+	IGMSMenuInterface* MenuInterface;
 
 public:
-	void SetMenuInterface(IMenuInterface* MenuInterface);
+	virtual void SetMenuInterface(IGMSMenuInterface* MenuInterface);
 
-	void Setup();
+	virtual void Setup();
 
-	void Teardown();
+	virtual void Teardown();
 
 protected:
 	virtual bool Initialize() override;

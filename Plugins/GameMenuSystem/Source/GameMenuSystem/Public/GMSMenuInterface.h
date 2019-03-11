@@ -4,12 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
-#include "MainMenuWidget.h"
-#include "MenuInterface.generated.h"
+
+#include "GMSNetworkGlobals.h"
+#include "GMSSettingsGlobals.h"
+#include "GMSMenuInterface.generated.h"
 
 // This class does not need to be modified.
 UINTERFACE(MinimalAPI)
-class UMenuInterface : public UInterface
+class UGMSMenuInterface : public UInterface
 {
 	GENERATED_BODY()
 };
@@ -17,13 +19,13 @@ class UMenuInterface : public UInterface
 /**
  * Interface for the implementation of high level, game wide menu functions
  */
-class DUNGEONDEATHMATCH_API IMenuInterface
+class GAMEMENUSYSTEM_API IGMSMenuInterface
 {
 	GENERATED_BODY()
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
-	virtual void HostGame(FHostGameSettings Settings) = 0;
+	virtual void HostGame(FGMSHostGameSettings Settings) = 0;
 
 	virtual void JoinGame(uint32 Index) = 0;
 
@@ -34,4 +36,12 @@ public:
 	virtual void ExitToDesktop() = 0;
 
 	virtual void RefreshServerList() = 0;
+
+	virtual TMap<FString, FString> GetGameModes() = 0;
+
+	virtual TMap<FString, FString> GetMaps() = 0;
+
+	virtual FGMSAudioSettings GetAudioSettings() = 0;
+
+	virtual void SetAudioSettings(FGMSAudioSettings Settings, bool ApplyImmediately = true) = 0;
 };

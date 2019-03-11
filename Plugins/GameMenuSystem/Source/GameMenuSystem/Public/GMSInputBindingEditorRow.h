@@ -2,11 +2,11 @@
 
 #pragma once
 
-#include "SettingsGlobals.h"
-
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "InputBindingEditorRow.generated.h"
+
+#include "GMSSettingsGlobals.h"
+#include "GMSInputBindingEditorRow.generated.h"
 
 class UButton;
 class UTextBlock;
@@ -15,7 +15,7 @@ class UTextBlock;
  * 
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API UInputBindingEditorRow : public UUserWidget
+class GAMEMENUSYSTEM_API UGMSInputBindingEditorRow : public UUserWidget
 {
 	GENERATED_BODY()
 	
@@ -37,23 +37,16 @@ protected:
 
 private:
 	bool bIsWaitingForPrimaryBinding;
-
 	bool bIsWaitingForSecondaryBinding;
-
 	bool bIsLeftShiftDown;
-
 	bool bIsRightShiftDown;
-
 	bool bIsLeftCtrlDown;
-
 	bool bIsRightCtrlDown;
-
 	bool bIsLeftAltDown;
-
 	bool bIsRightAltDown;
 
 public:
-	void Setup(FDungeonKeyBind Binding);
+	void Setup(FGMSKeyBind Binding);
 
 protected:
 	virtual bool Initialize() override;

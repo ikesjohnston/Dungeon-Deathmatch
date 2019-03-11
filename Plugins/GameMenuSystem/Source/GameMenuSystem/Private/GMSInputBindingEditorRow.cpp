@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "InputBindingEditorRow.h"
-#include "SettingsGlobals.h"
+#include "GMSInputBindingEditorRow.h"
+#include "GMSSettingsGlobals.h"
 
 #include <Button.h>
 #include <TextBlock.h>
@@ -10,11 +10,11 @@
 #include <GameFramework/InputSettings.h>
 
 
-const static FString INPUT_MOD_SHIFT = TEXT("Shift + ");
-const static FString INPUT_MOD_CTRL = TEXT("Ctrl + ");
-const static FString INPUT_MOD_ALT = TEXT("Alt + ");
+const static FString INPUT_MOD_SHIFT	= TEXT("Shift + ");
+const static FString INPUT_MOD_CTRL		= TEXT("Ctrl + ");
+const static FString INPUT_MOD_ALT		= TEXT("Alt + ");
 
-bool UInputBindingEditorRow::Initialize()
+bool UGMSInputBindingEditorRow::Initialize()
 {
 	bool Result = Super::Initialize();
 
@@ -27,7 +27,7 @@ bool UInputBindingEditorRow::Initialize()
 	{
 		return false;
 	}
-	PrimaryBindingButton->OnClicked.AddDynamic(this, &UInputBindingEditorRow::OnPrimaryBindingButtonPressed);
+	PrimaryBindingButton->OnClicked.AddDynamic(this, &UGMSInputBindingEditorRow::OnPrimaryBindingButtonPressed);
 
 	if (!ensure(PrimaryBindingText != nullptr))
 	{
@@ -38,7 +38,7 @@ bool UInputBindingEditorRow::Initialize()
 	{
 		return false;
 	}
-	SecondaryBindingButton->OnClicked.AddDynamic(this, &UInputBindingEditorRow::OnSecondaryBindingButtonPressed);
+	SecondaryBindingButton->OnClicked.AddDynamic(this, &UGMSInputBindingEditorRow::OnSecondaryBindingButtonPressed);
 
 	if (!ensure(SecondaryBindingText != nullptr))
 	{
@@ -48,7 +48,7 @@ bool UInputBindingEditorRow::Initialize()
 	return Result;
 }
 
-void UInputBindingEditorRow::Setup(FDungeonKeyBind Binding)
+void UGMSInputBindingEditorRow::Setup(FGMSKeyBind Binding)
 {
 	ActionNameText->SetText(FText::FromString(Binding.ActionName));
 
@@ -56,7 +56,7 @@ void UInputBindingEditorRow::Setup(FDungeonKeyBind Binding)
 	SecondaryBindingText->SetText(FText::FromString(GetBindingString(Binding.SecondaryBinding)));
 }
 
-void UInputBindingEditorRow::OnPrimaryBindingButtonPressed()
+void UGMSInputBindingEditorRow::OnPrimaryBindingButtonPressed()
 {
 	if (!bIsWaitingForPrimaryBinding)
 	{
@@ -71,7 +71,7 @@ void UInputBindingEditorRow::OnPrimaryBindingButtonPressed()
 	}
 }
 
-void UInputBindingEditorRow::OnPrimaryBindingStop()
+void UGMSInputBindingEditorRow::OnPrimaryBindingStop()
 {
 	bIsWaitingForPrimaryBinding = false;
 	PrimaryBindingButton->SetIsEnabled(true);
@@ -83,7 +83,7 @@ void UInputBindingEditorRow::OnPrimaryBindingStop()
 	}
 }
 
-void UInputBindingEditorRow::BindPrimaryInput(FKeyEvent KeyEvent)
+void UGMSInputBindingEditorRow::BindPrimaryInput(FKeyEvent KeyEvent)
 {
 	UInputSettings* Settings = const_cast<UInputSettings*>(GetDefault<UInputSettings>());
 	if (!Settings) return;
@@ -124,7 +124,7 @@ void UInputBindingEditorRow::BindPrimaryInput(FKeyEvent KeyEvent)
 	OnPrimaryBindingStop();
 }
 
-void UInputBindingEditorRow::OnSecondaryBindingButtonPressed()
+void UGMSInputBindingEditorRow::OnSecondaryBindingButtonPressed()
 {
 	if (!bIsWaitingForSecondaryBinding)
 	{
@@ -139,7 +139,7 @@ void UInputBindingEditorRow::OnSecondaryBindingButtonPressed()
 	}
 }
 
-void UInputBindingEditorRow::OnSecondaryBindingStop()
+void UGMSInputBindingEditorRow::OnSecondaryBindingStop()
 {
 	bIsWaitingForSecondaryBinding = false;
 	SecondaryBindingButton->SetIsEnabled(true);
@@ -151,7 +151,7 @@ void UInputBindingEditorRow::OnSecondaryBindingStop()
 	}
 }
 
-void UInputBindingEditorRow::BindSecondaryInput(FKeyEvent KeyEvent)
+void UGMSInputBindingEditorRow::BindSecondaryInput(FKeyEvent KeyEvent)
 {
 	UInputSettings* Settings = const_cast<UInputSettings*>(GetDefault<UInputSettings>());
 	if (!Settings) return;
@@ -192,7 +192,7 @@ void UInputBindingEditorRow::BindSecondaryInput(FKeyEvent KeyEvent)
 	OnSecondaryBindingStop();
 }
 
-FReply UInputBindingEditorRow::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+FReply UGMSInputBindingEditorRow::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
 	Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 
@@ -255,7 +255,7 @@ FReply UInputBindingEditorRow::NativeOnKeyDown(const FGeometry& InGeometry, cons
 	return Reply;
 }
 
-FReply UInputBindingEditorRow::NativeOnKeyUp(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+FReply UGMSInputBindingEditorRow::NativeOnKeyUp(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
 	Super::NativeOnKeyUp(InGeometry, InKeyEvent);
 
@@ -318,7 +318,7 @@ FReply UInputBindingEditorRow::NativeOnKeyUp(const FGeometry& InGeometry, const 
 	return Reply;
 }
 
-FReply UInputBindingEditorRow::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+FReply UGMSInputBindingEditorRow::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 
@@ -344,7 +344,7 @@ FReply UInputBindingEditorRow::NativeOnMouseButtonDown(const FGeometry& InGeomet
 	return Reply;
 }
 
-FReply UInputBindingEditorRow::NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+FReply UGMSInputBindingEditorRow::NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	FReply Reply = FReply::Handled();
 
@@ -360,7 +360,7 @@ FReply UInputBindingEditorRow::NativeOnMouseMove(const FGeometry& InGeometry, co
 	return Reply;
 }
 
-void UInputBindingEditorRow::NativeOnFocusLost(const FFocusEvent& InFocusEvent)
+void UGMSInputBindingEditorRow::NativeOnFocusLost(const FFocusEvent& InFocusEvent)
 {
 	Super::NativeOnFocusLost(InFocusEvent);
 
@@ -374,7 +374,7 @@ void UInputBindingEditorRow::NativeOnFocusLost(const FFocusEvent& InFocusEvent)
 	}
 }
 
-FString UInputBindingEditorRow::GetBindingString(FInputActionKeyMapping Binding)
+FString UGMSInputBindingEditorRow::GetBindingString(FInputActionKeyMapping Binding)
 {
 	FString InputKey;
 	if (Binding.bShift && Binding.Key != EKeys::LeftShift && Binding.Key != EKeys::RightShift)
@@ -394,7 +394,7 @@ FString UInputBindingEditorRow::GetBindingString(FInputActionKeyMapping Binding)
 	return InputKey;
 }
 
-bool UInputBindingEditorRow::IsModifierDown()
+bool UGMSInputBindingEditorRow::IsModifierDown()
 {
 	return (bIsLeftShiftDown || bIsRightShiftDown || bIsLeftCtrlDown || bIsRightCtrlDown || bIsLeftAltDown || bIsRightAltDown);
 }

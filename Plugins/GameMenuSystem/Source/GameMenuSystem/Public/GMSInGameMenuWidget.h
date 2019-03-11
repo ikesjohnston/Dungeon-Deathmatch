@@ -3,19 +3,21 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "DungeonMenuWidget.h"
-#include "InGameMenuWidget.generated.h"
+
+#include "GMSMenuWidgetBase.h"
+#include "GMSInGameMenuWidget.generated.h"
 
 class UWidgetSwitcher;
 class UButton;
-class IMenuInterface;
-class USettingsMenuWidget;
+
+class IGMSMenuInterface;
+class UGMSSettingsMenuWidget;
 
 /**
  * Widget class for the in game menu and all of its sub menus
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API UInGameMenuWidget : public UDungeonMenuWidget
+class GAMEMENUSYSTEM_API UGMSInGameMenuWidget : public UGMSMenuWidgetBase
 {
 	GENERATED_BODY()
 	
@@ -33,7 +35,7 @@ protected:
 	UButton* SettingsButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
-	USettingsMenuWidget* SettingsMenu;
+	UGMSSettingsMenuWidget* SettingsMenu;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* LeaveGameButton;
@@ -58,6 +60,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* ExitCancelButton;
+
+public:
+	virtual void SetMenuInterface(IGMSMenuInterface* MenuInterface) override;
 
 protected:
 	virtual bool Initialize() override;

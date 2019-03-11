@@ -9,24 +9,25 @@
 
 #include "Item.h"
 #include "Equippable.h"
-#include "MenuInterface.h"
-#include "DungeonMenuWidget.h"
+#include <GMSMenuInterface.h>
+#include <GMSNetworkGlobals.h>
+#include <GMSSettingsGlobals.h>
 #include "NetworkGlobals.h"
-#include "SettingsGlobals.h"
 
 #include "DungeonGameInstance.generated.h"
 
 class UDraggableItemWidget;
 class UUserWidget;
 class ADungeonGameMode;
-class ULobbyWidget;
+class UGMSMenuWidgetBase;
+class UGMSLobbyWidget;
 class UDungeonSaveGame;
 
 /**
  * 
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API UDungeonGameInstance : public UGameInstance, public IMenuInterface
+class DUNGEONDEATHMATCH_API UDungeonGameInstance : public UGameInstance, public IGMSMenuInterface
 {
 	GENERATED_BODY()
 	
@@ -100,24 +101,27 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Audio Globals")
 	USoundClass* MusicSoundClass;
 
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<UGMSMenuWidgetBase> MainMenuWidgetClass;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<UGMSMenuWidgetBase> InGameMenuWidgetClass;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<UGMSLobbyWidget> LobbyWidgetClass;
+
 private:
 	UPROPERTY()
 	UDungeonSaveGame* GameSettings;
 
-	TSubclassOf<UUserWidget> MainMenuWidgetClass;
+	UPROPERTY()
+	UGMSMenuWidgetBase* MainMenuWidget;
 
 	UPROPERTY()
-	UDungeonMenuWidget* MainMenuWidget;
-
-	TSubclassOf<UUserWidget> InGameMenuWidgetClass;
+	UGMSMenuWidgetBase* InGameMenuWidget;
 
 	UPROPERTY()
-	UDungeonMenuWidget* InGameMenuWidget;
-
-	TSubclassOf<ULobbyWidget> LobbyWidgetClass;
-
-	UPROPERTY()
-	ULobbyWidget* LobbyWidget;
+	UGMSLobbyWidget* LobbyWidget;
 
 	IOnlineSessionPtr SessionInterface;
 
@@ -129,7 +133,7 @@ private:
 
 	/** Desired settings for a game that is in the process of being created and hosted */
 	UPROPERTY()
-	FHostGameSettings DesiredHostGameSettings;
+	FGMSHostGameSettings DesiredHostGameSettings;
 
 public:
 	UDungeonGameInstance(const FObjectInitializer& ObjectInitializer);
@@ -146,7 +150,7 @@ public:
 	void LoadLobbyDisplay();
 
 	UFUNCTION()
-	void HostGame(FHostGameSettings Settings);
+	void HostGame(FGMSHostGameSettings Settings);
 
 	UFUNCTION()
 	void JoinGame(uint32 Index);
@@ -204,10 +208,10 @@ public:
 	void SaveGameSettings();
 
 	UFUNCTION()
-	FDungeonAudioSettings GetAudioSettings();
+	FGMSAudioSettings GetAudioSettings();
 
 	UFUNCTION()
-	void SetAudioSettings(FDungeonAudioSettings Settings, bool ApplyImmediately = true);
+	void SetAudioSettings(FGMSAudioSettings Settings, bool ApplyImmediately = true);
 
 protected:
 	void LoadGameSettings();

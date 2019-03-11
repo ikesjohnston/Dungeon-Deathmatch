@@ -1,25 +1,25 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "LobbyWidget.h"
+#include "GMSLobbyWidget.h"
 
-void ULobbyWidget::Setup(int32 MaxPlayerCount)
+void UGMSLobbyWidget::Setup(int32 MaxPlayerCount)
 {
 	MaxPlayers = MaxPlayerCount;
 	PlayerCountDisplay->SetVisibility(ESlateVisibility::Visible);
 	GameCountdownDisplay->SetVisibility(ESlateVisibility::Collapsed);
 }
 
-void ULobbyWidget::OnPlayerJoined()
+void UGMSLobbyWidget::OnPlayerJoined()
 {
 	CurrentPlayers++;
 }
 
-void ULobbyWidget::OnPlayerLeft()
+void UGMSLobbyWidget::OnPlayerLeft()
 {
 	CurrentPlayers++;
 }
 
-void ULobbyWidget::BeginCountdown(float Delay)
+void UGMSLobbyWidget::BeginCountdown(float Delay)
 {
 	GameStartDelay = Delay;
 	GameStarting = true;
