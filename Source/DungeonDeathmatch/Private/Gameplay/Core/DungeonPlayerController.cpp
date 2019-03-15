@@ -336,43 +336,102 @@ void ADungeonPlayerController::CheckFocus()
 		{
 			AActor* HitActor = LineTraceOutHit.GetActor();
 
-			// Verify that the actor is within the max interaction range
-			float HitDistance = FVector::Distance(HitActor->GetActorLocation(), PlayerPawn->GetActorLocation());
-			if (HitDistance <= MaxInteractionDistance)
+			if (HitActor)
 			{
-				InteractableInterface = Cast<IInteractable>(HitActor);
-				if (InteractableInterface && InteractableInterface->Execute_GetCanInteract(HitActor))
+				// Verify that the actor is within the max interaction range
+				float HitDistance = FVector::Distance(HitActor->GetActorLocation(), PlayerPawn->GetActorLocation());
+				if (HitDistance <= MaxInteractionDistance)
 				{
-					if (DebugInteraction)
+					InteractableInterface = Cast<IInteractable>(HitActor);
+					if (InteractableInterface && InteractableInterface->Execute_GetCanInteract(HitActor))
 					{
-						// Draw the line trace up to the impact point and draw a green point at that location, signifying an interactable was hit
-						DrawDebugLine(GetWorld(), CameraForwardTraceStartLocation, LineTraceOutHit.ImpactPoint, FColor::Orange);
-						DrawDebugPoint(GetWorld(), LineTraceOutHit.ImpactPoint, 10, FColor::Green);
+						if (DebugInteraction)
+						{
+							// Draw the line trace up to the impact point and draw a green point at that location, signifying an interactable was hit
+							DrawDebugLine(GetWorld(), CameraForwardTraceStartLocation, LineTraceOutHit.ImpactPoint, FColor::Orange);
+							DrawDebugPoint(GetWorld(), LineTraceOutHit.ImpactPoint, 10, FColor::Green);
+						}
+						ClosestInteractable = HitActor;
 					}
-					ClosestInteractable = HitActor;
+					else
+					{
+						if (DebugInteraction)
+						{
+							// Draw the line trace up to the impact point and draw a red point at that location, signifying an actor was hit, but not an interactable 
+							DrawDebugLine(GetWorld(), CameraForwardTraceStartLocation, LineTraceOutHit.ImpactPoint, FColor::Orange);
+							DrawDebugPoint(GetWorld(), LineTraceOutHit.ImpactPoint, 10, FColor::Red);
+						}
+
+						// If the player isn't directly targeting an interactable, do a sphere trace at the line trace hit location, if it exists
+						FCollisionShape Sphere = FCollisionShape::MakeSphere(InteractionCameraTraceRadius);
+						if (DebugInteraction)
+						{
+							// Draw the sphere at the impact point of the previous line trace
+							DrawDebugSphere(GetWorld(), LineTraceOutHit.ImpactPoint, InteractionCameraTraceRadius, 32, FColor::Orange);
+						}
+						bool DidPrimarySphereTraceHit = GetWorld()->SweepMultiByObjectType(SphereTraceOutHits, LineTraceOutHit.ImpactPoint, LineTraceOutHit.ImpactPoint, FQuat::Identity, SphereQueryObjectParams, Sphere);
+						if (DidPrimarySphereTraceHit)
+						{
+							// Find hit interactable closest to cursor
+							for (FHitResult SphereHit : SphereTraceOutHits)
+							{
+								AActor* HitActor = SphereHit.GetActor();
+								// Verify that the actor is within the max interaction range
+								float HitDistance = FVector::Distance(HitActor->GetActorLocation(), PlayerPawn->GetActorLocation());
+								if (HitDistance <= MaxInteractionDistance)
+								{
+									InteractableInterface = Cast<IInteractable>(HitActor);
+									if (InteractableInterface && InteractableInterface->Execute_GetCanInteract(HitActor))
+									{
+										if (DebugInteraction)
+										{
+											// Draw the impact point on the sphere
+											DrawDebugPoint(GetWorld(), SphereHit.ImpactPoint, 10, FColor::Green);
+										}
+										// Check if this hit is closest to the center of the sphere
+										if (ClosestInteractable)
+										{
+											float HitToCenterDistance = FVector::Distance(SphereHit.Location, HitActor->GetActorLocation());
+											float ClosestToCenterDistance = FVector::Distance(SphereHit.Location, ClosestInteractable->GetActorLocation());
+											if (HitToCenterDistance < ClosestToCenterDistance)
+											{
+												ClosestInteractable = HitActor;
+											}
+										}
+										else
+										{
+											ClosestInteractable = HitActor;
+										}
+									}
+								}
+
+							}
+						}
+					}
 				}
-				else
+				if (!ClosestInteractable)
 				{
 					if (DebugInteraction)
 					{
-						// Draw the line trace up to the impact point and draw a red point at that location, signifying an actor was hit, but not an interactable 
-						DrawDebugLine(GetWorld(), CameraForwardTraceStartLocation, LineTraceOutHit.ImpactPoint, FColor::Orange);
-						DrawDebugPoint(GetWorld(), LineTraceOutHit.ImpactPoint, 10, FColor::Red);
+						// Draw the full line trace with no hit
+						DrawDebugLine(GetWorld(), CameraForwardTraceStartLocation, CameraForwardTraceEndLocation, FColor::Orange);
 					}
 
-					// If the player isn't directly targeting an interactable, do a sphere trace at the line trace hit location, if it exists
+					// If there still wasn't a hit, do a complete sphere cast from the camera to initial camera trace hit location. This should hit items that are in front of where the initial line trace hit
 					FCollisionShape Sphere = FCollisionShape::MakeSphere(InteractionCameraTraceRadius);
-					if (DebugInteraction)
-					{
-						// Draw the sphere at the impact point of the previous line trace
-						DrawDebugSphere(GetWorld(), LineTraceOutHit.ImpactPoint, InteractionCameraTraceRadius, 32, FColor::Orange);
-					}
-					bool DidPrimarySphereTraceHit = GetWorld()->SweepMultiByObjectType(SphereTraceOutHits, LineTraceOutHit.ImpactPoint, LineTraceOutHit.ImpactPoint, FQuat::Identity, SphereQueryObjectParams, Sphere);
-					if (DidPrimarySphereTraceHit)
+					bool DidSecondarySphereTraceHit = GetWorld()->SweepMultiByObjectType(SphereTraceOutHits, CameraForwardTraceStartLocation, LineTraceOutHit.ImpactPoint, FQuat::Identity, SphereQueryObjectParams, Sphere);
+					bool HitSphereDrawn = false;
+					if (DidSecondarySphereTraceHit)
 					{
 						// Find hit interactable closest to cursor
 						for (FHitResult SphereHit : SphereTraceOutHits)
 						{
+							if (DebugInteraction && !HitSphereDrawn)
+							{
+								// Draw the sphere at the impact point of the previous line trace
+								DrawDebugSphere(GetWorld(), SphereHit.Location, InteractionCameraTraceRadius, 32, FColor::Orange);
+								HitSphereDrawn = true;
+							}
 							AActor* HitActor = SphereHit.GetActor();
 							// Verify that the actor is within the max interaction range
 							float HitDistance = FVector::Distance(HitActor->GetActorLocation(), PlayerPawn->GetActorLocation());
@@ -402,66 +461,10 @@ void ADungeonPlayerController::CheckFocus()
 									}
 								}
 							}
-							
 						}
 					}
 				}
-			}
-			if(!ClosestInteractable)
-			{
-				if (DebugInteraction)
-				{
-					// Draw the full line trace with no hit
-					DrawDebugLine(GetWorld(), CameraForwardTraceStartLocation, CameraForwardTraceEndLocation, FColor::Orange);
-				}
-
-				// If there still wasn't a hit, do a complete sphere cast from the camera to initial camera trace hit location. This should hit items that are in front of where the initial line trace hit
-				FCollisionShape Sphere = FCollisionShape::MakeSphere(InteractionCameraTraceRadius);
-				bool DidSecondarySphereTraceHit = GetWorld()->SweepMultiByObjectType(SphereTraceOutHits, CameraForwardTraceStartLocation, LineTraceOutHit.ImpactPoint, FQuat::Identity, SphereQueryObjectParams, Sphere);
-				bool HitSphereDrawn = false;
-				if (DidSecondarySphereTraceHit)
-				{
-					// Find hit interactable closest to cursor
-					for (FHitResult SphereHit : SphereTraceOutHits)
-					{
-						if (DebugInteraction && !HitSphereDrawn)
-						{
-							// Draw the sphere at the impact point of the previous line trace
-							DrawDebugSphere(GetWorld(), SphereHit.Location, InteractionCameraTraceRadius, 32, FColor::Orange);
-							HitSphereDrawn = true;
-						}
-						AActor* HitActor = SphereHit.GetActor();
-						// Verify that the actor is within the max interaction range
-						float HitDistance = FVector::Distance(HitActor->GetActorLocation(), PlayerPawn->GetActorLocation());
-						if (HitDistance <= MaxInteractionDistance)
-						{
-							InteractableInterface = Cast<IInteractable>(HitActor);
-							if (InteractableInterface && InteractableInterface->Execute_GetCanInteract(HitActor))
-							{
-								if (DebugInteraction)
-								{
-									// Draw the impact point on the sphere
-									DrawDebugPoint(GetWorld(), SphereHit.ImpactPoint, 10, FColor::Green);
-								}
-								// Check if this hit is closest to the center of the sphere
-								if (ClosestInteractable)
-								{
-									float HitToCenterDistance = FVector::Distance(SphereHit.Location, HitActor->GetActorLocation());
-									float ClosestToCenterDistance = FVector::Distance(SphereHit.Location, ClosestInteractable->GetActorLocation());
-									if (HitToCenterDistance < ClosestToCenterDistance)
-									{
-										ClosestInteractable = HitActor;
-									}
-								}
-								else
-								{
-									ClosestInteractable = HitActor;
-								}
-							}
-						}
-					}
-				}
-			}
+			}		
 		}
 
 		// If interactable was found, set as focus and render outline
