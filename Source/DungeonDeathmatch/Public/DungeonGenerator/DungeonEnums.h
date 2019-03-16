@@ -64,10 +64,81 @@ struct FTileData
 		Directions.Add(ECardinalDirection::South, ConnectedSouth);
 		Directions.Add(ECardinalDirection::East, ConnectedEast);
 		Directions.Add(ECardinalDirection::West, ConnectedWest);
+
+		TileActor = nullptr;
 	}
 
 	bool operator==(const FTileData& Other) const
 	{
 		return GUID == Other.GUID;
+	}
+
+	ETileConnection GetConnection()
+	{
+		bool ConnectedNorth = Directions[ECardinalDirection::North];
+		bool ConnectedSouth = Directions[ECardinalDirection::South];
+		bool ConnectedEast = Directions[ECardinalDirection::East];
+		bool ConnectedWest = Directions[ECardinalDirection::West];
+
+		if (ConnectedNorth && ConnectedSouth && ConnectedEast && ConnectedWest)
+		{
+			return ETileConnection::NSEW;
+		}
+		else if (ConnectedNorth && ConnectedSouth && ConnectedEast)
+		{
+			return ETileConnection::NSE;
+		}
+		else if (ConnectedNorth && ConnectedSouth && ConnectedWest)
+		{
+			return ETileConnection::NSW;
+		}
+		else if (ConnectedNorth && ConnectedEast && ConnectedWest)
+		{
+			return ETileConnection::NEW;
+		}
+		else if (ConnectedSouth && ConnectedEast && ConnectedWest)
+		{
+			return ETileConnection::SEW;
+		}
+		else if (ConnectedNorth && ConnectedSouth)
+		{
+			return ETileConnection::NS;
+		}
+		else if (ConnectedNorth && ConnectedEast)
+		{
+			return ETileConnection::NE;
+		}
+		else if (ConnectedNorth && ConnectedWest)
+		{
+			return ETileConnection::NW;
+		}
+		else if (ConnectedEast && ConnectedWest)
+		{
+		return ETileConnection::EW;
+		}
+		else if (ConnectedSouth && ConnectedEast)
+		{
+			return ETileConnection::SE;
+		}
+		else if (ConnectedSouth && ConnectedWest)
+		{
+			return ETileConnection::SW;
+		}
+		else if (ConnectedNorth)
+		{
+			return ETileConnection::N;
+		}
+		else if (ConnectedSouth)
+		{
+			return ETileConnection::S;
+		}
+		else if (ConnectedEast)
+		{
+			return ETileConnection::E;
+		}
+		else
+		{
+			return ETileConnection::W;
+		}
 	}
 };

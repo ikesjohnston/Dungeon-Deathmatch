@@ -28,7 +28,19 @@ protected:
 	TMap<FIntVector, FTileData> Tiles;
 
 	UPROPERTY(EditAnywhere)
-	TSubclassOf<ADungeonTile> DefaultTileClass;
+	TSubclassOf<ADungeonTile> DeadEndTileClass;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<ADungeonTile> CorridorTileClass;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<ADungeonTile> CornerTileClass;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<ADungeonTile> ThreeWayTileClass;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<ADungeonTile> FourWayTileClass;
 
 public:	
 	// Sets default values for this actor's properties
