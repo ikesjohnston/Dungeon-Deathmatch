@@ -1,8 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "DungeonGenerator.h"
-#include <DrawDebugHelpers.h>
 #include "DungeonGenerator/DungeonTile.h"
+
+#include <DrawDebugHelpers.h>
+#include <Kismet/GameplayStatics.h>
 
 // Sets default values
 ADungeonGenerator::ADungeonGenerator()
@@ -10,14 +12,23 @@ ADungeonGenerator::ADungeonGenerator()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	RoomDungeonGridSize = FIntVector(50, 50, 10);
+	NumberOfRooms = 50;
+	DungeonTileSize = FVector(500.0f, 500.0f, 500.0f);
+	RoomSizeMin = FIntVector(3, 3, 2);
+	RoomSizeMax = FIntVector(10, 10, 4);
+	MinRoomDistance = 5;
+	MainRoomSizeFactor = 1.2f;
+	MaxPlacementAttempts = 1000;
+
+	bAddExtraConnections = true;
+	AdditionalConnectionsRatio = 0.25f;
 }
 
 // Called when the game starts or when spawned
 void ADungeonGenerator::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	GenerateDungeon();
 }
 
 // Called every frame
@@ -33,6 +44,218 @@ void ADungeonGenerator::GenerateDungeon()
 	DestroyDungeon();
 	GenerateTileLayout();
 	SpawnTileLayout();
+}
+
+void ADungeonGenerator::GenerateRoomBasedDungeon()
+{
+	FlushPersistentDebugLines(GetWorld());
+
+	UE_LOG(LogTemp, Warning, TEXT("Generating Dungeon!"));
+	FDateTime GenerationStartTime = FDateTime::Now();
+	Rooms.Empty();
+	RoomDungeonGrid.Empty();
+	RoomSizeTotal = FIntVector(0, 0, 0);
+
+	if (RoomSizeMax.Size() > DungeonGridSize.Size())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ADungeonGenerator::GenerateRoomBasedDungeon - Max room size exceeds dungeon grid size, aborting"));
+		return;
+	}
+	for (int RoomIndex = 0; RoomIndex < NumberOfRooms; RoomIndex++)
+	{
+		GenerateRoom();
+	}
+
+	RoomSizeAverage = RoomSizeTotal / NumberOfRooms;
+	BuildConnections();
+	FDateTime GenerationEndTime = FDateTime::Now();
+	UE_LOG(LogTemp, Warning, TEXT("Generated %d rooms with %d connections in %f seconds"), Rooms.Num(), Connections.Num(), (GenerationEndTime - GenerationStartTime).GetTotalSeconds());
+
+	DrawDebugDungeon();
+}
+
+void ADungeonGenerator::GenerateRoom()
+{
+	FIntVector RoomSize = FIntVector(FMath::RandRange(RoomSizeMin.X, RoomSizeMax.X), FMath::RandRange(RoomSizeMin.Y, RoomSizeMax.Y), FMath::RandRange(RoomSizeMin.Z, RoomSizeMax.Z));
+	RoomSizeTotal += RoomSize;
+	FIntVector RoomLocation;
+	bool LocationValid = false;
+	int PlacementAttempts = 0;
+	while (!LocationValid && PlacementAttempts < MaxPlacementAttempts)
+	{
+		LocationValid = true;
+		FVector MaxRoomPoint = FVector(RoomDungeonGridSize.X - RoomSize.X, RoomDungeonGridSize.Y - RoomSize.Y, RoomDungeonGridSize.Z - RoomSize.Z);
+		FVector RandomDungeonLocation = FMath::RandPointInBox(FBox(-MaxRoomPoint, MaxRoomPoint));
+		RoomLocation = FIntVector(RandomDungeonLocation.X, RandomDungeonLocation.Y, RandomDungeonLocation.Z);
+
+		int RoomXMin = RoomLocation.X - MinRoomDistance;
+		int RoomXMax = RoomLocation.X + RoomSize.X + MinRoomDistance;
+
+		int RoomYMin = RoomLocation.Y - MinRoomDistance;
+		int RoomYMax = RoomLocation.Y + RoomSize.Y + MinRoomDistance;
+
+		int RoomZMin = RoomLocation.Z - MinRoomDistance;
+		int RoomZMax = RoomLocation.Z + RoomSize.Z + MinRoomDistance;
+
+		for (int RoomX = RoomXMin; RoomX < RoomXMax; RoomX++)
+		{
+			if (!LocationValid) break;
+			for (int RoomY = RoomYMin; RoomY < RoomYMax; RoomY++)
+			{
+				if (!LocationValid) break;
+				for (int RoomZ = RoomZMin; RoomZ < RoomZMax; RoomZ++)
+				{
+					FIntVector RoomGridCell = FIntVector(RoomX, RoomY, RoomZ);
+					if (RoomDungeonGrid.Find(RoomGridCell))
+					{
+						LocationValid = false;
+						break;
+					}
+				}
+			}
+		}
+		PlacementAttempts++;
+		if (PlacementAttempts >= MaxPlacementAttempts)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("ADungeonGenerator::GenerateRoom - Exceeded max room placement attempts, room placement is invalid"));
+		}
+	}
+
+	FDungeonRoom Room = FDungeonRoom(RoomLocation, RoomSize);
+	Rooms.Add(Room);
+
+	int RoomXMin = RoomLocation.X;
+	int RoomXMax = RoomLocation.X + RoomSize.X;
+
+	int RoomYMin = RoomLocation.Y;
+	int RoomYMax = RoomLocation.Y + RoomSize.Y;
+
+	int RoomZMin = RoomLocation.Z;
+	int RoomZMax = RoomLocation.Z + RoomSize.Z;
+
+	for (int RoomX = RoomXMin; RoomX < RoomXMax; RoomX++)
+	{
+		for (int RoomY = RoomYMin; RoomY < RoomYMax; RoomY++)
+		{
+			for (int RoomZ = RoomZMin; RoomZ < RoomZMax; RoomZ++)
+			{
+				FIntVector RoomGridCell = FIntVector(RoomX, RoomY, RoomZ);
+				RoomDungeonGrid.Add(TTuple<FIntVector, bool>(RoomGridCell, true));
+			}
+		}
+	}
+}
+
+void ADungeonGenerator::BuildConnections()
+{
+	Connections.Empty();
+
+	// Initially making connections from every room to every other room for now
+	for (FDungeonRoom Room : Rooms)
+	{
+		for (FDungeonRoom OtherRoom : Rooms)
+		{
+			if (Room != OtherRoom)
+			{
+				FDungeonConnection Connection = FDungeonConnection(Room, OtherRoom);
+				Connections.HeapPush(Connection, FDungeonConnectionPredicate());
+			}
+		}
+	}
+
+	// Create minimum spanning tree from connections
+	TArray<FDungeonConnection> TempConnections = Connections;
+	TArray<FDungeonConnection> DungeonConnections;
+	TArray<FDungeonConnectionSet> ConnectionSets;
+	for (int ConnectionIndex = 0; ConnectionIndex < Connections.Num(); ConnectionIndex++)
+	{
+		FDungeonConnection NextConnection;
+		TempConnections.HeapPop(NextConnection, FDungeonConnectionPredicate());
+
+		bool CycleDetected = false;
+		FDungeonConnectionSet RoomOneSet;
+		RoomOneSet.Set.Add(NextConnection.GetRoomOne());
+		FDungeonConnectionSet RoomTwoSet;
+		RoomTwoSet.Set.Add(NextConnection.GetRoomTwo());
+
+		for (FDungeonConnectionSet ConnectionSet : ConnectionSets)
+		{
+			if (ConnectionSet.Set.Contains(NextConnection.GetRoomOne()))
+			{
+				RoomOneSet = ConnectionSet;
+			}
+			if (ConnectionSet.Set.Contains(NextConnection.GetRoomTwo()))
+			{
+				RoomTwoSet = ConnectionSet;
+			}
+			if (RoomOneSet == RoomTwoSet)
+			{
+				CycleDetected = true;
+				break;
+			}
+		}
+
+		if (!CycleDetected)
+		{
+			ConnectionSets.Remove(RoomOneSet);
+			ConnectionSets.Remove(RoomTwoSet);
+			FDungeonConnectionSet UnionedSet = RoomOneSet.Union(RoomTwoSet);
+			ConnectionSets.Add(UnionedSet);
+
+			DungeonConnections.Add(NextConnection);
+		}
+
+		if (DungeonConnections.Num() == Rooms.Num() - 1)
+		{
+			break;
+		}
+	}
+
+	// Add a percentage of connections back (based on room total for now)
+	if (bAddExtraConnections)
+	{
+		int AdditionalConnections = NumberOfRooms * AdditionalConnectionsRatio;
+
+		for (int ConnectionIndex = 0; ConnectionIndex < AdditionalConnections; ConnectionIndex++)
+		{
+			// Pick a random room and add the shortest edge for that room not already connected
+			FDungeonRoom& Room = Rooms[FMath::RandRange(0, Rooms.Num() - 1)];
+			FDungeonConnection NextConnection;
+			bool ConnectionAlreadyMade = true;
+			while (ConnectionAlreadyMade)
+			{
+				TempConnections.HeapPop(NextConnection, FDungeonConnectionPredicate());
+				if (NextConnection.Contains(Room))
+				{
+					ConnectionAlreadyMade = DungeonConnections.Contains(NextConnection);
+				}
+			}
+			DungeonConnections.Add(NextConnection);
+		}
+	}
+
+	Connections = DungeonConnections;
+}
+
+void ADungeonGenerator::DrawDebugDungeon()
+{
+	for (FDungeonRoom Room : Rooms)
+	{
+		FColor DebugColor = FColor::Blue;
+		if (Room.Size.Size() > (RoomSizeAverage.Size() * MainRoomSizeFactor))
+		{
+			DebugColor = FColor::Red;
+		}
+		FVector RoomCenter = FVector(Room.Location.X * DungeonTileSize.X, Room.Location.Y * DungeonTileSize.Y, Room.Location.Z * DungeonTileSize.Z);
+		FVector RoomExtent = FVector((Room.Size.X * DungeonTileSize.X) / 2, (Room.Size.Y * DungeonTileSize.Y) / 2, (Room.Size.Z * DungeonTileSize.Z) / 2);
+		DrawDebugBox(GetWorld(), RoomCenter, RoomExtent, FRotator::ZeroRotator.Quaternion(), DebugColor, false, 10000.0f, 0, 25.0f);
+	}
+	for (FDungeonConnection Connection : Connections)
+	{
+		FVector FromRoomLocation = FVector(Connection.GetRoomOne().Location.X * DungeonTileSize.X, Connection.GetRoomOne().Location.Y * DungeonTileSize.Y, Connection.GetRoomOne().Location.Z * DungeonTileSize.Z);
+		FVector ToRoomLocation = FVector(Connection.GetRoomTwo().Location.X * DungeonTileSize.X, Connection.GetRoomTwo().Location.Y * DungeonTileSize.Y, Connection.GetRoomTwo().Location.Z * DungeonTileSize.Z);
+		DrawDebugLine(GetWorld(), FromRoomLocation, ToRoomLocation, FColor::Orange, false, 10000.0f, 0, 25.0f);
+	}
 }
 
 void ADungeonGenerator::DestroyDungeon()
@@ -276,5 +499,10 @@ void ADungeonGenerator::SpawnTileLayout()
 
 		DrawDebugBox(GetWorld(), SpawnLocation, FVector(TileSize.X / 2, TileSize.Y / 2, TileSize.Z / 2), FRotator::ZeroRotator.Quaternion(), FColor::Green, false, 10.0f);
 	}
+}
+
+FVector ADungeonGenerator::GetRandomPointInSphere(float Radius)
+{
+	return (FMath::VRand() * FMath::RandRange(0.0f, Radius));
 }
 
