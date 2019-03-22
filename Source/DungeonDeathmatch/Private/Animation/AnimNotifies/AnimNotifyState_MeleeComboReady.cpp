@@ -2,9 +2,11 @@
 
 #include "AnimNotifyState_MeleeComboReady.h"
 #include "DungeonCharacter.h"
-#include <Components/SkeletalMeshComponent.h>
 #include "EquipmentComponent.h"
 #include "Weapon.h"
+#include "PlayerCombatComponent.h"
+
+#include <Components/SkeletalMeshComponent.h>
 
 UAnimNotifyState_MeleeComboReady::UAnimNotifyState_MeleeComboReady(const FObjectInitializer& ObjectInitializer)
 {
@@ -16,8 +18,8 @@ void UAnimNotifyState_MeleeComboReady::NotifyBegin(class USkeletalMeshComponent*
 	ADungeonCharacter* Character = Cast<ADungeonCharacter>(MeshComp->GetOwner());
 	if (Character && Character->Role == ROLE_Authority)
 	{
-		Character->Server_SetCombatState(ECombatState::ReadyToUse);
-		Character->Multicast_IncrementMeleeComboCounter();
+		Character->GetCombatComponent()->ServerSetCombatState(ECombatState::ReadyToUse);
+		Character->GetCombatComponent()->MulticastIncrementMeleeComboCounter();
 	}
 }
 
@@ -26,8 +28,8 @@ void UAnimNotifyState_MeleeComboReady::NotifyEnd(class USkeletalMeshComponent* M
 	ADungeonCharacter* Character = Cast<ADungeonCharacter>(MeshComp->GetOwner());
 	if (Character && Character->Role == ROLE_Authority)
 	{
-		Character->Multicast_ClearMeleeComboCounter();
-		Character->Multicast_SetActiveMeleeComboType(EMeleeComboType::None);
+		Character->GetCombatComponent()->MulticastClearMeleeComboCounter();
+		Character->GetCombatComponent()->MulticastSetActiveMeleeComboType(EMeleeComboType::None);
 	}
 }
 

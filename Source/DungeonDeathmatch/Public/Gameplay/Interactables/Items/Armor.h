@@ -3,9 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "Equippable.h"
 #include "DungeonCharacter.h"
 #include "EquipmentGlobals.h"
+#include "MeshEnums.h"
 #include "Armor.generated.h"
 
 class USkeletalMeshComponent;

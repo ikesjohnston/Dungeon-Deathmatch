@@ -37,7 +37,7 @@ void AArmor::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharact
 		Super::ServerOnEquip_Implementation(NewEquippingCharacter, EquipmentSlot);
 		for (TTuple<EMeshSegment, USkeletalMesh*> Tuple : ArmorMeshMap)
 		{
-			EquippingCharacter->Server_UpdateMeshSegment(Tuple.Key, Tuple.Value);
+			EquippingCharacter->GetModularCharacterMeshComponent()->ServerUpdateMeshSegment(Tuple.Key, Tuple.Value);
 		}
 	}
 }
@@ -53,7 +53,7 @@ void AArmor::ServerOnUnequip_Implementation()
 	{
 		for (TTuple<EMeshSegment, USkeletalMesh*> Tuple : ArmorMeshMap)
 		{
-			EquippingCharacter->Server_UpdateMeshSegment(Tuple.Key, nullptr);
+			EquippingCharacter->GetModularCharacterMeshComponent()->ServerUpdateMeshSegment(Tuple.Key, nullptr);
 		}
 		Super::ServerOnUnequip_Implementation();
 	}

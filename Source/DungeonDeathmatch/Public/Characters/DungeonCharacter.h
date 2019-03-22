@@ -31,6 +31,8 @@ class AArmor;
 class ACharacterRenderCapture2D;
 class UBlendSpace;
 class UBlendSpace1D;
+class UModularCharacterMeshComponent;
+class UPlayerCombatComponent;
 
 /**
  * Enum for movement direction used for implementing certain gameplay abilities in blueprint
@@ -45,28 +47,6 @@ enum class ECardinalMovementDirection : uint8 {
 	Backward		UMETA(DisplayName = "Backward"),
 	BackwardLeft	UMETA(DisplayName = "BackwardLeft"),
 	BackwardRight	UMETA(DisplayName = "BackwardRight")
-};
-
-/**
- * Enum representation of all available mesh segments for a character
- */
-UENUM(BlueprintType)
-enum class EMeshSegment : uint8
-{
-	Helm						UMETA(DisplayName = "Helm"),
-	Hair						UMETA(DisplayName = "Hair"),
-	Head						UMETA(DisplayName = "Head"),
-	LeftShoulder				UMETA(DisplayName = "Left Shoulder"),
-	RightShoulder				UMETA(DisplayName = "Right Shoulder"),
-	Torso						UMETA(DisplayName = "Torso"),
-	ChestArmor					UMETA(DisplayName = "ChestArmor"),
-	LeftHand					UMETA(DisplayName = "LeftHand"),
-	RightHand					UMETA(DisplayName = "RightHand"),
-	Waist						UMETA(DisplayName = "Waist"),
-	Legs						UMETA(DisplayName = "Legs"),
-	LegArmor					UMETA(DisplayName = "LegArmor"),
-	LeftFoot					UMETA(DisplayName = "LeftFoot"),
-	RightFoot					UMETA(DisplayName = "RightFoot")
 };
 
 // OnArmorEquipped event, currently just being used for UI
@@ -100,72 +80,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	UWidgetComponent* VitalsPlateWidget;
 
-	/********************************************************* BEGIN CHARACTER MESH SEGMENT VARIABLES *********************************************************/
+	/** Component for controlling visuals of different mesh segments */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mesh")
+	UModularCharacterMeshComponent* ModularCharacterMesh;
 
-	/** The skeletal mesh component that stores the helm mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentHelm;
-
-	/** The skeletal mesh component that stores the hair mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentHair;
-
-	/** The skeletal mesh component that stores the head mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentHead;
-
-	/** The skeletal mesh component that stores the left shoulder mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentShoulderLeft;
-
-	/** The skeletal mesh component that stores the right shoulder mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentShoulderRight;
-
-	/** The skeletal mesh component that stores the torso mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentTorso;
-
-	/** The skeletal mesh component that stores the chest armor mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentChestArmor;
-
-	/** The skeletal mesh component that stores the left hand mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentHandLeft;
-
-	/** The skeletal mesh component that stores the right hand mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentHandRight;
-
-	/** The skeletal mesh component that stores the belt mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentBelt;
-
-	/** The skeletal mesh component that stores the legs mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentLegs;
-
-	/** The skeletal mesh component that stores the leg armor mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentLegArmor;
-
-	/** The skeletal mesh component that stores the left mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentFootLeft;
-
-	/** The skeletal mesh component that stores the right foot mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
-	USkeletalMeshComponent* MeshComponentFootRight;
-
-	/** Mapping of mesh segment to mesh component, for updating the character mesh with new equipment */
-	TMap<EMeshSegment, USkeletalMeshComponent*> MeshComponentMap;
-
-	/** Mapping of mesh segment to default meshes, for updating the character mesh when removing equipment */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mesh")
-	TMap<EMeshSegment, USkeletalMesh*> DefaultMeshMap;
-
-	/********************************************************* END CHARACTER MESH SEGMENTS VARIABLES **********************************************************/
+	/** Component for processing combat logic */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	UPlayerCombatComponent* PlayerCombatComponent;
 
 	/********************************************************* BEGIN GAMEPLAY ABILITY SYSTEM VARIABLES ********************************************************/
 
@@ -220,22 +141,6 @@ protected:
 	/** The GameplayAbility to use when releasing the free look key */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UDungeonGameplayAbility> StopFreeLookAbility;
-
-	/** The GameplayAbility to use when sheathing weapons */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
-	TSubclassOf<UDungeonGameplayAbility> SheatheWeaponsAbility;
-
-	/** The GameplayAbility to use when unsheathing weapons */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
-	TSubclassOf<UDungeonGameplayAbility> UnsheatheWeaponsAbility;
-
-	/** The GameplayAbility to use when switching weapon loadouts */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
-	TSubclassOf<UDungeonGameplayAbility> SwitchWeaponLoadoutAbility;
-
-	/** The GameplayTag used to send custom melee hit events to hit actors */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
-	FGameplayTag UnarmedMeleeHitEventTag;
 
 	/********************************************************* END GAMEPLAY ABILITY SYSTEM VARIABLES **********************************************************/
 
@@ -395,41 +300,6 @@ protected:
 
 	/********************************************************* END INVENTORY & EQUIPMENT VARIABLES ************************************************************/
 
-	/********************************************************* BEGIN COMBAT VARIABLES *************************************************************************/
-
-	/** The Weapon class to use for the main hand when no other weapon is equipped. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
-	TSubclassOf<AWeapon> MainHandUnarmedWeaponClass;
-
-	/** The Weapon to use for the main hand when no other weapon is equipped. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
-	AWeapon* MainHandUnarmedWeapon;
-
-	/** The Weapon class to use for the off hand when no other weapon is equipped. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
-	TSubclassOf<AWeapon> OffHandUnarmedWeaponClass;
-
-	/** The Weapon to use for the off hand when no other weapon is equipped. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
-	AWeapon* OffHandUnarmedWeapon;
-
-	UPROPERTY(VisibleAnywhere, Replicated)
-	ECombatState CombatState;
-
-	/** The active combo type, if any. Used for determining what melee attack abilities to use. */
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
-	EMeleeComboType ActiveMeleeComboType;
-
-	/** Running tally of the combo count for the currently active combo type, if any */
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
-	uint8 ActiveMeleeComboCount;
-
-	/** Flag to determine if character can begin a new melee combo attack */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Combat")
-	bool bIsMeleeComboReady;
-
-	/********************************************************* END COMBAT VARIABLES ***************************************************************************/
-
 	/** The 2DRenderCapture class for displaying the character mesh in the UI */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<ACharacterRenderCapture2D> RenderCaptureClass;
@@ -445,15 +315,12 @@ private:
 	/** Needed for removing and restoring ground friction during rolls */
 	float DefaultGroundFriction;
 
-	/** Timer used to end a combo a defined amount of time after an attack ends */
-	FTimerHandle MeleeComboEndTimer;
-
 public:
 	// Sets default values for this character's properties
 	ADungeonCharacter();
 
 protected:
-	virtual void PreInitializeComponents() override;
+	virtual void PostInitProperties() override;
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -849,22 +716,6 @@ public:
 	void Server_RequestUnequipItem(AEquippable* Equippable, EEquipmentSlot EquipmentSlot, bool TryMoveToInventory = false);
 
 	/**
-	 * Gets the mapping of mesh segment to character's mesh component
-	 * @return The mesh segment to component map
-	 */
-	TMap<EMeshSegment, USkeletalMeshComponent*> GetMeshComponentMap();
-
-
-	/**
-	 * Server call to update a character's mesh segment with a new mesh; used when changing armor equipment.
-	 *
-	 * @param MeshSegment The mesh segment to alter
-	 * @param Mesh The mesh to update the segment to, will use a default mesh if this is nullptr
-	 */
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh);
-
-	/**
 	 * Server call to attach an actor to the character mesh at the specified socket.
 	 *
 	 * @param Actor The actor to attach
@@ -883,6 +734,12 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_DetachActor(AActor* Actor);
 
+	UFUNCTION(BlueprintCallable)
+	UModularCharacterMeshComponent* GetModularCharacterMeshComponent();
+
+	UFUNCTION(BlueprintCallable)
+	UPlayerCombatComponent* GetCombatComponent();
+
 	/**
 	 * Gets the 2DRenderCapture Actor for use by the UI
 	 *
@@ -895,46 +752,6 @@ public:
 	FName GetNameForWeaponSocket(EWeaponSocketType WeaponSocketType);
 
 	/********************************************************* END PUBLIC INVENTORY & EQUIPMENT FUNCTIONS *****************************************************/
-
-	/********************************************************* BEGIN PUBLIC COMBAT FUNCTIONS ******************************************************************/
-
-	/* Toggles the character's active loadout between primary and secondary */
-	UFUNCTION(BlueprintCallable, Category = "Combat")
-	void ToggleActiveLoadout();
-
-	/** Gets the characters current combat state */
-	UFUNCTION(BlueprintPure)
-	ECombatState GetCombatState();
-
-	/** Sets the characters combat state and replicates it to all clients. Calls appropriate multicast functions based on state. */
-	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")
-	void Server_SetCombatState(ECombatState NewCombatSate);
-
-	/** Server side function to set the active melee combo type, used for determining what melee ability to use next if the same attack type is repeated */
-	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Combat")
-	void Server_SetActiveMeleeComboType(EMeleeComboType ComboType);
-
-	/** Sets the active melee combo type, used for determining what melee ability to use next if the same attack type is repeated */
-	UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Combat")
-	void Multicast_SetActiveMeleeComboType(EMeleeComboType ComboType);
-
-	/** Server side function that clears the melee combo counter, used when switching to a different combo type */
-	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Combat")
-	void Server_ClearMeleeComboCounter();
-
-	/** Clears the melee combo counter, used when switching to a different combo type */
-	UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Combat")
-	void Multicast_ClearMeleeComboCounter();
-
-	/** Server side function that increments the melee combo counter, used for accessing the next melee ability when the same attack type is repeated */
-	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Combat")
-	void Server_IncrementMeleeComboCounter();
-
-	/** Increments the melee combo counter, used for accessing the next melee ability when the same attack type is repeated */
-	UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Combat")
-	void Multicast_IncrementMeleeComboCounter();
-
-	/********************************************************* END PUBLIC COMBAT FUNCTIONS ********************************************************************/
 
 protected:
 	/********************************************************* BEGIN PROTECTED ABILITY SYSTEM FUNCTIONS *******************************************************/
@@ -1222,15 +1039,6 @@ protected:
 	void Multicast_UnequipItemResponse(AEquippable* Equippable, bool WasUnequipped);
 
 	/**
-	 * Updates a character's mesh segment with a new mesh; used when changing armor equipment. Should only be called by the server.
-	 *
-	 * @param MeshSegment The mesh segment to alter
-	 * @param Mesh The mesh to update the segment to, will use a default mesh if this is nullptr
-	 */
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh);
-
-	/**
 	 * Attaches an actor to the character mesh at the specified socket. Should only be called by the server.
 	 *
 	 * @param Actor The actor to attach
@@ -1248,10 +1056,6 @@ protected:
 	 */
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_DetachActor(AActor* Actor);
-
-	/** Sets the character mesh segments to use their assigned default meshes */
-	UFUNCTION(BlueprintCallable, Category = "Mesh")
-	void InitMeshSegmentsDefaults(TMap<EMeshSegment, USkeletalMesh*> MeshMap);
 
 	/********************************************************* END PROTECTED INVENTORY & EQUIPMENT FUNCTIONS ************************************************************/
 

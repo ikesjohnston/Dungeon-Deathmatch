@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
 #include "DungeonCharacter.h"
+#include "MeshEnums.h"
 #include "CharacterRenderCapture2D.generated.h"
 
 class USkeletalMesh;

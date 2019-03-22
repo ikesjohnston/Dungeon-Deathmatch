@@ -1,10 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "CharacterRenderCapture2D.h"
-#include <Components/SceneCaptureComponent2D.h>
-#include <Components/SkeletalMeshComponent.h>
 #include "DungeonCharacter.h"
 #include "Armor.h"
+
+#include <Components/SceneCaptureComponent2D.h>
+#include <Components/SkeletalMeshComponent.h>
 #include <PhysicsEngine/PhysicsConstraintComponent.h>
 #include <Kismet/KismetRenderingLibrary.h>
 
@@ -216,7 +217,7 @@ UTextureRenderTarget2D* ACharacterRenderCapture2D::GetRenderTargetTexture()
 
 void ACharacterRenderCapture2D::InitializeCharacter(ADungeonCharacter* Character)
 {
-	TMap<EMeshSegment, USkeletalMeshComponent*> CharacterMeshComponentMap = Character->GetMeshComponentMap();
+	TMap<EMeshSegment, USkeletalMeshComponent*> CharacterMeshComponentMap = Character->GetModularCharacterMeshComponent()->GetMeshComponentMap();
 	for (TPair<EMeshSegment, USkeletalMeshComponent*> MeshComponentPair : CharacterMeshComponentMap)
 	{
 		EMeshSegment MeshSegment = MeshComponentPair.Key;

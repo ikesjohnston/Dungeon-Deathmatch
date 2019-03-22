@@ -2,9 +2,11 @@
 
 #include "AnimNotify_SheatheWeapon.h"
 #include "DungeonCharacter.h"
-#include <Components/SkeletalMeshComponent.h>
 #include "EquipmentComponent.h"
 #include "Weapon.h"
+#include "PlayerCombatComponent.h"
+
+#include <Components/SkeletalMeshComponent.h>
 
 UAnimNotify_SheatheWeapon::UAnimNotify_SheatheWeapon(const FObjectInitializer& ObjectInitializer)
 {
@@ -39,7 +41,7 @@ void UAnimNotify_SheatheWeapon::Notify(class USkeletalMeshComponent* MeshComp, c
 				FRotator AttachRotationAdjustment = WeaponToSheathe->GetSheathedSocketRotationAdjustment();
 				Character->Server_DetachActor(WeaponToSheathe);
 				Character->Server_AttachActorToSocket(WeaponToSheathe, AttachSocketName, AttachPositionAdjustment, AttachRotationAdjustment);
-				Character->Server_SetCombatState(ECombatState::Sheathed);
+				Character->GetCombatComponent()->ServerSetCombatState(ECombatState::Sheathed);
 			}
 		}
 	}

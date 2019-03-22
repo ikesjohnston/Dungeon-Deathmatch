@@ -107,6 +107,8 @@ public:
 protected:
 	TSubclassOf<ADungeonTile> GetTileClass(ETileType Type);
 
+	void GenerateRooms();
+
 	void GenerateRoom();
 
 	void BuildConnections();

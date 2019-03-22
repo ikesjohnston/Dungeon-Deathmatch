@@ -2,26 +2,29 @@
 
 #include "DungeonCharacter.h"
 #include "DungeonDeathmatch.h"
-#include <Camera/CameraComponent.h>
-#include <GameFramework/SpringArmComponent.h>
-#include <Components/CapsuleComponent.h>
-#include <Components/SkeletalMeshComponent.h>
+#include "Interactables/Interactable.h"
+#include "Armor.h"
+#include "Weapon.h"
+#include "CharacterRenderCapture2D.h"
+#include "ModularCharacterMeshComponent.h"
 #include "DungeonPlayerController.h"
 #include "InventoryComponent.h"
 #include "EquipmentComponent.h"
 #include "DungeonAbilitySystemComponent.h"
 #include "DungeonAttributeSet.h"
 #include "DungeonGameplayAbility.h"
+#include "PlayerCombatComponent.h"
+
+#include <Camera/CameraComponent.h>
+#include <GameFramework/SpringArmComponent.h>
+#include <Components/CapsuleComponent.h>
+#include <Components/SkeletalMeshComponent.h>
 #include <GameplayEffect.h>
 #include <AbilitySystemBlueprintLibrary.h>
 #include <WidgetComponent.h>
-#include "Interactables/Interactable.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
 #include <Private/KismetTraceUtils.h>
-#include "Armor.h"
-#include "Weapon.h"
-#include "CharacterRenderCapture2D.h"
 
 // Console command for logging melee combo states
 static int32 LogCombos = 0;
@@ -56,62 +59,9 @@ ADungeonCharacter::ADungeonCharacter()
 	VitalsPlateWidget->bOwnerNoSee = true;
 	VitalsPlateWidget->bOnlyOwnerSee = false;
 
-	// Initialize all mesh segments
-	MeshComponentHelm = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHelm"));
-	MeshComponentHelm->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Helm, MeshComponentHelm));
+	ModularCharacterMesh = CreateDefaultSubobject<UModularCharacterMeshComponent>(TEXT("ModularCharacterMesh"));
 
-	MeshComponentHair = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHair"));
-	MeshComponentHair->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Hair, MeshComponentHair));
-
-	MeshComponentHead = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHead"));
-	MeshComponentHead->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Head, MeshComponentHead));
-
-	MeshComponentShoulderLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentShoulderLeft"));
-	MeshComponentShoulderLeft->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LeftShoulder, MeshComponentShoulderLeft));
-
-	MeshComponentShoulderRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentShoulderRight"));
-	MeshComponentShoulderRight->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::RightShoulder, MeshComponentShoulderRight));
-
-	MeshComponentTorso = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentTorso"));
-	MeshComponentTorso->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Torso, MeshComponentTorso));
-
-	MeshComponentChestArmor = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentChestArmor"));
-	MeshComponentChestArmor->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::ChestArmor, MeshComponentChestArmor));
-
-	MeshComponentHandLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHandLeft"));
-	MeshComponentHandLeft->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LeftHand, MeshComponentHandLeft));
-
-	MeshComponentHandRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHandRight"));
-	MeshComponentHandRight->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::RightHand, MeshComponentHandRight));
-
-	MeshComponentBelt = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentBelt"));
-	MeshComponentBelt->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Waist, MeshComponentBelt));
-
-	MeshComponentLegs = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentLegs"));
-	MeshComponentLegs->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Legs, MeshComponentLegs));
-
-	MeshComponentLegArmor = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentLegArmor"));
-	MeshComponentLegArmor->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LegArmor, MeshComponentLegArmor));
-
-	MeshComponentFootLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentFootLeft"));
-	MeshComponentFootLeft->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LeftFoot, MeshComponentFootLeft));
-
-	MeshComponentFootRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentFootRight"));
-	MeshComponentFootRight->SetupAttachment(GetMesh());
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::RightFoot, MeshComponentFootRight));
+	PlayerCombatComponent = CreateDefaultSubobject<UPlayerCombatComponent>(TEXT("CombatComponent"));
 
 	ItemDropLocation = CreateDefaultSubobject<USceneComponent>(TEXT("ItemDropLocation"));
 	ItemDropLocation->SetupAttachment(GetMesh());
@@ -131,22 +81,6 @@ ADungeonCharacter::ADungeonCharacter()
 	AttributeSet = CreateDefaultSubobject<UDungeonAttributeSet>(TEXT("AttributeSet"));
 
 	bAbilitiesInitialized = false;
-
-	// Set up fist colliders and overlap events for unarmed combat. 
-	// Collision should be off by default, it will get toggled on and off during animations.
-	/*FistColliderLeft = CreateDefaultSubobject<USphereComponent>(TEXT("FistColliderLeft"));
-	FistColliderLeft->SetupAttachment(GetMesh(), "HandLeft");
-	FistColliderLeft->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	FistColliderLeft->OnComponentBeginOverlap.AddDynamic(this, &ADungeonCharacter::OnFistColliderLeftBeginOverlap);
-
-	FistColliderRight = CreateDefaultSubobject<USphereComponent>(TEXT("FistColliderRight"));
-	FistColliderRight->SetupAttachment(GetMesh(), "HandRight");
-	FistColliderRight->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	FistColliderRight->OnComponentBeginOverlap.AddDynamic(this, &ADungeonCharacter::OnFistColliderRightBeginOverlap);*/
-	
-
-	bIsMeleeComboReady = true;
-	CombatState = ECombatState::Sheathed;
 
 	// Initialize Inventory & Equipment systems
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
@@ -174,13 +108,6 @@ ADungeonCharacter::ADungeonCharacter()
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(ADungeonCharacter, CombatState);
-	DOREPLIFETIME(ADungeonCharacter, ActiveMeleeComboType);
-	DOREPLIFETIME(ADungeonCharacter, ActiveMeleeComboCount);
-	DOREPLIFETIME(ADungeonCharacter, bIsMeleeComboReady);
-
 	DOREPLIFETIME(ADungeonCharacter, AimYaw);
 	DOREPLIFETIME(ADungeonCharacter, AimPitch);
 	DOREPLIFETIME(ADungeonCharacter, bIsReorientingBody);
@@ -190,9 +117,11 @@ void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(ADungeonCharacter, bIsJumping);
 }
 
-void ADungeonCharacter::PreInitializeComponents()
+void ADungeonCharacter::PostInitProperties()
 {
-	InitMeshSegmentsDefaults(DefaultMeshMap);
+	Super::PostInitProperties();
+
+	ModularCharacterMesh->Initialize();
 }
 
 // Called when the game starts or when spawned
@@ -242,18 +171,6 @@ void ADungeonCharacter::BeginPlay()
 			if (StopFreeLookAbility)
 			{
 				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(StopFreeLookAbility.GetDefaultObject()), 1, 0));
-			}
-			if (SheatheWeaponsAbility)
-			{
-				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(SheatheWeaponsAbility.GetDefaultObject()), 1, 0));
-			}
-			if (UnsheatheWeaponsAbility)
-			{
-				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(UnsheatheWeaponsAbility.GetDefaultObject()), 1, 0));
-			}
-			if (SwitchWeaponLoadoutAbility)
-			{
-				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Cast<UGameplayAbility>(SwitchWeaponLoadoutAbility.GetDefaultObject()), 1, 0));
 			}
 		}
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
@@ -730,67 +647,17 @@ void ADungeonCharacter::OnInteractKeyPressed()
 
 void ADungeonCharacter::OnLoadoutSwitchKeyPressed()
 {
-	if (SwitchWeaponLoadoutAbility)
-	{
-		AbilitySystemComponent->TryActivateAbilityByClass(SwitchWeaponLoadoutAbility);
-	}
+	PlayerCombatComponent->SwitchLoadout();
 }
 
 void ADungeonCharacter::OnSheatheKeyPressed()
 {
-	if (CombatState == ECombatState::Sheathed)
-	{
-		if (UnsheatheWeaponsAbility)
-		{
-			AbilitySystemComponent->TryActivateAbilityByClass(UnsheatheWeaponsAbility);
-		}
-	}
-	else if (CombatState == ECombatState::ReadyToUse) 
-	{
-		if (SheatheWeaponsAbility)
-		{
-			AbilitySystemComponent->TryActivateAbilityByClass(SheatheWeaponsAbility);
-		}
-	}
+	PlayerCombatComponent->ToggleWeaponSheathe();
 }
 
 void ADungeonCharacter::OnMainHandAttackKeyPressed()
 {
-	if (CombatState == ECombatState::Sheathed)
-	{
-		if (UnsheatheWeaponsAbility)
-		{
-			AbilitySystemComponent->TryActivateAbilityByClass(UnsheatheWeaponsAbility);
-		}
-	}
-	else if (CombatState == ECombatState::ReadyToUse)
-	{
-		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
-		AWeapon* MainHandWeapon = ActiveLoadout.MainHandWeapon;
-		if (MainHandWeapon)
-		{
-			TArray<TSubclassOf<UDungeonGameplayAbility>> MainHandAbilities = MainHandWeapon->GetMainHandAbilities();
-			if (ActiveMeleeComboType != EMeleeComboType::MainHand)
-			{
-				// Make multicast calls first to ensure they happen on the client before proceeding
-				Multicast_SetActiveMeleeComboType(EMeleeComboType::MainHand);
-				Server_SetActiveMeleeComboType(EMeleeComboType::MainHand);
-
-				Multicast_ClearMeleeComboCounter();
-				Server_ClearMeleeComboCounter();
-			}
-			if (MainHandAbilities.Num() > 0)
-			{
-				if (ActiveMeleeComboCount >= MainHandAbilities.Num())
-				{
-					Multicast_ClearMeleeComboCounter();
-					Server_ClearMeleeComboCounter();
-				}
-				Server_SetCombatState(ECombatState::AttackInProgress);
-				AbilitySystemComponent->TryActivateAbilityByClass(MainHandAbilities[ActiveMeleeComboCount]);
-			}
-		}
-	}
+	PlayerCombatComponent->PerformMainHandAttack();
 }
 
 void ADungeonCharacter::OnMainHandAttackKeyReleased()
@@ -800,41 +667,7 @@ void ADungeonCharacter::OnMainHandAttackKeyReleased()
 
 void ADungeonCharacter::OnMainHandAltAttackKeyPressed()
 {
-	if (CombatState == ECombatState::Sheathed)
-	{
-		if (UnsheatheWeaponsAbility)
-		{
-			AbilitySystemComponent->TryActivateAbilityByClass(UnsheatheWeaponsAbility);
-		}
-	}
-	else if (CombatState == ECombatState::ReadyToUse)
-	{
-		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
-		AWeapon* MainHandWeapon = ActiveLoadout.MainHandWeapon;
-		if (MainHandWeapon)
-		{
-			TArray<TSubclassOf<UDungeonGameplayAbility>> MainHandAltAbilities = MainHandWeapon->GetMainHandAltAbilities();
-			if (ActiveMeleeComboType != EMeleeComboType::MainHandAlt)
-			{
-				// Make multicast calls first to ensure they happen on the client before proceeding
-				Multicast_SetActiveMeleeComboType(EMeleeComboType::MainHandAlt);
-				Server_SetActiveMeleeComboType(EMeleeComboType::MainHandAlt);
-
-				Multicast_ClearMeleeComboCounter();
-				Server_ClearMeleeComboCounter();
-			}
-			if (MainHandAltAbilities.Num() > 0)
-			{
-				if (ActiveMeleeComboCount >= MainHandAltAbilities.Num())
-				{
-					Multicast_ClearMeleeComboCounter();
-					Server_ClearMeleeComboCounter();
-				}
-				Server_SetCombatState(ECombatState::AttackInProgress);
-				AbilitySystemComponent->TryActivateAbilityByClass(MainHandAltAbilities[ActiveMeleeComboCount]);
-			}
-		}
-	}
+	PlayerCombatComponent->PerformMainHandAltAttack();
 }
 
 void ADungeonCharacter::OnMainHandAltAttackKeyReleased()
@@ -844,41 +677,7 @@ void ADungeonCharacter::OnMainHandAltAttackKeyReleased()
 
 void ADungeonCharacter::OnOffHandAttackKeyPressed()
 {
-	if (CombatState == ECombatState::Sheathed)
-	{
-		if (UnsheatheWeaponsAbility)
-		{
-			AbilitySystemComponent->TryActivateAbilityByClass(UnsheatheWeaponsAbility);
-		}
-	}
-	else if (CombatState == ECombatState::ReadyToUse)
-	{
-		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
-		AWeapon* OffHandWeapon = ActiveLoadout.OffHandWeapon;
-		if (OffHandWeapon)
-		{
-			TArray<TSubclassOf<UDungeonGameplayAbility>> OffHandAbilities = OffHandWeapon->GetOffHandAbilities();
-			if (ActiveMeleeComboType != EMeleeComboType::OffHand)
-			{
-				// Make multicast calls first to ensure they happen on the client before proceeding
-				Multicast_SetActiveMeleeComboType(EMeleeComboType::OffHand);
-				Server_SetActiveMeleeComboType(EMeleeComboType::OffHand);
-
-				Multicast_ClearMeleeComboCounter();
-				Server_ClearMeleeComboCounter();
-			}
-			if (OffHandAbilities.Num() > 0)
-			{
-				if (ActiveMeleeComboCount >= OffHandAbilities.Num())
-				{
-					Multicast_ClearMeleeComboCounter();
-					Server_ClearMeleeComboCounter();
-				}
-				Server_SetCombatState(ECombatState::AttackInProgress);
-				AbilitySystemComponent->TryActivateAbilityByClass(OffHandAbilities[ActiveMeleeComboCount]);
-			}
-		}
-	}
+	PlayerCombatComponent->PerformOffHandAttack();
 }
 
 void ADungeonCharacter::OnOffHandAttackKeyReleased()
@@ -888,41 +687,7 @@ void ADungeonCharacter::OnOffHandAttackKeyReleased()
 
 void ADungeonCharacter::OnOffHandAltAttackKeyPressed()
 {
-	if (CombatState == ECombatState::Sheathed)
-	{
-		if (UnsheatheWeaponsAbility)
-		{
-			AbilitySystemComponent->TryActivateAbilityByClass(UnsheatheWeaponsAbility);
-		}
-	}
-	else if (CombatState == ECombatState::ReadyToUse)
-	{
-		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
-		AWeapon* OffHandWeapon = ActiveLoadout.OffHandWeapon;
-		if (OffHandWeapon)
-		{
-			TArray<TSubclassOf<UDungeonGameplayAbility>> OffHandAltAbilities = OffHandWeapon->GetOffHandAltAbilities();
-			if (ActiveMeleeComboType != EMeleeComboType::OffHandAlt)
-			{
-				// Make multicast calls first to ensure they happen on the client before proceeding
-				Multicast_SetActiveMeleeComboType(EMeleeComboType::OffHandAlt);
-				Server_SetActiveMeleeComboType(EMeleeComboType::OffHandAlt);
-
-				Multicast_ClearMeleeComboCounter();
-				Server_ClearMeleeComboCounter();
-			}
-			if (OffHandAltAbilities.Num() > 0)
-			{
-				if (ActiveMeleeComboCount >= OffHandAltAbilities.Num())
-				{
-					Multicast_ClearMeleeComboCounter();
-					Server_ClearMeleeComboCounter();
-				}
-				Server_SetCombatState(ECombatState::AttackInProgress);
-				AbilitySystemComponent->TryActivateAbilityByClass(OffHandAltAbilities[ActiveMeleeComboCount]);
-			}
-		}
-	}
+	PlayerCombatComponent->PerformOffHandAltAttack();
 }
 
 void ADungeonCharacter::OnOffHandAltAttackKeyReleased()
@@ -1112,7 +877,7 @@ UBlendSpace* ADungeonCharacter::GetDefaultLandingBlendSpace()
 
 UBlendSpace* ADungeonCharacter::GetCombatStandingMovementBlendSpace()
 {
-	if (CombatState != ECombatState::Sheathed)
+	if (PlayerCombatComponent->GetCombatState() != ECombatState::Sheathed)
 	{
 		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
 
@@ -1146,7 +911,7 @@ UBlendSpace* ADungeonCharacter::GetCombatStandingMovementBlendSpace()
 
 UBlendSpace* ADungeonCharacter::GetCombatCrouchingMovementBlendSpace()
 {
-	if (CombatState != ECombatState::Sheathed)
+	if (PlayerCombatComponent->GetCombatState() != ECombatState::Sheathed)
 	{
 		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
 
@@ -1180,7 +945,7 @@ UBlendSpace* ADungeonCharacter::GetCombatCrouchingMovementBlendSpace()
 
 UAnimSequence* ADungeonCharacter::GetCombatJumpingAnimation()
 {
-	if (CombatState != ECombatState::Sheathed)
+	if (PlayerCombatComponent->GetCombatState() != ECombatState::Sheathed)
 	{
 		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
 
@@ -1214,7 +979,7 @@ UAnimSequence* ADungeonCharacter::GetCombatJumpingAnimation()
 
 UBlendSpace1D* ADungeonCharacter::GetCombatFallingBlendSpace()
 {
-	if (CombatState != ECombatState::Sheathed)
+	if (PlayerCombatComponent->GetCombatState() != ECombatState::Sheathed)
 	{
 		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
 
@@ -1248,7 +1013,7 @@ UBlendSpace1D* ADungeonCharacter::GetCombatFallingBlendSpace()
 
 UBlendSpace* ADungeonCharacter::GetCombatLandingBlendSpace()
 {
-	if (CombatState != ECombatState::Sheathed)
+	if (PlayerCombatComponent->GetCombatState() != ECombatState::Sheathed)
 	{
 		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
 
@@ -1333,102 +1098,6 @@ void ADungeonCharacter::CalculateAimRotation()
 	}
 }
 
-ECombatState ADungeonCharacter::GetCombatState()
-{
-	return CombatState;
-}
-
-void ADungeonCharacter::Server_SetActiveMeleeComboType_Implementation(EMeleeComboType ComboType)
-{
-	Multicast_SetActiveMeleeComboType(ComboType);
-}
-
-bool ADungeonCharacter::Server_SetActiveMeleeComboType_Validate(EMeleeComboType ComboType)
-{
-	return true;
-}
-
-void ADungeonCharacter::Multicast_SetActiveMeleeComboType_Implementation(EMeleeComboType ComboType)
-{
-	ActiveMeleeComboType = ComboType;
-}
-
-void ADungeonCharacter::Server_ClearMeleeComboCounter_Implementation()
-{
-	Multicast_ClearMeleeComboCounter();
-}
-
-bool ADungeonCharacter::Server_ClearMeleeComboCounter_Validate()
-{
-	return true;
-}
-
-void ADungeonCharacter::Multicast_ClearMeleeComboCounter_Implementation()
-{
-	ActiveMeleeComboCount = 0;
-}
-
-void ADungeonCharacter::Server_IncrementMeleeComboCounter_Implementation()
-{
-	Multicast_IncrementMeleeComboCounter();
-}
-
-bool ADungeonCharacter::Server_IncrementMeleeComboCounter_Validate()
-{
-	return true;
-}
-
-void ADungeonCharacter::Multicast_IncrementMeleeComboCounter_Implementation()
-{
-	ActiveMeleeComboCount++;
-}
-
-void ADungeonCharacter::ToggleActiveLoadout()
-{
-	EquipmentComponent->Server_ToggleActiveLoadout();
-}
-
-void ADungeonCharacter::Server_SetCombatState_Implementation(ECombatState NewCombatSate)
-{
-	CombatState = NewCombatSate;
-
-	switch (CombatState)
-	{
-	default:
-		break;
-	case ECombatState::Sheathed:
-		break;
-	case ECombatState::Unsheathing:
-		break;
-	case ECombatState::Sheathing:
-		break;
-	case ECombatState::ReadyToUse:
-		break;
-	case ECombatState::AttackInProgress:
-		break;
-	}
-}
-
-bool ADungeonCharacter::Server_SetCombatState_Validate(ECombatState NewCombatSate)
-{
-	return true;
-}
-
-TMap<EMeshSegment, USkeletalMeshComponent*> ADungeonCharacter::GetMeshComponentMap()
-{
-	return MeshComponentMap;
-}
-
-void ADungeonCharacter::Server_UpdateMeshSegment_Implementation(EMeshSegment MeshSegment, USkeletalMesh* NewMesh)
-{
-	Multicast_UpdateMeshSegment(MeshSegment, NewMesh);
-}
-
-bool ADungeonCharacter::Server_UpdateMeshSegment_Validate(EMeshSegment MeshSegment, USkeletalMesh* NewMesh)
-{
-	return true;
-}
-
 void ADungeonCharacter::Server_AttachActorToSocket_Implementation(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation)
 {
 	Multicast_AttachActorToSocket(Actor, SocketName, RelativePosition, RelativeRotation);
@@ -1447,6 +1116,16 @@ void ADungeonCharacter::Server_DetachActor_Implementation(AActor* Actor)
 bool ADungeonCharacter::Server_DetachActor_Validate(AActor* Actor)
 {
 	return true;
+}
+
+UModularCharacterMeshComponent* ADungeonCharacter::GetModularCharacterMeshComponent()
+{
+	return ModularCharacterMesh;
+}
+
+UPlayerCombatComponent* ADungeonCharacter::GetCombatComponent()
+{
+	return PlayerCombatComponent;
 }
 
 ACharacterRenderCapture2D* ADungeonCharacter::GetRenderCaptureActor()
@@ -1801,38 +1480,6 @@ void ADungeonCharacter::Multicast_UnequipItemResponse_Implementation(AEquippable
 	}
 }
 
-void ADungeonCharacter::Multicast_UpdateMeshSegment_Implementation(EMeshSegment MeshSegment, USkeletalMesh* NewMesh)
-{
-	USkeletalMeshComponent** MeshComponentPtr = MeshComponentMap.Find(MeshSegment);
-	if (MeshComponentPtr)
-	{
-		USkeletalMeshComponent* MeshComponent = *MeshComponentPtr;
-		if (MeshComponent)
-		{
-			if (NewMesh)
-			{
-				MeshComponent->SetSkeletalMesh(NewMesh);
-				if (IsLocallyControlled() && RenderCaptureActor)
-				{
-					RenderCaptureActor->UpdateMeshSegment(MeshSegment, NewMesh);
-				}
-			}
-			else
-			{
-				USkeletalMesh** DefaultMeshPtr = DefaultMeshMap.Find(MeshSegment);
-				if (DefaultMeshPtr)
-				{
-					MeshComponent->SetSkeletalMesh(*DefaultMeshPtr);
-					if (IsLocallyControlled() && RenderCaptureActor)
-					{
-						RenderCaptureActor->UpdateMeshSegment(MeshSegment, *DefaultMeshPtr);
-					}
-				}
-			}
-		}
-	}
-}
-
 void ADungeonCharacter::Multicast_AttachActorToSocket_Implementation(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation)
 {
 	FAttachmentTransformRules AttachmentRules = FAttachmentTransformRules::SnapToTargetIncludingScale;
@@ -1858,30 +1505,5 @@ void ADungeonCharacter::Multicast_DetachActor_Implementation(AActor* Actor)
 	if (IsLocallyControlled() && RenderCaptureActor)
 	{
 		RenderCaptureActor->DetachActor(Actor);
-	}
-}
-
-void ADungeonCharacter::InitMeshSegmentsDefaults(TMap<EMeshSegment, USkeletalMesh*> MeshMap)
-{
-	GetMesh()->SetCollisionObjectType(ECC_Pawn);
-	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	for (TTuple<EMeshSegment, USkeletalMeshComponent*> Tuple : MeshComponentMap)
-	{
-		USkeletalMeshComponent* MeshComp = Tuple.Value;
-		MeshComp->SetSkeletalMesh(nullptr);
-
-		USkeletalMesh** SkeletalMeshPtr = MeshMap.Find(Tuple.Key);
-		if (SkeletalMeshPtr)
-		{
-			USkeletalMesh* SkeletalMesh = *SkeletalMeshPtr;
-			if (SkeletalMesh)
-			{
-				MeshComp->SetSkeletalMesh(SkeletalMesh);
-			}
-		}
-
-		MeshComp->SetCollisionObjectType(ECC_Pawn);
-		MeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		MeshComp->SetMasterPoseComponent(GetMesh());
 	}
 }

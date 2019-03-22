@@ -1,11 +1,6 @@
 #include "EquipmentGlobals.h"
 #include "Weapon.h"
 
-UDungeonEquipmentLibrary::UDungeonEquipmentLibrary(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
-{
-}
-
 ELoadoutType UDungeonEquipmentLibrary::GetLoadoutType(const FWeaponLoadout Loadout)
 {
 	ELoadoutType LoadoutType = ELoadoutType::Unarmed;

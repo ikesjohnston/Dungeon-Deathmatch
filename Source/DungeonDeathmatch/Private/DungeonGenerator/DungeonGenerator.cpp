@@ -48,14 +48,23 @@ void ADungeonGenerator::GenerateDungeon()
 
 void ADungeonGenerator::GenerateRoomBasedDungeon()
 {
-	FlushPersistentDebugLines(GetWorld());
-
-	UE_LOG(LogTemp, Warning, TEXT("Generating Dungeon!"));
 	FDateTime GenerationStartTime = FDateTime::Now();
+	UE_LOG(LogTemp, Warning, TEXT("Generating Dungeon!"));
+
+	GenerateRooms();
+	BuildConnections();
+
+	FDateTime GenerationEndTime = FDateTime::Now();
+	UE_LOG(LogTemp, Warning, TEXT("Generated %d rooms with %d connections in %f seconds"), Rooms.Num(), Connections.Num(), (GenerationEndTime - GenerationStartTime).GetTotalSeconds());
+
+	DrawDebugDungeon();
+}
+
+void ADungeonGenerator::GenerateRooms()
+{
 	Rooms.Empty();
 	RoomDungeonGrid.Empty();
 	RoomSizeTotal = FIntVector(0, 0, 0);
-
 	if (RoomSizeMax.Size() > DungeonGridSize.Size())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ADungeonGenerator::GenerateRoomBasedDungeon - Max room size exceeds dungeon grid size, aborting"));
@@ -65,13 +74,7 @@ void ADungeonGenerator::GenerateRoomBasedDungeon()
 	{
 		GenerateRoom();
 	}
-
 	RoomSizeAverage = RoomSizeTotal / NumberOfRooms;
-	BuildConnections();
-	FDateTime GenerationEndTime = FDateTime::Now();
-	UE_LOG(LogTemp, Warning, TEXT("Generated %d rooms with %d connections in %f seconds"), Rooms.Num(), Connections.Num(), (GenerationEndTime - GenerationStartTime).GetTotalSeconds());
-
-	DrawDebugDungeon();
 }
 
 void ADungeonGenerator::GenerateRoom()
@@ -239,6 +242,7 @@ void ADungeonGenerator::BuildConnections()
 
 void ADungeonGenerator::DrawDebugDungeon()
 {
+	FlushPersistentDebugLines(GetWorld());
 	for (FDungeonRoom Room : Rooms)
 	{
 		FColor DebugColor = FColor::Blue;

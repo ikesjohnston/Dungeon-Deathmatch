@@ -1,8 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Weapon.h"
-#include <Components/CapsuleComponent.h>
-#include <Components/StaticMeshComponent.h>
 #include "EquipmentGlobals.h"
 #include "Equippable.h"
 #include "Item.h"
@@ -12,6 +10,10 @@
 #include "DungeonCharacter.h"
 #include "WeaponTraceComponent.h"
 #include "DungeonDeathmatch.h"
+#include "PlayerCombatComponent.h"
+
+#include <Components/CapsuleComponent.h>
+#include <Components/StaticMeshComponent.h>
 
 // Sets default values
 AWeapon::AWeapon(const FObjectInitializer& ObjectInitializer)
@@ -299,7 +301,7 @@ void AWeapon::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharac
 	FName AttachSocketName = NAME_None;
 
 	FWeaponLoadout ActiveLoadout = NewEquippingCharacter->GetEquipmentComponent()->GetActiveWeaponLoadout();
-	ECombatState CombatState = NewEquippingCharacter->GetCombatState();
+	ECombatState CombatState = NewEquippingCharacter->GetCombatComponent()->GetCombatState();
 	
 	if (CombatState != ECombatState::Sheathed && ActiveLoadout.MainHandWeapon == this)
 	{
