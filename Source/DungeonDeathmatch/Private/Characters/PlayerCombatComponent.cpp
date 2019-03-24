@@ -11,7 +11,7 @@
 UPlayerCombatComponent::UPlayerCombatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-	//bReplicates = true;
+	bReplicates = true;
 	
 	OwningCharacter = Cast<ADungeonCharacter>(GetOwner());
 	if (!OwningCharacter)

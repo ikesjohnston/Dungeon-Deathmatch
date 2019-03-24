@@ -2,6 +2,7 @@
 
 #include "ModularCharacterMeshComponent.h"
 #include "DungeonCharacter.h"
+#include "RenderCaptureComponent.h"
 
 #include <Components/SkeletalMeshComponent.h>
 
@@ -142,26 +143,16 @@ void UModularCharacterMeshComponent::MulticastUpdateMeshSegment_Implementation(E
 		USkeletalMeshComponent* MeshComponent = *MeshComponentPtr;
 		if (MeshComponent)
 		{
-			if (NewMesh)
-			{
-				MeshComponent->SetSkeletalMesh(NewMesh);
-				/*if (OwningCharacter->IsLocallyControlled() && RenderCaptureActor)
-				{
-					RenderCaptureActor->UpdateMeshSegment(MeshSegment, NewMesh);
-				}*/
-			}
-			else
+			if (!NewMesh)
 			{
 				USkeletalMesh** DefaultMeshPtr = DefaultMeshMap.Find(MeshSegment);
 				if (DefaultMeshPtr)
 				{
-					MeshComponent->SetSkeletalMesh(*DefaultMeshPtr);
-					/*if (IsLocallyControlled() && RenderCaptureActor)
-					{
-						RenderCaptureActor->UpdateMeshSegment(MeshSegment, *DefaultMeshPtr);
-					}*/
+					NewMesh = *DefaultMeshPtr;
 				}
 			}
+			MeshComponent->SetSkeletalMesh(NewMesh);
+			OwningCharacter->GetRenderCaptureComponent()->UpdateMeshSegment(MeshSegment, NewMesh);
 		}
 	}
 }

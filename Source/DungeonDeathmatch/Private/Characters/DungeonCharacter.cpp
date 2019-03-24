@@ -14,6 +14,7 @@
 #include "DungeonAttributeSet.h"
 #include "DungeonGameplayAbility.h"
 #include "PlayerCombatComponent.h"
+#include "RenderCaptureComponent.h"
 
 #include <Camera/CameraComponent.h>
 #include <GameFramework/SpringArmComponent.h>
@@ -60,6 +61,8 @@ ADungeonCharacter::ADungeonCharacter()
 	VitalsPlateWidget->bOnlyOwnerSee = false;
 
 	ModularCharacterMesh = CreateDefaultSubobject<UModularCharacterMeshComponent>(TEXT("ModularCharacterMesh"));
+
+	RenderCaptureComponent = CreateDefaultSubobject<URenderCaptureComponent>(TEXT("RenderCaptureComponent"));
 
 	PlayerCombatComponent = CreateDefaultSubobject<UPlayerCombatComponent>(TEXT("CombatComponent"));
 
@@ -108,6 +111,8 @@ ADungeonCharacter::ADungeonCharacter()
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
 	DOREPLIFETIME(ADungeonCharacter, AimYaw);
 	DOREPLIFETIME(ADungeonCharacter, AimPitch);
 	DOREPLIFETIME(ADungeonCharacter, bIsReorientingBody);
@@ -178,17 +183,6 @@ void ADungeonCharacter::BeginPlay()
 
 		if (IsLocallyControlled())
 		{
-			// Initialize the render capture actor, only do this for the local player character
-			if (RenderCaptureClass)
-			{
-				RenderCaptureActor = Cast<ACharacterRenderCapture2D>(GetWorld()->SpawnActor(RenderCaptureClass));
-				if (RenderCaptureActor)
-				{
-					RenderCaptureActor->InitializeCharacter(this);
-					RenderCaptureActor->SetActorLocation(FVector(0, 0, -1000));
-				}
-			}
-
 			// Only show health plates on enemy characters
 			VitalsPlateWidget->SetVisibility(false);
 		}
@@ -1123,14 +1117,19 @@ UModularCharacterMeshComponent* ADungeonCharacter::GetModularCharacterMeshCompon
 	return ModularCharacterMesh;
 }
 
-UPlayerCombatComponent* ADungeonCharacter::GetCombatComponent()
+URenderCaptureComponent* ADungeonCharacter::GetRenderCaptureComponent()
 {
-	return PlayerCombatComponent;
+	return RenderCaptureComponent;
 }
 
 ACharacterRenderCapture2D* ADungeonCharacter::GetRenderCaptureActor()
 {
-	return RenderCaptureActor;
+	return RenderCaptureComponent->GetRenderCaptureActor();
+}
+
+UPlayerCombatComponent* ADungeonCharacter::GetCombatComponent()
+{
+	return PlayerCombatComponent;
 }
 
 FName ADungeonCharacter::GetNameForWeaponSocket(EWeaponSocketType WeaponSocketType)
@@ -1490,10 +1489,7 @@ void ADungeonCharacter::Multicast_AttachActorToSocket_Implementation(AActor* Act
 	Actor->SetActorRelativeLocation(RelativePosition);
 	Actor->SetActorRelativeRotation(RelativeRotation);
 
-	if (IsLocallyControlled() && RenderCaptureActor)
-	{
-		RenderCaptureActor->AttachActorToSocket(Actor, SocketName, RelativePosition, RelativeRotation);
-	}
+	RenderCaptureComponent->AttachActorToSocket(Actor, SocketName, RelativePosition, RelativeRotation);
 }
 
 void ADungeonCharacter::Multicast_DetachActor_Implementation(AActor* Actor)
@@ -1502,8 +1498,5 @@ void ADungeonCharacter::Multicast_DetachActor_Implementation(AActor* Actor)
 	DetachRules.bCallModify = true;
 	Actor->DetachFromActor(DetachRules);
 
-	if (IsLocallyControlled() && RenderCaptureActor)
-	{
-		RenderCaptureActor->DetachActor(Actor);
-	}
+	RenderCaptureComponent->DetachActor(Actor);
 }

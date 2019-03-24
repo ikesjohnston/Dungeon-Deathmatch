@@ -33,6 +33,7 @@ class UBlendSpace;
 class UBlendSpace1D;
 class UModularCharacterMeshComponent;
 class UPlayerCombatComponent;
+class URenderCaptureComponent;
 
 /**
  * Enum for movement direction used for implementing certain gameplay abilities in blueprint
@@ -83,6 +84,10 @@ protected:
 	/** Component for controlling visuals of different mesh segments */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mesh")
 	UModularCharacterMeshComponent* ModularCharacterMesh;
+
+	/** Component for controlling UI rendering of character */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	URenderCaptureComponent* RenderCaptureComponent;
 
 	/** Component for processing combat logic */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
@@ -147,11 +152,11 @@ protected:
 	/********************************************************* BEGIN INPUT VARIABLES **************************************************************************/
 
 	/** Flag to determine if character is currently accepting movement input */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input\|Movement")
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input|Movement")
 	bool bIsMovementInputEnabled;
 
 	/** Flag to determine if character is able to control the camera, typically disabled when in menus */
-	UPROPERTY(BlueprintReadOnly, Category = "Input\|Camera")
+	UPROPERTY(BlueprintReadOnly, Category = "Input|Camera")
 	bool bIsCameraInputEnabled;
 
 	/********************************************************* END INPUT VARIABLES ****************************************************************************/
@@ -171,15 +176,15 @@ protected:
 	/********************************************************* BEGIN ANIMATION VARIABLES **********************************************************************/
 
 	/** Flag to determine if character is in the middle of a jump, as opposed to just falling */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Animation\|Movement")
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Animation|Movement")
 	bool bIsJumping;
 
 	/** The minimum value to clamp the movement direction yaw to for blend spaces */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Movement")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation|Movement")
 	float MovementDirectionYawClampMin;
 
 	/** The maximum value to clamp the movement direction yaw to for blend spaces */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Movement")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation|Movement")
 	float MovementDirectionYawClampMax;
 
 	/** Flag to determine when to correct body orientation so it is facing the aim direction */
@@ -187,11 +192,11 @@ protected:
 	bool bIsReorientingBody;
 
 	/** Flag to determine if character is currently manually free looking, affects turning and aim offsets */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Animation\|Aim")
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Animation|Aim")
 	bool bIsManuallyFreeLooking;
 
 	/** Flag to determine if character is currently auto free looking from an ability, affects turning and aim offsets */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Animation\|Aim")
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Animation|Aim")
 	bool bIsAutoFreeLooking;
 
 	/** The delta rotation yaw from the control rotation to the character rotation, used for aim offset blend spaces */
@@ -203,31 +208,31 @@ protected:
 	float AimPitch;
 
 	/** Maximum yaw degrees the character can aim away from where their body is facing before the body will perform a correction turn to face the aim direction */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation|Aim")
 	float AimYawTurnStart;
 
 	/** Minimum yaw degrees the character can be aim away from where their body is facing during a correction turn before the turn will stop */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation|Aim")
 	float AimYawTurnStop;
 
 	/** The minimum value to clamp the aim rotation yaw to */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation|Aim")
 	float AimYawClampMin;
 
 	/** The maximum value to clamp the aim rotation yaw to */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation|Aim")
 	float AimYawClampMax;
 
 	/** The minimum value to clamp the aim rotation pitch to */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation|Aim")
 	float AimPitchClampMin;
 
 	/** The maximum value to clamp the aim rotation pitch to */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation\|Aim")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation|Aim")
 	float AimPitchClampMax;
 
 	/** Standing movement animation blend space to use when weapons are sheathed*/
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
 	UBlendSpace* DefaultStandingMovementBlendSpace;
 
 	/** Crouching movement animation blend space to use when weapons are sheathed*/
@@ -235,35 +240,35 @@ protected:
 	UBlendSpace* DefaultCrouchingMovementBlendSpace;
 
 	/** Jumping animation sequence to use when weapons are sheathed*/
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
 	UAnimSequence* DefaultJumpingAnimation;
 
 	/** Falling animation blend space to use when weapons are sheathed*/
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
 	UBlendSpace1D* DefaultFallingBlendSpace;
 
 	/** Landing animation blend space to use when weapons are sheathed*/
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
 	UBlendSpace* DefaultLandingBlendSpace;
 
 	/** Mapping of blend spaces to use for standing movement animations when weapons are unsheathed based on loadout type */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
 	TMap<ELoadoutType, UBlendSpace*> CombatStandingMovementBlendSpaceMap;
 
 	/** Mapping of blend spaces to use for crouching movement animations when weapons are unsheathed based on loadout type */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
 	TMap<ELoadoutType, UBlendSpace*> CombatCrouchingMovementBlendSpaceMap;
 
 	/** Mapping of animation sequences to use for jumping when weapons are unsheathed based on loadout type */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
 	TMap<ELoadoutType, UAnimSequence*> CombatJumpingAnimationMap;
 
 	/** Mapping of blend spaces to use for falling animations when weapons are unsheathed based on loadout type */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
 	TMap<ELoadoutType, UBlendSpace1D*> CombatFallingBlendSpaceMap;
 
 	/** Mapping of blend spaces to use for landing animations when weapons are unsheathed based on loadout type */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation\|Movement")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
 	TMap<ELoadoutType, UBlendSpace*> CombatLandingBlendSpaceMap;
 
 	/********************************************************* END ANIMATION VARIABLES ************************************************************************/
@@ -291,22 +296,14 @@ protected:
 	TMap<EWeaponSocketType, FName> WeaponSocketMap;
 
 	/** The name of the socket corresponding to the first hot keyed consumable */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment|Sockets")
 	FString SocketNameConsumableOne;
 
 	/** The name of the socket corresponding to the second hot keyed consumable */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment\|Sockets")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory & Equipment|Sockets")
 	FString SocketNameConsumableTwo;
 
 	/********************************************************* END INVENTORY & EQUIPMENT VARIABLES ************************************************************/
-
-	/** The 2DRenderCapture class for displaying the character mesh in the UI */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<ACharacterRenderCapture2D> RenderCaptureClass;
-
-	/** The 2DRenderCapture actor for displaying the character mesh in the UI */
-	UPROPERTY()
-	ACharacterRenderCapture2D* RenderCaptureActor;
 
 private:
 	/** Needed for removing and restoring deceleration during rolls */
@@ -494,7 +491,7 @@ public:
 	 *
 	 * @return The current movement velocity vector of this character
 	 */
-	UFUNCTION(BlueprintPure, Category = "Animation|\Movement")
+	UFUNCTION(BlueprintPure, Category = "Animation|Movement")
 	FVector GetMovementVelocity();
 
 	/**
@@ -502,7 +499,7 @@ public:
 	 *
 	 * @return The angle of the character's movement direction, in degrees, from -180 to 180
 	 */
-	UFUNCTION(BlueprintPure, Category = "Animation|\Movement")
+	UFUNCTION(BlueprintPure, Category = "Animation|Movement")
 	float GetMovementDirection();
 
 	/**
@@ -532,7 +529,7 @@ public:
 	 *
 	 * @return The character's aim yaw
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Animation|\Aim")
+	UFUNCTION(BlueprintCallable, Category = "Animation|Aim")
 	float GetAimYaw();
 
 	/**
@@ -540,7 +537,7 @@ public:
 	 *
 	 * @return The character's aim pitch
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Animation|\Aim")
+	UFUNCTION(BlueprintCallable, Category = "Animation|Aim")
 	float GetAimPitch();
 
 	/**
@@ -572,7 +569,7 @@ public:
 	 *
 	 * @return Whether the character is currently reorienting their body
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Animation|\Aim")
+	UFUNCTION(BlueprintCallable, Category = "Animation|Aim")
 	bool GetIsReorientingBody();
 
 	/**
@@ -581,47 +578,47 @@ public:
 	 *
 	 * @param UseRotation Whether or not to use controller desired rotation
 	 */
-	UFUNCTION(BlueprintImplementableEvent, Category = "Animation|\Aim")
+	UFUNCTION(BlueprintImplementableEvent, Category = "Animation|Aim")
 	void UseControllerDesiredRotation(bool UseRotation);
 
 	/** Gets the standing movement animation blend space to use when weapons are sheathed*/
-	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UFUNCTION(BlueprintCallable, Category = "Animation|Movement")
 	UBlendSpace* GetDefaultStandingMovementBlendSpace();
 
 	/** Gets the crouching movement animation blend space to use when weapons are sheathed*/
-	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UFUNCTION(BlueprintCallable, Category = "Animation|Movement")
 	UBlendSpace* GetDefaultCrouchingMovementBlendSpace();
 
 	/** Gets the jumping animation sequence to use when weapons are sheathed*/
-	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UFUNCTION(BlueprintCallable, Category = "Animation|Movement")
 	UAnimSequence* GetDefaultJumpingAnimation();
 
 	/** Gets the falling animation blend space to use when weapons are sheathed*/
-	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UFUNCTION(BlueprintCallable, Category = "Animation|Movement")
 	UBlendSpace1D* GetDefaultFallingBlendSpace();
 
 	/** Gets the landing animation blend space to use when weapons are sheathed*/
-	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UFUNCTION(BlueprintCallable, Category = "Animation|Movement")
 	UBlendSpace* GetDefaultLandingBlendSpace();
 
 	/** Gets the blend space to use for standing movement animations when weapons are unsheathed based on loadout type */
-	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UFUNCTION(BlueprintCallable, Category = "Animation|Movement")
 	UBlendSpace* GetCombatStandingMovementBlendSpace();
 
 	/** Gets the blend space to use for crouching movement animations when weapons are unsheathed based on loadout type */
-	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UFUNCTION(BlueprintCallable, Category = "Animation|Movement")
 	UBlendSpace* GetCombatCrouchingMovementBlendSpace();
 
 	/** Gets the animation sequence to use for jumping when weapons are unsheathed based on loadout type */
-	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UFUNCTION(BlueprintCallable, Category = "Animation|Movement")
 	UAnimSequence* GetCombatJumpingAnimation();
 
 	/** Gets the blend space to use for falling animations when weapons are unsheathed based on loadout type */
-	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UFUNCTION(BlueprintCallable, Category = "Animation|Movement")
 	UBlendSpace1D* GetCombatFallingBlendSpace();
 
 	/** Gets the blend space to use for landing animations when weapons are unsheathed based on loadout type */
-	UFUNCTION(BlueprintCallable, Category = "Animation\|Movement")
+	UFUNCTION(BlueprintCallable, Category = "Animation|Movement")
 	UBlendSpace* GetCombatLandingBlendSpace();
 
 	/********************************************************* END PUBLIC ANIMATION FUNCTIONS ********************************************************************/
@@ -738,15 +735,13 @@ public:
 	UModularCharacterMeshComponent* GetModularCharacterMeshComponent();
 
 	UFUNCTION(BlueprintCallable)
-	UPlayerCombatComponent* GetCombatComponent();
+	URenderCaptureComponent* GetRenderCaptureComponent();
 
-	/**
-	 * Gets the 2DRenderCapture Actor for use by the UI
-	 *
-	 * @return The character's 2D RenderCapture Actor
-	 */
 	UFUNCTION(BlueprintCallable)
 	ACharacterRenderCapture2D* GetRenderCaptureActor();
+
+	UFUNCTION(BlueprintCallable)
+	UPlayerCombatComponent* GetCombatComponent();
 
 	/** Gets socket name on the character for a given weapon socket type*/
 	FName GetNameForWeaponSocket(EWeaponSocketType WeaponSocketType);
