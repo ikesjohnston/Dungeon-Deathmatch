@@ -15,6 +15,7 @@
 #include "DungeonGameplayAbility.h"
 #include "PlayerCombatComponent.h"
 #include "RenderCaptureComponent.h"
+#include "CharacterAnimationComponent.h"
 
 #include <Camera/CameraComponent.h>
 #include <GameFramework/SpringArmComponent.h>
@@ -34,12 +35,6 @@ FAutoConsoleVariableRef CVARLogCombos(
 	LogCombos,
 	TEXT("Log melee combo states"),
 	ECVF_Cheat);
-
-#define CARDINAL_MOVEMENT_FORWARD_MAX 22.5f
-#define CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX 67.5f
-#define CARDINAL_MOVEMENT_RIGHT_MAX 112.5f
-#define CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX 157.5f
-#define CARDINAL_MOVEMENT_BACKWARD 180.0f
 
 #define MOVEMENT_SPEED_ATTRIBUTE_DIVISOR 100.0f
 
@@ -61,10 +56,9 @@ ADungeonCharacter::ADungeonCharacter()
 	VitalsPlateWidget->bOnlyOwnerSee = false;
 
 	ModularCharacterMesh = CreateDefaultSubobject<UModularCharacterMeshComponent>(TEXT("ModularCharacterMesh"));
-
 	RenderCaptureComponent = CreateDefaultSubobject<URenderCaptureComponent>(TEXT("RenderCaptureComponent"));
-
 	PlayerCombatComponent = CreateDefaultSubobject<UPlayerCombatComponent>(TEXT("CombatComponent"));
+	AnimationComponent = CreateDefaultSubobject<UCharacterAnimationComponent>(TEXT("AnimationComponent"));
 
 	ItemDropLocation = CreateDefaultSubobject<USceneComponent>(TEXT("ItemDropLocation"));
 	ItemDropLocation->SetupAttachment(GetMesh());
@@ -96,16 +90,6 @@ ADungeonCharacter::ADungeonCharacter()
 	bIsMovementInputEnabled = true;
 	bIsCameraInputEnabled = true;
 
-	MovementDirectionYawClampMin = -179.0f;
-	MovementDirectionYawClampMax = 180.0f;
-
-	AimYawTurnStart = 60;
-	AimYawTurnStop = 5;
-	AimYawClampMin = -120;
-	AimYawClampMax = 120;
-	AimPitchClampMin = -90;
-	AimPitchClampMax = 90;
-
 	DropEjectionForce = 20000;
 }
 
@@ -113,13 +97,7 @@ void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ADungeonCharacter, AimYaw);
-	DOREPLIFETIME(ADungeonCharacter, AimPitch);
-	DOREPLIFETIME(ADungeonCharacter, bIsReorientingBody);
-	DOREPLIFETIME(ADungeonCharacter, bIsManuallyFreeLooking);
-	DOREPLIFETIME(ADungeonCharacter, bIsAutoFreeLooking);
 	DOREPLIFETIME(ADungeonCharacter, bIsMovementInputEnabled);
-	DOREPLIFETIME(ADungeonCharacter, bIsJumping);
 }
 
 void ADungeonCharacter::PostInitProperties()
@@ -236,19 +214,6 @@ void ADungeonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 void ADungeonCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-
-	// Have server calculate aim offset
-	// TODO: This will need to be updated to use client prediction for smoothness at some point, with some defined error acception range
-	if (Role == ROLE_Authority)
-	{
-		CalculateAimRotation();
-	}
-
-	// Set jumping back to false after hitting the ground, used by animation instances
-	if (bIsJumping && !GetCharacterMovement()->IsFalling())
-	{
-		SetIsJumping(false);
-	}
 }
 
 UAbilitySystemComponent* ADungeonCharacter::GetAbilitySystemComponent() const
@@ -574,7 +539,7 @@ void ADungeonCharacter::Jump()
 	{
 		Super::Jump();
 
-		SetIsJumping(true);
+		AnimationComponent->SetIsJumping(true);
 	}
 }
 
@@ -726,372 +691,6 @@ void ADungeonCharacter::Interact()
 	}
 }
 
-FVector ADungeonCharacter::GetMovementVelocity()
-{
-	FVector Velocity;
-
-	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-	if (MovementComp)
-	{
-		Velocity = MovementComp->Velocity;
-	}
-	else
-	{
-		Velocity = FVector(0, 0, 0);
-	}
-
-	return Velocity;
-}
-
-float ADungeonCharacter::GetMovementDirection()
-{
-	float MovementDirection = 0.0f;
-
-	FVector Velocity = GetMovementVelocity();
-	if (Velocity.Size() > 0)
-	{
-		FRotator ActorRotation = GetActorRotation();
-		FVector LocalVelocity = ActorRotation.UnrotateVector(Velocity);
-		MovementDirection = FMath::RadiansToDegrees(FMath::Atan2(LocalVelocity.Y, LocalVelocity.X));
-	}
-	else
-	{
-		// If standing still, the aim direction should act as the move direction, this is used for rolling
-		// If free aiming, however, move direction should be forward
-		if (GetIsFreeLooking())
-		{
-			MovementDirection = 0;
-		}
-		else
-		{
-			FRotator DeltaRotation = GetControlRotation() - GetActorRotation();
-			MovementDirection = FMath::ClampAngle(DeltaRotation.Yaw, MovementDirectionYawClampMin, MovementDirectionYawClampMax);
-		}
-	}
-
-	return MovementDirection;
-}
-
-ECardinalMovementDirection ADungeonCharacter::GetCardinalMovementDirection()
-{
-	float MovementDirection = GetMovementDirection();
-
-	if (MovementDirection >= -CARDINAL_MOVEMENT_FORWARD_MAX && MovementDirection <= CARDINAL_MOVEMENT_FORWARD_MAX)
-	{
-		return ECardinalMovementDirection::Forward;
-	}
-	else if (MovementDirection > CARDINAL_MOVEMENT_FORWARD_MAX && MovementDirection <= CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX)
-	{
-		return ECardinalMovementDirection::ForwardRight;
-	}
-	else if (MovementDirection > CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX && MovementDirection <= CARDINAL_MOVEMENT_RIGHT_MAX)
-	{
-		return ECardinalMovementDirection::Right;
-	}
-	else if (MovementDirection > CARDINAL_MOVEMENT_RIGHT_MAX && MovementDirection <= CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX)
-	{
-		return ECardinalMovementDirection::BackwardRight;
-	}
-	else if ((MovementDirection > CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX && MovementDirection <= CARDINAL_MOVEMENT_BACKWARD) ||
-		(MovementDirection >= -CARDINAL_MOVEMENT_BACKWARD && MovementDirection < -CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX))
-	{
-		return ECardinalMovementDirection::Backward;
-	}
-	else if (MovementDirection >= -CARDINAL_MOVEMENT_BACKWARD_RIGHT_MAX && MovementDirection < -CARDINAL_MOVEMENT_RIGHT_MAX)
-	{
-		return ECardinalMovementDirection::BackwardLeft;
-	}
-	else if (MovementDirection >= -CARDINAL_MOVEMENT_RIGHT_MAX && MovementDirection < -CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX)
-	{
-		return ECardinalMovementDirection::Left;
-	}
-	else
-	{
-		return ECardinalMovementDirection::ForwardLeft;
-	}
-}
-
-bool ADungeonCharacter::GetIsJumping()
-{
-	return bIsJumping;
-}
-
-void ADungeonCharacter::SetIsJumping(bool IsJumping)
-{
-	bIsJumping = IsJumping;
-}
-
-bool ADungeonCharacter::GetIsFreeLooking()
-{
-	bool IsFreeLooking = (bIsManuallyFreeLooking || bIsAutoFreeLooking);
-	return IsFreeLooking;
-}
-
-void ADungeonCharacter::SetIsManuallyFreeLooking(bool IsManuallyFreeLooking)
-{
-	bIsManuallyFreeLooking = IsManuallyFreeLooking;
-	UseControllerDesiredRotation(!(bIsManuallyFreeLooking || bIsAutoFreeLooking));
-}
-
-void ADungeonCharacter::SetIsAutoFreeLooking(bool IsAutoFreeLooking)
-{
-	bIsAutoFreeLooking = IsAutoFreeLooking;
-	UseControllerDesiredRotation(!(bIsManuallyFreeLooking || bIsAutoFreeLooking));
-}
-
-bool ADungeonCharacter::GetIsReorientingBody()
-{
-	return bIsReorientingBody;
-}
-
-UBlendSpace* ADungeonCharacter::GetDefaultStandingMovementBlendSpace()
-{
-	return DefaultStandingMovementBlendSpace;
-}
-
-UBlendSpace* ADungeonCharacter::GetDefaultCrouchingMovementBlendSpace()
-{
-	return DefaultCrouchingMovementBlendSpace;
-}
-
-UAnimSequence* ADungeonCharacter::GetDefaultJumpingAnimation()
-{
-	return DefaultJumpingAnimation;
-}
-
-UBlendSpace1D* ADungeonCharacter::GetDefaultFallingBlendSpace()
-{
-	return DefaultFallingBlendSpace;
-}
-
-UBlendSpace* ADungeonCharacter::GetDefaultLandingBlendSpace()
-{
-	return DefaultLandingBlendSpace;
-}
-
-UBlendSpace* ADungeonCharacter::GetCombatStandingMovementBlendSpace()
-{
-	if (PlayerCombatComponent->GetCombatState() != ECombatState::Sheathed)
-	{
-		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
-
-		if (ActiveLoadout.MainHandWeapon)
-		{
-			UBlendSpace* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatStandingMovementBlendSpaceOverride();
-			if (BlendSpace)
-			{
-				return BlendSpace;
-			}
-		}
-		else if (ActiveLoadout.OffHandWeapon)
-		{
-			UBlendSpace* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatStandingMovementBlendSpaceOverride();
-			if (BlendSpace)
-			{
-				return BlendSpace;
-			}
-		}
-
-		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
-		UBlendSpace** BlendSpacePtr = CombatStandingMovementBlendSpaceMap.Find(LoadoutType);
-		if (BlendSpacePtr)
-		{
-			return *BlendSpacePtr;
-		}
-	}
-
-	return DefaultStandingMovementBlendSpace;
-}
-
-UBlendSpace* ADungeonCharacter::GetCombatCrouchingMovementBlendSpace()
-{
-	if (PlayerCombatComponent->GetCombatState() != ECombatState::Sheathed)
-	{
-		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
-
-		if (ActiveLoadout.MainHandWeapon)
-		{
-			UBlendSpace* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatCrouchingMovementBlendSpaceOverride();
-			if (BlendSpace)
-			{
-				return BlendSpace;
-			}
-		}
-		else if (ActiveLoadout.OffHandWeapon)
-		{
-			UBlendSpace* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatCrouchingMovementBlendSpaceOverride();
-			if (BlendSpace)
-			{
-				return BlendSpace;
-			}
-		}
-
-		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
-		UBlendSpace** BlendSpacePtr = CombatCrouchingMovementBlendSpaceMap.Find(LoadoutType);
-		if (BlendSpacePtr)
-		{
-			return *BlendSpacePtr;
-		}
-	}
-
-	return DefaultCrouchingMovementBlendSpace;
-}
-
-UAnimSequence* ADungeonCharacter::GetCombatJumpingAnimation()
-{
-	if (PlayerCombatComponent->GetCombatState() != ECombatState::Sheathed)
-	{
-		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
-
-		if (ActiveLoadout.MainHandWeapon)
-		{
-			UAnimSequence* AnimSequence = ActiveLoadout.MainHandWeapon->GetCombatJumpAnimationOverride();
-			if (AnimSequence)
-			{
-				return AnimSequence;
-			}
-		}
-		else if (ActiveLoadout.OffHandWeapon)
-		{
-			UAnimSequence* AnimSequence = ActiveLoadout.OffHandWeapon->GetCombatJumpAnimationOverride();
-			if (AnimSequence)
-			{
-				return AnimSequence;
-			}
-		}
-
-		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
-		UAnimSequence** AnimSequencePtr = CombatJumpingAnimationMap.Find(LoadoutType);
-		if (AnimSequencePtr)
-		{
-			return *AnimSequencePtr;
-		}
-	}
-
-	return DefaultJumpingAnimation;
-}
-
-UBlendSpace1D* ADungeonCharacter::GetCombatFallingBlendSpace()
-{
-	if (PlayerCombatComponent->GetCombatState() != ECombatState::Sheathed)
-	{
-		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
-
-		if (ActiveLoadout.MainHandWeapon)
-		{
-			UBlendSpace1D* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatFallingBlendSpaceOverride();
-			if (BlendSpace)
-			{
-				return BlendSpace;
-			}
-		}
-		else if (ActiveLoadout.OffHandWeapon)
-		{
-			UBlendSpace1D* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatFallingBlendSpaceOverride();
-			if (BlendSpace)
-			{
-				return BlendSpace;
-			}
-		}
-
-		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
-		UBlendSpace1D** BlendSpacePtr = CombatFallingBlendSpaceMap.Find(LoadoutType);
-		if (BlendSpacePtr)
-		{
-			return *BlendSpacePtr;
-		}
-	}
-
-	return DefaultFallingBlendSpace;
-}
-
-UBlendSpace* ADungeonCharacter::GetCombatLandingBlendSpace()
-{
-	if (PlayerCombatComponent->GetCombatState() != ECombatState::Sheathed)
-	{
-		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
-
-		if (ActiveLoadout.MainHandWeapon)
-		{
-			UBlendSpace* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatLandingBlendSpaceOverride();
-			if (BlendSpace)
-			{
-				return BlendSpace;
-			}
-		}
-		else if (ActiveLoadout.OffHandWeapon)
-		{
-			UBlendSpace* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatLandingBlendSpaceOverride();
-			if (BlendSpace)
-			{
-				return BlendSpace;
-			}
-		}
-
-		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
-		UBlendSpace** BlendSpacePtr = CombatLandingBlendSpaceMap.Find(LoadoutType);
-		if (BlendSpacePtr)
-		{
-			return *BlendSpacePtr;
-		}
-	}
-
-	return DefaultLandingBlendSpace;
-}
-
-float ADungeonCharacter::GetAimYaw()
-{
-	return AimYaw;
-}
-
-float ADungeonCharacter::GetAimPitch()
-{
-	return AimPitch;
-}
-
-void ADungeonCharacter::CalculateAimRotation()
-{
-	FRotator ControlRotation = GetControlRotation();
-	FRotator ActorRotation = GetActorRotation();
-
-	FRotator DeltaRotation = ControlRotation - ActorRotation;
-	AimYaw = FMath::ClampAngle(DeltaRotation.Yaw, AimYawClampMin, AimYawClampMax);
-	AimPitch = FMath::ClampAngle(DeltaRotation.Pitch, AimPitchClampMin, AimPitchClampMax);
-
-	UCharacterMovementComponent* MovementComp = GetCharacterMovement();
-	if (MovementComp)
-	{
-		FVector Velocity = MovementComp->Velocity;
-
-		if (Velocity.Size() > 0 && !GetIsFreeLooking())
-		{
-			// No aim offsets when moving unless aiming a bow/spell or free looking
-			bIsReorientingBody = false;
-			UseControllerDesiredRotation(true);
-		}
-		else
-		{
-			if (!bIsReorientingBody)
-			{
-				if (FMath::Abs(AimYaw) >= AimYawTurnStart && !GetIsFreeLooking())
-				{
-					bIsReorientingBody = true;
-					UseControllerDesiredRotation(true);
-				}
-				else
-				{
-					// Allow aim offsets when not moving
-					UseControllerDesiredRotation(false);
-				}
-			}
-			else if (bIsReorientingBody && FMath::Abs(AimYaw) <= AimYawTurnStop)
-			{
-				bIsReorientingBody = false;
-			}
-		}
-	}
-}
-
 void ADungeonCharacter::Server_AttachActorToSocket_Implementation(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation)
 {
 	Multicast_AttachActorToSocket(Actor, SocketName, RelativePosition, RelativeRotation);
@@ -1115,6 +714,11 @@ bool ADungeonCharacter::Server_DetachActor_Validate(AActor* Actor)
 UModularCharacterMeshComponent* ADungeonCharacter::GetModularCharacterMeshComponent()
 {
 	return ModularCharacterMesh;
+}
+
+UCharacterAnimationComponent* ADungeonCharacter::GetAnimationComponent()
+{
+	return AnimationComponent;
 }
 
 URenderCaptureComponent* ADungeonCharacter::GetRenderCaptureComponent()

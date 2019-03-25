@@ -38,8 +38,8 @@ void UDungeonCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	if (OwningCharacter)
 	{
-		MovementSpeed = OwningCharacter->GetMovementVelocity().Size();
-		MovementDirection = OwningCharacter->GetMovementDirection();
+		MovementSpeed = OwningCharacter->GetAnimationComponent()->GetMovementVelocity().Size();
+		MovementDirection = OwningCharacter->GetAnimationComponent()->GetMovementDirection();
 
 		if (OwningCharacterMovement)
 		{
@@ -54,11 +54,11 @@ void UDungeonCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 			}
 		}
 
-		bIsReorientingBody = OwningCharacter->GetIsReorientingBody();
+		bIsReorientingBody = OwningCharacter->GetAnimationComponent()->GetIsReorientingBody();
 		bIsCrouched = OwningCharacter->bIsCrouched;
-		bIsJumping = OwningCharacter->GetIsJumping();
+		bIsJumping = OwningCharacter->GetAnimationComponent()->GetIsJumping();
 		bIsMontagePlaying = IsAnyMontagePlaying();
-		bIsFreeLooking = OwningCharacter->GetIsFreeLooking();
+		bIsFreeLooking = OwningCharacter->GetAnimationComponent()->GetIsFreeLooking();
 
 		if (MovementSpeed == 0 || bIsFreeLooking)
 		{
@@ -78,7 +78,7 @@ void UDungeonCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 		// Calculate how much the yaw has changed from the previous frame
 		float PreviousAimYawTarget = AimYawTarget;
-		AimYawTarget = OwningCharacter->GetAimYaw();
+		AimYawTarget = OwningCharacter->GetAnimationComponent()->GetAimYaw();
 		// If it has exceeded the defined threshold, we will lerp to the aim offset to prevent jerky aiming animations
 		if (FMath::Abs(PreviousAimYawTarget - AimYawTarget) > AimYawDeltaLerpStart)
 		{
@@ -100,7 +100,7 @@ void UDungeonCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 			AimYaw = AimYawTarget;
 		}
 
-		AimPitch = OwningCharacter->GetAimPitch();
+		AimPitch = OwningCharacter->GetAnimationComponent()->GetAimPitch();
 	}
 }
 
@@ -109,7 +109,7 @@ void UDungeonCharacterAnimInstance::UpdateAnimationResources()
 	if (OwningCharacter)
 	{
 		// Check if any animations or blend spaces have changed since the last frame, and set timers for proper blending
-		UBlendSpace* NewStandingMovementBlendSpace = OwningCharacter->GetCombatStandingMovementBlendSpace();
+		UBlendSpace* NewStandingMovementBlendSpace = OwningCharacter->GetAnimationComponent()->GetCombatStandingMovementBlendSpace();
 		if (StandingMovementBlendSpace == nullptr)
 		{
 			StandingMovementBlendSpace = NewStandingMovementBlendSpace;
@@ -124,7 +124,7 @@ void UDungeonCharacterAnimInstance::UpdateAnimationResources()
 			GetWorld()->GetTimerManager().SetTimer(ResetStandingBlendSpaceChangeHandle, this, &UDungeonCharacterAnimInstance::ResetStandingBlendSpaceChange, BlendSpaceChangeBlendTime, false);
 		}
 
-		UBlendSpace* NewCrouchingMovementBlendSpace = OwningCharacter->GetCombatCrouchingMovementBlendSpace();
+		UBlendSpace* NewCrouchingMovementBlendSpace = OwningCharacter->GetAnimationComponent()->GetCombatCrouchingMovementBlendSpace();
 		if (CrouchingMovementBlendSpace == nullptr)
 		{
 			CrouchingMovementBlendSpace = NewCrouchingMovementBlendSpace;
@@ -139,7 +139,7 @@ void UDungeonCharacterAnimInstance::UpdateAnimationResources()
 			GetWorld()->GetTimerManager().SetTimer(ResetCrouchingBlendSpaceChangeHandle, this, &UDungeonCharacterAnimInstance::ResetCrouchingBlendSpaceChange, BlendSpaceChangeBlendTime, false);
 		}
 
-		UAnimSequence* NewJumpingAnimation = OwningCharacter->GetCombatJumpingAnimation();
+		UAnimSequence* NewJumpingAnimation = OwningCharacter->GetAnimationComponent()->GetCombatJumpingAnimation();
 		if (JumpingAnimation == nullptr)
 		{
 			JumpingAnimation = NewJumpingAnimation;
@@ -154,7 +154,7 @@ void UDungeonCharacterAnimInstance::UpdateAnimationResources()
 			GetWorld()->GetTimerManager().SetTimer(ResetJumpingAnimationChangeHandle, this, &UDungeonCharacterAnimInstance::ResetJumpingAnimationChange, BlendSpaceChangeBlendTime, false);
 		}
 
-		UBlendSpace1D* NewFallingBlendSpace = OwningCharacter->GetCombatFallingBlendSpace();
+		UBlendSpace1D* NewFallingBlendSpace = OwningCharacter->GetAnimationComponent()->GetCombatFallingBlendSpace();
 		if (FallingBlendSpace == nullptr)
 		{
 			FallingBlendSpace = NewFallingBlendSpace;
@@ -169,7 +169,7 @@ void UDungeonCharacterAnimInstance::UpdateAnimationResources()
 			GetWorld()->GetTimerManager().SetTimer(ResetFallingBlendSpaceChangeHandle, this, &UDungeonCharacterAnimInstance::ResetFallingBlendSpaceChange, BlendSpaceChangeBlendTime, false);
 		}
 
-		UBlendSpace* NewLandingBlendSpace = OwningCharacter->GetCombatLandingBlendSpace();
+		UBlendSpace* NewLandingBlendSpace = OwningCharacter->GetAnimationComponent()->GetCombatLandingBlendSpace();
 		if (LandingBlendSpace == nullptr)
 		{
 			LandingBlendSpace = NewLandingBlendSpace;
