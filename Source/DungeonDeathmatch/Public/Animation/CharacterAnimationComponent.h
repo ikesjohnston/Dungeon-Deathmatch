@@ -11,7 +11,7 @@
 class UBlendSpace;
 class UBlendSpace1D;
 class UAnimSequence;
-class ADungeonCharacter;
+class APlayerCharacter;
 
 /**
  * Enum for movement direction used for implementing certain gameplay abilities in blueprint
@@ -131,8 +131,8 @@ protected:
 	float AimPitchClampMax;
 
 private:
-	/** The character that this component is attached to */
-	ADungeonCharacter* OwningCharacter;
+	/** The player character that this component is attached to */
+	APlayerCharacter* OwningCharacter;
 
 public:	
 	// Sets default values for this component's properties

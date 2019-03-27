@@ -40,7 +40,7 @@ protected:
 public:
 	ACharacterRenderCapture2D* GetRenderCaptureActor();
 
-	void UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* Mesh);
+	void UpdateMeshSegment(EHumanoidMeshSegment MeshSegment, USkeletalMesh* Mesh);
 
 	void AttachActorToSocket(AActor* Actor, FName SocketName, FVector RelativeLocation, FRotator RelativeRotation);
 

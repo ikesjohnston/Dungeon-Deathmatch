@@ -1,10 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "AnimNotifyState_SwingWeapon.h"
-#include "DungeonCharacter.h"
-#include <Components/SkeletalMeshComponent.h>
 #include "EquipmentComponent.h"
 #include "Weapon.h"
+
+#include <Components/SkeletalMeshComponent.h>
 
 UAnimNotifyState_SwingWeapon::UAnimNotifyState_SwingWeapon(const FObjectInitializer& ObjectInitializer)
 {
@@ -12,10 +12,10 @@ UAnimNotifyState_SwingWeapon::UAnimNotifyState_SwingWeapon(const FObjectInitiali
 
 void UAnimNotifyState_SwingWeapon::NotifyBegin(class USkeletalMeshComponent* MeshComp, class UAnimSequenceBase* Animation, float TotalDuration)
 {
-	ADungeonCharacter* Character = Cast<ADungeonCharacter>(MeshComp->GetOwner());
-	if (Character)
+	APawn* Pawn = Cast<APawn>(MeshComp->GetOwner());
+	if (Pawn && Pawn->HasAuthority())
 	{
-		UEquipmentComponent* EquipmentComponent = Character->GetEquipmentComponent();
+		UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(Pawn->GetComponentByClass(UEquipmentComponent::StaticClass()));
 		if (EquipmentComponent)
 		{
 			FWeaponLoadout ActiveWeaponLoadout = EquipmentComponent->GetActiveWeaponLoadout();

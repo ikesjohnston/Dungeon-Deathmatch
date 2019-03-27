@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
-#include "DungeonCharacter.h"
 #include "MeshEnums.h"
 #include "CharacterRenderCapture2D.generated.h"
 
@@ -27,72 +26,25 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mesh")
 	UStaticMeshComponent* RootMeshComponent;
 
-	/********************************************************* BEGIN CHARACTER MESH SEGMENT VARIABLES *********************************************************/
-
-	/** The master skeletal mesh component */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentMaster;
-
-	/** The skeletal mesh component that stores the helm mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentHelm;
-
-	/** The skeletal mesh component that stores the hair mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentHair;
-
-	/** The skeletal mesh component that stores the head mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentHead;
-
-	/** The skeletal mesh component that stores the left shoulder mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentShoulderLeft;
-
-	/** The skeletal mesh component that stores the right shoulder mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentShoulderRight;
-
-	/** The skeletal mesh component that stores the torso mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentTorso;
-
-	/** The skeletal mesh component that stores the chest armor mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentChestArmor;
-
-	/** The skeletal mesh component that stores the left hand mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentHandLeft;
-
-	/** The skeletal mesh component that stores the right hand mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentHandRight;
-
-	/** The skeletal mesh component that stores the belt mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentBelt;
-
-	/** The skeletal mesh component that stores the legs mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentLegs;
-
-	/** The skeletal mesh component that stores the leg armor mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentLegArmor;
-
-	/** The skeletal mesh component that stores the left mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentFootLeft;
-
-	/** The skeletal mesh component that stores the right foot mesh segment */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh")
 	USkeletalMeshComponent* MeshComponentFootRight;
 
 	/** Mapping of mesh segment to mesh component, for updating the character mesh with new equipment */
-	TMap<EMeshSegment, USkeletalMeshComponent*> MeshComponentMap;
+	TMap<EHumanoidMeshSegment, USkeletalMeshComponent*> MeshComponentMap;
 
-	/********************************************************* END CHARACTER MESH SEGMENTS VARIABLES **********************************************************/
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Scene Capture")
 	UCameraComponent* CameraComponent;
@@ -136,33 +88,15 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	void InitializeCharacter(ADungeonCharacter* Character);
+	void InitializeRender(AActor* CapturedActor);
 
-	/**
-	 * Updates the captured mesh with the specified mesh segment
-	 *
-	 * @param MeshSegment The mesh segment to alter
-	 * @param Mesh The mesh to update the segment to, will use a default mesh if this is nullptr
-	 */
-	void UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh);
+	void UpdateMeshSegment(EHumanoidMeshSegment MeshSegment, USkeletalMesh* NewMesh);
 
-	/**
-	 * Attach an actor to the character mesh at the specified socket
-	 *
-	 * @param Actor The actor to attach
-	 * @param SocketName The name of the socket to attach the actor to
-	 */
 	void AttachActorToSocket(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation);
 
-	/**
-	 * Detach an actor from the character mesh
-	 *
-	 * @param Actor The actor to detach
-	 */
 	void DetachActor(AActor* Actor);
 
-	/** Gets the render target texture created at runtime for scene capture */
-	UTextureRenderTarget2D* GetRenderTargetTexture();
+	UTextureRenderTarget2D* GetRenderTargetTexture() { return RenderTargetTexture; };
 
 	/** Adds yaw input to the character mesh */
 	UFUNCTION(BlueprintCallable)

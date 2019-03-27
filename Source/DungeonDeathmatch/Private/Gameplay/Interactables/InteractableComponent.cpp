@@ -1,54 +1,54 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "InteractionComponent.h"
+#include "InteractableComponent.h"
+
 #include <Components/MeshComponent.h>
 
 // Sets default values for this component's properties
-UInteractionComponent::UInteractionComponent()
+UInteractableComponent::UInteractableComponent()
 {
 	bReplicates = true;
 }
 
-
 // Called when the game starts
-void UInteractionComponent::BeginPlay()
+void UInteractableComponent::BeginPlay()
 {
 	Super::BeginPlay();
 }
 
-void UInteractionComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void UInteractableComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UInteractionComponent, bCanInteract);
+	DOREPLIFETIME(UInteractableComponent, bCanInteract);
 }
 
-bool UInteractionComponent::GetCanInteract()
+bool UInteractableComponent::GetCanInteract()
 {
 	return bCanInteract;
 }
 
-FText UInteractionComponent::GetInteractionPromptText()
+FText UInteractableComponent::GetInteractionPromptText()
 {
 	return InteractionPromptText;
 }
 
-void UInteractionComponent::SetInteractionPromptText(FText NewInteractionPromptText)
+void UInteractableComponent::SetInteractionPromptText(FText NewInteractionPromptText)
 {
 	InteractionPromptText = NewInteractionPromptText;
 }
 
-FText UInteractionComponent::GetInteractableName()
+FText UInteractableComponent::GetInteractableName()
 {
 	return InteractableName;
 }
 
-void UInteractionComponent::SetInteractableName(FText NewInteractableName)
+void UInteractableComponent::SetInteractableName(FText NewInteractableName)
 {
 	InteractableName = NewInteractableName;
 }
 
-void UInteractionComponent::SetMeshStencilValue()
+void UInteractableComponent::SetMeshStencilValue()
 {
 	
 	AActor* Owner = GetOwner();
@@ -68,12 +68,12 @@ void UInteractionComponent::SetMeshStencilValue()
 	
 }
 
-void UInteractionComponent::Server_SetCanInteract_Implementation(bool CanInteract)
+void UInteractableComponent::ServerSetCanInteract_Implementation(bool CanInteract)
 {
 	bCanInteract = CanInteract;
 }
 
-bool UInteractionComponent::Server_SetCanInteract_Validate(bool CanInteract)
+bool UInteractableComponent::ServerSetCanInteract_Validate(bool CanInteract)
 {
 	return true;
 }

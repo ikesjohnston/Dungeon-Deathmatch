@@ -4,6 +4,8 @@
 #include "DungeonPlayerController.h"
 #include "DungeonCharacter.h"
 #include "InteractiveCharacterRenderWidget.h"
+#include "RenderCaptureComponent.h"
+#include "InventoryGridWidget.h"
 
 UInventoryMenuWidget::UInventoryMenuWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -45,13 +47,18 @@ void UInventoryMenuWidget::BindToController()
 		ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
 		if (Character)
 		{
+			InventoryGrid->BindToSource(Character);
 			if (InteractiveCharacterRender)
 			{
-				ACharacterRenderCapture2D* RenderCaptureActor = Character->GetRenderCaptureActor();
-				if (RenderCaptureActor)
+				URenderCaptureComponent* RenderCaptureComponent = Cast<URenderCaptureComponent>(Character->GetComponentByClass(URenderCaptureComponent::StaticClass()));
+				if (RenderCaptureComponent)
 				{
-					InteractiveCharacterRender->SetRenderCaptureActor(RenderCaptureActor);
-					bIsSlotBound = true;
+					ACharacterRenderCapture2D* RenderCaptureActor = RenderCaptureComponent->GetRenderCaptureActor();
+					if (RenderCaptureActor)
+					{
+						InteractiveCharacterRender->SetRenderCaptureActor(RenderCaptureActor);
+						bIsSlotBound = true;
+					}
 				}
 			}
 		}

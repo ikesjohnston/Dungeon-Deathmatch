@@ -1,10 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "CharacterAnimationComponent.h"
-#include "DungeonCharacter.h"
+#include "PlayerCharacter.h"
+#include "EquipmentComponent.h"
+#include "EquipmentGlobals.h"
 
 #include <GameFramework/MovementComponent.h>
-#include "EquipmentGlobals.h"
 
 #define CARDINAL_MOVEMENT_FORWARD_MAX 22.5f
 #define CARDINAL_MOVEMENT_FORWARD_RIGHT_MAX 67.5f
@@ -15,10 +16,10 @@
 // Sets default values for this component's properties
 UCharacterAnimationComponent::UCharacterAnimationComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
 	bReplicates = true;
 
-	OwningCharacter = Cast<ADungeonCharacter>(GetOwner());
+	OwningCharacter = Cast<APlayerCharacter>(GetOwner());
 	if (!OwningCharacter)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UPlayerCombatComponent::UPlayerCombatComponent - OwningCharacter is null."))
@@ -223,30 +224,34 @@ UBlendSpace* UCharacterAnimationComponent::GetCombatStandingMovementBlendSpace()
 {
 	if (OwningCharacter->GetCombatComponent()->GetCombatState() != ECombatState::Sheathed)
 	{
-		FWeaponLoadout ActiveLoadout = OwningCharacter->GetEquipmentComponent()->GetActiveWeaponLoadout();
+		UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(OwningCharacter->GetComponentByClass(UEquipmentComponent::StaticClass()));
+		if (EquipmentComponent)
+		{
+			FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
 
-		if (ActiveLoadout.MainHandWeapon)
-		{
-			UBlendSpace* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatStandingMovementBlendSpaceOverride();
-			if (BlendSpace)
+			if (ActiveLoadout.MainHandWeapon)
 			{
-				return BlendSpace;
+				UBlendSpace* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatStandingMovementBlendSpaceOverride();
+				if (BlendSpace)
+				{
+					return BlendSpace;
+				}
 			}
-		}
-		else if (ActiveLoadout.OffHandWeapon)
-		{
-			UBlendSpace* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatStandingMovementBlendSpaceOverride();
-			if (BlendSpace)
+			else if (ActiveLoadout.OffHandWeapon)
 			{
-				return BlendSpace;
+				UBlendSpace* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatStandingMovementBlendSpaceOverride();
+				if (BlendSpace)
+				{
+					return BlendSpace;
+				}
 			}
-		}
 
-		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
-		UBlendSpace** BlendSpacePtr = CombatStandingMovementBlendSpaceMap.Find(LoadoutType);
-		if (BlendSpacePtr)
-		{
-			return *BlendSpacePtr;
+			ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
+			UBlendSpace** BlendSpacePtr = CombatStandingMovementBlendSpaceMap.Find(LoadoutType);
+			if (BlendSpacePtr)
+			{
+				return *BlendSpacePtr;
+			}
 		}
 	}
 
@@ -257,30 +262,34 @@ UBlendSpace* UCharacterAnimationComponent::GetCombatCrouchingMovementBlendSpace(
 {
 	if (OwningCharacter->GetCombatComponent()->GetCombatState() != ECombatState::Sheathed)
 	{
-		FWeaponLoadout ActiveLoadout = OwningCharacter->GetEquipmentComponent()->GetActiveWeaponLoadout();
+		UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(OwningCharacter->GetComponentByClass(UEquipmentComponent::StaticClass()));
+		if (EquipmentComponent)
+		{
+			FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
 
-		if (ActiveLoadout.MainHandWeapon)
-		{
-			UBlendSpace* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatCrouchingMovementBlendSpaceOverride();
-			if (BlendSpace)
+			if (ActiveLoadout.MainHandWeapon)
 			{
-				return BlendSpace;
+				UBlendSpace* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatCrouchingMovementBlendSpaceOverride();
+				if (BlendSpace)
+				{
+					return BlendSpace;
+				}
 			}
-		}
-		else if (ActiveLoadout.OffHandWeapon)
-		{
-			UBlendSpace* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatCrouchingMovementBlendSpaceOverride();
-			if (BlendSpace)
+			else if (ActiveLoadout.OffHandWeapon)
 			{
-				return BlendSpace;
+				UBlendSpace* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatCrouchingMovementBlendSpaceOverride();
+				if (BlendSpace)
+				{
+					return BlendSpace;
+				}
 			}
-		}
 
-		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
-		UBlendSpace** BlendSpacePtr = CombatCrouchingMovementBlendSpaceMap.Find(LoadoutType);
-		if (BlendSpacePtr)
-		{
-			return *BlendSpacePtr;
+			ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
+			UBlendSpace** BlendSpacePtr = CombatCrouchingMovementBlendSpaceMap.Find(LoadoutType);
+			if (BlendSpacePtr)
+			{
+				return *BlendSpacePtr;
+			}
 		}
 	}
 
@@ -291,30 +300,34 @@ UAnimSequence* UCharacterAnimationComponent::GetCombatJumpingAnimation()
 {
 	if (OwningCharacter->GetCombatComponent()->GetCombatState() != ECombatState::Sheathed)
 	{
-		FWeaponLoadout ActiveLoadout = OwningCharacter->GetEquipmentComponent()->GetActiveWeaponLoadout();
+		UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(OwningCharacter->GetComponentByClass(UEquipmentComponent::StaticClass()));
+		if (EquipmentComponent)
+		{
+			FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
 
-		if (ActiveLoadout.MainHandWeapon)
-		{
-			UAnimSequence* AnimSequence = ActiveLoadout.MainHandWeapon->GetCombatJumpAnimationOverride();
-			if (AnimSequence)
+			if (ActiveLoadout.MainHandWeapon)
 			{
-				return AnimSequence;
+				UAnimSequence* AnimSequence = ActiveLoadout.MainHandWeapon->GetCombatJumpAnimationOverride();
+				if (AnimSequence)
+				{
+					return AnimSequence;
+				}
 			}
-		}
-		else if (ActiveLoadout.OffHandWeapon)
-		{
-			UAnimSequence* AnimSequence = ActiveLoadout.OffHandWeapon->GetCombatJumpAnimationOverride();
-			if (AnimSequence)
+			else if (ActiveLoadout.OffHandWeapon)
 			{
-				return AnimSequence;
+				UAnimSequence* AnimSequence = ActiveLoadout.OffHandWeapon->GetCombatJumpAnimationOverride();
+				if (AnimSequence)
+				{
+					return AnimSequence;
+				}
 			}
-		}
 
-		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
-		UAnimSequence** AnimSequencePtr = CombatJumpingAnimationMap.Find(LoadoutType);
-		if (AnimSequencePtr)
-		{
-			return *AnimSequencePtr;
+			ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
+			UAnimSequence** AnimSequencePtr = CombatJumpingAnimationMap.Find(LoadoutType);
+			if (AnimSequencePtr)
+			{
+				return *AnimSequencePtr;
+			}
 		}
 	}
 
@@ -325,30 +338,34 @@ UBlendSpace1D* UCharacterAnimationComponent::GetCombatFallingBlendSpace()
 {
 	if (OwningCharacter->GetCombatComponent()->GetCombatState() != ECombatState::Sheathed)
 	{
-		FWeaponLoadout ActiveLoadout = OwningCharacter->GetEquipmentComponent()->GetActiveWeaponLoadout();
+		UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(OwningCharacter->GetComponentByClass(UEquipmentComponent::StaticClass()));
+		if (EquipmentComponent)
+		{
+			FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
 
-		if (ActiveLoadout.MainHandWeapon)
-		{
-			UBlendSpace1D* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatFallingBlendSpaceOverride();
-			if (BlendSpace)
+			if (ActiveLoadout.MainHandWeapon)
 			{
-				return BlendSpace;
+				UBlendSpace1D* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatFallingBlendSpaceOverride();
+				if (BlendSpace)
+				{
+					return BlendSpace;
+				}
 			}
-		}
-		else if (ActiveLoadout.OffHandWeapon)
-		{
-			UBlendSpace1D* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatFallingBlendSpaceOverride();
-			if (BlendSpace)
+			else if (ActiveLoadout.OffHandWeapon)
 			{
-				return BlendSpace;
+				UBlendSpace1D* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatFallingBlendSpaceOverride();
+				if (BlendSpace)
+				{
+					return BlendSpace;
+				}
 			}
-		}
 
-		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
-		UBlendSpace1D** BlendSpacePtr = CombatFallingBlendSpaceMap.Find(LoadoutType);
-		if (BlendSpacePtr)
-		{
-			return *BlendSpacePtr;
+			ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
+			UBlendSpace1D** BlendSpacePtr = CombatFallingBlendSpaceMap.Find(LoadoutType);
+			if (BlendSpacePtr)
+			{
+				return *BlendSpacePtr;
+			}
 		}
 	}
 
@@ -359,30 +376,34 @@ UBlendSpace* UCharacterAnimationComponent::GetCombatLandingBlendSpace()
 {
 	if (OwningCharacter->GetCombatComponent()->GetCombatState() != ECombatState::Sheathed)
 	{
-		FWeaponLoadout ActiveLoadout = OwningCharacter->GetEquipmentComponent()->GetActiveWeaponLoadout();
+		UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(OwningCharacter->GetComponentByClass(UEquipmentComponent::StaticClass()));
+		if (EquipmentComponent)
+		{
+			FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
 
-		if (ActiveLoadout.MainHandWeapon)
-		{
-			UBlendSpace* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatLandingBlendSpaceOverride();
-			if (BlendSpace)
+			if (ActiveLoadout.MainHandWeapon)
 			{
-				return BlendSpace;
+				UBlendSpace* BlendSpace = ActiveLoadout.MainHandWeapon->GetCombatLandingBlendSpaceOverride();
+				if (BlendSpace)
+				{
+					return BlendSpace;
+				}
 			}
-		}
-		else if (ActiveLoadout.OffHandWeapon)
-		{
-			UBlendSpace* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatLandingBlendSpaceOverride();
-			if (BlendSpace)
+			else if (ActiveLoadout.OffHandWeapon)
 			{
-				return BlendSpace;
+				UBlendSpace* BlendSpace = ActiveLoadout.OffHandWeapon->GetCombatLandingBlendSpaceOverride();
+				if (BlendSpace)
+				{
+					return BlendSpace;
+				}
 			}
-		}
 
-		ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
-		UBlendSpace** BlendSpacePtr = CombatLandingBlendSpaceMap.Find(LoadoutType);
-		if (BlendSpacePtr)
-		{
-			return *BlendSpacePtr;
+			ELoadoutType LoadoutType = UDungeonEquipmentLibrary::GetLoadoutType(ActiveLoadout);
+			UBlendSpace** BlendSpacePtr = CombatLandingBlendSpaceMap.Find(LoadoutType);
+			if (BlendSpacePtr)
+			{
+				return *BlendSpacePtr;
+			}
 		}
 	}
 

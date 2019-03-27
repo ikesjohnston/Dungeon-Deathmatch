@@ -5,16 +5,10 @@
 #include "CoreMinimal.h"
 
 #include "Equippable.h"
-#include "DungeonCharacter.h"
 #include "EquipmentGlobals.h"
 #include "MeshEnums.h"
 #include "Armor.generated.h"
 
-class USkeletalMeshComponent;
-
-/**
- * 
- */
 UCLASS()
 class DUNGEONDEATHMATCH_API AArmor : public AEquippable
 {
@@ -27,10 +21,9 @@ protected:
 
 	/* The mapping of meshes that will be displayed on the character while this armor is equipped */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Armor")
-	TMap<EMeshSegment, USkeletalMesh*> ArmorMeshMap;
+	TMap<EHumanoidMeshSegment, USkeletalMesh*> ArmorMeshMap;
 
 public:
-	// Sets default values for this actor's properties
 	AArmor(const FObjectInitializer& ObjectInitializer);
 
 	virtual ~AArmor();
@@ -41,15 +34,13 @@ protected:
 public:
 	EArmorSlot GetArmorSlot();
 
-	TMap<EMeshSegment, USkeletalMesh*> GetArmorMeshMap();
+	TMap<EHumanoidMeshSegment, USkeletalMesh*> GetArmorMeshMap();
 
 protected:
-	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
-	virtual void ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot) override;
-	virtual void MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot) override;
+	virtual void ServerOnEquip_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot) override;
+	virtual void MulticastOnEquip_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot) override;
 
 	virtual void ServerOnUnequip_Implementation() override;
 	virtual void MulticastOnUnequip_Implementation() override;
-	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
 
 };

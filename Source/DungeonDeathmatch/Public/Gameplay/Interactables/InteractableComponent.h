@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "InteractionComponent.generated.h"
+#include "InteractableComponent.generated.h"
 
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class DUNGEONDEATHMATCH_API UInteractionComponent : public UActorComponent
+class DUNGEONDEATHMATCH_API UInteractableComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
@@ -30,7 +30,7 @@ protected:
 
 public:	
 	// Sets default values for this component's properties
-	UInteractionComponent();
+	UInteractableComponent();
 
 protected:
 	// Called when the game starts
@@ -42,7 +42,7 @@ public:
 	 * @param CanInteract Whether the actor should be interactable.
 	 */
 	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_SetCanInteract(bool CanInteract);
+	void ServerSetCanInteract(bool CanInteract);
 
 	bool GetCanInteract();
 

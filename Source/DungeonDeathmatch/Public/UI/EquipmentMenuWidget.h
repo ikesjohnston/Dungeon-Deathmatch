@@ -4,15 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+
 #include "Equippable.h"
 #include "EquipmentMenuWidget.generated.h"
 
 class UEquipmentSlotWidget;
 class UDraggableItemWidget;
 
-/**
- * 
- */
 UCLASS()
 class DUNGEONDEATHMATCH_API UEquipmentMenuWidget : public UUserWidget
 {

@@ -8,13 +8,13 @@
 #include "DungeonCursorWidget.h"
 #include "DungeonPlayerController.generated.h"
 
-class UInteractable;
+class UInteractableInterface;
 class AItem;
 class UDungeonCursorWidget;
 class UDraggableItemWidget;
 class ACharacterRenderCapture2D;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractableFocusedSignature, class UInteractable*, Interactable);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractableFocusedSignature, class UInteractableInterface*, Interactable);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInteractableUnfocusedSignature);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBeginItemDragSignature, class AItem*, Item);
@@ -172,7 +172,7 @@ protected:
 	 * @param Actor The interactable actor to set as the focus
 	 */
 	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_SetFocusedInteractable(AActor* Actor);
+	void ServerSetFocusedInteractable(AActor* Actor);
 
 	/**
 	 * Sets if the pawn is allowed to control the camera, used to disable camera input while UI menus are open and the cursor is active

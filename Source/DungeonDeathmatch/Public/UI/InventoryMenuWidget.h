@@ -28,8 +28,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (BindWidget))
 	UInteractiveCharacterRenderWidget* InteractiveCharacterRender;
 
-	// ----------------------------------------- BEGIN EQUIPMENT WIDGET VARIABLES -----------------------------------------
-
 	/** The equipment slot widget for head equipment */
 	UPROPERTY(meta = (BindWidget))
 	UEquipmentSlotWidget* EquipmentSlotHead;
@@ -88,8 +86,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
 	TMap<EEquipmentSlot, UEquipmentSlotWidget*> EquipmentSlots;
-
-	// ----------------------------------------- END EQUIPMENT WIDGET VARIABLES -----------------------------------------
 
 	/** The time, in seconds, to wait before retrying binding on failure */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment")

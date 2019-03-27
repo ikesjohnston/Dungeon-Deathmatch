@@ -4,14 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+
 #include "InventoryGlobals.h"
 #include "InventoryGridWidget.generated.h"
 
 class UInventoryGridSlotWidget;
 class UDraggableItemWidget;
+class AItem;
+class UInventoryComponent;
+class UEquipmentComponent;
+
 class UGridPanel;
 class UCanvasPanel;
-class AItem;
 class USoundCue;
 
 /**
@@ -68,10 +72,16 @@ private:
 	/** Used to only clear highlights when they are active */
 	bool bWereSlotsHighlightedLastFrame;
 
+	UInventoryComponent* SourceInventoryComponent;
+	UEquipmentComponent* SourceEquipmentComponent;
+
 public:
 	UInventoryGridWidget(const FObjectInitializer& ObjectInitializer);
 
 	virtual bool Initialize() override;
+
+	/** Attempts to bind the widget to a particular source's InventoryComponent*/
+	void BindToSource(AActor* Source);
 
 	/**
 	 * Initializes individual grid slot widgets and adds them to the inventory grid

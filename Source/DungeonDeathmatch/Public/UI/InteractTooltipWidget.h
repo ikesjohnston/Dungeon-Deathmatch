@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "Interactable.h"
+#include "InteractableInterface.h"
 #include "InteractTooltipWidget.generated.h"
 
 class UItemTooltipWidget;

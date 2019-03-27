@@ -1,8 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Armor.h"
+
 #include <Components/SkeletalMeshComponent.h>
 #include <WidgetComponent.h>
+#include "ModularHumanoidMeshComponent.h"
 
 AArmor::AArmor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -25,35 +27,43 @@ EArmorSlot AArmor::GetArmorSlot()
 	return ArmorSlot;
 }
 
-TMap<EMeshSegment, USkeletalMesh*> AArmor::GetArmorMeshMap()
+TMap<EHumanoidMeshSegment, USkeletalMesh*> AArmor::GetArmorMeshMap()
 {
 	return ArmorMeshMap;
 }
 
-void AArmor::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
+void AArmor::ServerOnEquip_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot)
 {
-	if (Role == ROLE_Authority)
+	if (HasAuthority())
 	{
-		Super::ServerOnEquip_Implementation(NewEquippingCharacter, EquipmentSlot);
-		for (TTuple<EMeshSegment, USkeletalMesh*> Tuple : ArmorMeshMap)
+		Super::ServerOnEquip_Implementation(InEquippingActor, EquipmentSlot);
+		UModularHumanoidMeshComponent* HumanoidMeshComponent = Cast<UModularHumanoidMeshComponent>(InEquippingActor->GetComponentByClass(UModularHumanoidMeshComponent::StaticClass()));
+		if (HumanoidMeshComponent)
 		{
-			EquippingCharacter->GetModularCharacterMeshComponent()->ServerUpdateMeshSegment(Tuple.Key, Tuple.Value);
+			for (TTuple<EHumanoidMeshSegment, USkeletalMesh*> Tuple : ArmorMeshMap)
+			{
+				HumanoidMeshComponent->ServerUpdateMeshSegment(Tuple.Key, Tuple.Value);
+			}
 		}
 	}
 }
 
-void AArmor::MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
+void AArmor::MulticastOnEquip_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot)
 {
-	Super::MulticastOnEquip_Implementation(NewEquippingCharacter, EquipmentSlot);
+	Super::MulticastOnEquip_Implementation(InEquippingActor, EquipmentSlot);
 }
 
 void AArmor::ServerOnUnequip_Implementation()
 {
-	if (Role == ROLE_Authority)
+	if (HasAuthority())
 	{
-		for (TTuple<EMeshSegment, USkeletalMesh*> Tuple : ArmorMeshMap)
+		UModularHumanoidMeshComponent* HumanoidMeshComponent = Cast<UModularHumanoidMeshComponent>(EquippingActor->GetComponentByClass(UModularHumanoidMeshComponent::StaticClass()));
+		if (HumanoidMeshComponent)
 		{
-			EquippingCharacter->GetModularCharacterMeshComponent()->ServerUpdateMeshSegment(Tuple.Key, nullptr);
+			for (TTuple<EHumanoidMeshSegment, USkeletalMesh*> Tuple : ArmorMeshMap)
+			{
+				HumanoidMeshComponent->ServerUpdateMeshSegment(Tuple.Key, nullptr);
+			}
 		}
 		Super::ServerOnUnequip_Implementation();
 	}

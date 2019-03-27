@@ -3,15 +3,17 @@
 #include "InGameOverlayWidget.h"
 #include "CharacterMenuWidget.h"
 #include "InventoryMenuWidget.h"
+#include "InventoryComponent.h"
 #include "DungeonCharacter.h"
 #include "DungeonPlayerController.h"
-#include <Image.h>
-#include <Button.h>
-#include <BackgroundBlur.h>
 #include "DraggableItemWidget.h"
 #include "DragAndDropItemWidget.h"
 #include "Item.h"
 #include "CharacterRenderCapture2D.h"
+
+#include <Image.h>
+#include <Button.h>
+#include <BackgroundBlur.h>
 
 UInGameOverlayWidget::UInGameOverlayWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -193,7 +195,7 @@ void UInGameOverlayWidget::StopDragAndDropOperation(bool WasCanceled)
 				ADungeonCharacter* Character = Cast<ADungeonCharacter>(PlayerController->GetPawn());
 				if (Character)
 				{
-					Character->Server_RequestDropItem(DraggedItemWidget->GetItem(), false);
+//					Character->ServerRequestDropItem(DraggedItemWidget->GetItem(), false);
 				}
 			}
 		}
@@ -217,11 +219,11 @@ void UInGameOverlayWidget::CheckForItemDrop()
 		UDraggableItemWidget* DraggedItemWidget = PlayerController->GetDraggedItem();
 		if (DraggedItemWidget && DraggedItemWidget->GetItem())
 		{
-			ADungeonCharacter* Character = Cast<ADungeonCharacter>(PlayerController->GetPawn());
-			if (Character)
+			UInventoryComponent* InventoryComponent = Cast<UInventoryComponent>(PlayerController->GetPawn()->GetComponentByClass(UInventoryComponent::StaticClass()));
+			if (InventoryComponent)
 			{
 				AItem* DraggedItem = DraggedItemWidget->GetItem();
-				Character->Server_RequestDropItem(DraggedItem, false);
+				InventoryComponent->ServerRequestDropItem(DraggedItem);
 				UGameplayStatics::PlaySound2D(DraggedItem->GetWorld(), DraggedItem->GetInteractionSound());
 			}
 			PlayerController->StopDraggingItem(true);

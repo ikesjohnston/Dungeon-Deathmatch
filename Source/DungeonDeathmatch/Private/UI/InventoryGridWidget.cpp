@@ -2,22 +2,24 @@
 
 #include "InventoryGridWidget.h"
 #include "InventoryGridSlotWidget.h"
+#include "InventoryComponent.h"
+#include "EquipmentComponent.h"
+#include "DungeonPlayerController.h"
+#include "DungeonGameInstance.h"
+#include "DraggableItemWidget.h"
+#include "DungeonHUD.h"
+
 #include <GridPanel.h>
 #include <UserWidget.h>
 #include <GridSlot.h>
-#include "InventoryComponent.h"
-#include "DungeonPlayerController.h"
-#include "DungeonGameInstance.h"
 #include <CanvasPanel.h>
 #include <WidgetTree.h>
-#include "DraggableItemWidget.h"
 #include <WidgetLayoutLibrary.h>
 #include <SlateBlueprintLibrary.h>
 #include <Kismet/KismetSystemLibrary.h>
 #include <Reply.h>
-#include "DungeonCharacter.h"
 #include <WidgetBlueprintLibrary.h>
-#include "DungeonHUD.h"
+
 
 // Console command for debugging inventory grid widgets
 static int32 DebugInventoryGrid = 0;
@@ -31,31 +33,43 @@ UInventoryGridWidget::UInventoryGridWidget(const FObjectInitializer& ObjectIniti
 	: Super(ObjectInitializer)
 {
 	InventoryGridSize = FInventoryGridPair(6, 5);
-
 	InitializeGrid();
 }
 
 bool UInventoryGridWidget::Initialize()
 {
 	bool Result = Super::Initialize();
+	InitializeGrid();
+	return Result;
+}
 
-	// Get the player's inventory component and bind item add and remove events
-	ADungeonCharacter* OwningCharacter = Cast<ADungeonCharacter>(GetOwningPlayerPawn());
-	if (OwningCharacter)
+void UInventoryGridWidget::BindToSource(AActor* Source)
+{
+	if (InventoryGrid)
 	{
-		UInventoryComponent* InventoryComp = OwningCharacter->GetInventoryComponent();
-		if (InventoryComp)
-		{
-			InventoryGridSize = InventoryComp->GetInventoryGridSize();
-			InventoryComp->OnItemAdded.AddDynamic(this, &UInventoryGridWidget::AddItem);
-			InventoryComp->OnItemRemoved.AddDynamic(this, &UInventoryGridWidget::RemoveItem);
-			InventoryComp->OnInventorySizeChanged.AddDynamic(this, &UInventoryGridWidget::UpdateInventoryGridSize);
-		}
+		InventoryGrid->ClearChildren();
 	}
 
-	InitializeGrid();
+	if (SourceInventoryComponent)
+	{
+		InventoryGridSize = SourceInventoryComponent->GetInventoryGridSize();
+		SourceInventoryComponent->OnItemAdded.RemoveDynamic(this, &UInventoryGridWidget::AddItem);
+		SourceInventoryComponent->OnItemRemoved.RemoveDynamic(this, &UInventoryGridWidget::RemoveItem);
+		SourceInventoryComponent->OnInventorySizeChanged.RemoveDynamic(this, &UInventoryGridWidget::UpdateInventoryGridSize);
+	}
 
-	return Result;
+	SourceInventoryComponent = Cast<UInventoryComponent>(Source->GetComponentByClass(UInventoryComponent::StaticClass()));
+	if (SourceInventoryComponent)
+	{
+		InventoryGridSize = SourceInventoryComponent->GetInventoryGridSize();
+		SourceInventoryComponent->OnItemAdded.AddDynamic(this, &UInventoryGridWidget::AddItem);
+		SourceInventoryComponent->OnItemRemoved.AddDynamic(this, &UInventoryGridWidget::RemoveItem);
+		SourceInventoryComponent->OnInventorySizeChanged.AddDynamic(this, &UInventoryGridWidget::UpdateInventoryGridSize);
+	}
+
+	SourceEquipmentComponent = Cast<UEquipmentComponent>(Source->GetComponentByClass(UEquipmentComponent::StaticClass()));
+
+	InitializeGrid();
 }
 
 void UInventoryGridWidget::InitializeGrid()
@@ -270,53 +284,49 @@ void UInventoryGridWidget::UpdateInventoryGridSize(uint8 Rows, uint8 Columns)
 void UInventoryGridWidget::ProcessItemDragAndDrop()
 {
 	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
-	if (Controller)
+	if (Controller && SourceInventoryComponent)
 	{
-		ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
-		if (Character)
-		{
-			UDraggableItemWidget* DraggedItemWidget = Controller->GetDraggedItem();
-			UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
-			UDraggableItemWidget* ClickedItemWidget = Controller->GetClickedItem();
-			if (DraggedItemWidget && bIsSelectionValid) {
-				if (SelectedItemWidget)
-				{
-					// Selecting a replacement item to drag
-					Controller->StopDraggingItem(false);
-					SelectedItemWidget->StartDragging();
-					AItem* SelectedItem = SelectedItemWidget->GetItem();
-					if (SelectedItem)
-					{
-						Character->Server_RequestRemoveItemFromInventory(SelectedItem);
-					}
-					AItem* DraggedItem = DraggedItemWidget->GetItem();
-					if (DraggedItem)
-					{
-						Character->Server_RequestAddItemToInventoryAtLocation(DraggedItem, SelectionOrigin);
-						UGameplayStatics::PlaySound2D(Character->GetWorld(), DraggedItem->GetInteractionSound());
-					}
-					Controller->SetSelectedItem(nullptr);
-				}
-				else
-				{
-					// Trying to drop the item at the current location
-					AItem* DraggedItem = DraggedItemWidget->GetItem();
-					if (DraggedItem)
-					{
-						Character->Server_RequestAddItemToInventoryAtLocation(DraggedItem, SelectionOrigin);
-						UGameplayStatics::PlaySound2D(Character->GetWorld(), DraggedItem->GetInteractionSound());
-					}
-					Controller->StopDraggingItem(false);
-					Controller->SetSelectedItem(nullptr);
-				}
-			}
-			else if (ClickedItemWidget)
+		UDraggableItemWidget* DraggedItemWidget = Controller->GetDraggedItem();
+		UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
+		UDraggableItemWidget* ClickedItemWidget = Controller->GetClickedItem();
+		if (DraggedItemWidget && bIsSelectionValid) {
+			if (SelectedItemWidget)
 			{
-				// Selecting a new item to drag
-				ClickedItemWidget->StartDragging();
-				Character->Server_RequestRemoveItemFromInventory(ClickedItemWidget->GetItem());
-				UGameplayStatics::PlaySound2D(Character->GetWorld(), BeginDragSound);
+				// Selecting a replacement item to drag
+				Controller->StopDraggingItem(false);
+				SelectedItemWidget->StartDragging();
+				AItem* SelectedItem = SelectedItemWidget->GetItem();
+				if (SelectedItem)
+				{
+					SourceInventoryComponent->ServerRequestRemoveItemFromInventory(SelectedItem);
+				}
+				AItem* DraggedItem = DraggedItemWidget->GetItem();
+				if (DraggedItem)
+				{
+					SourceInventoryComponent->ServerRequestAddItemToInventoryAtLocation(DraggedItem, SelectionOrigin);
+					UGameplayStatics::PlaySound2D(GetWorld(), DraggedItem->GetInteractionSound());
+				}
+				Controller->SetSelectedItem(nullptr);
 			}
+			else
+			{
+				// Trying to drop the item at the current location
+				AItem* DraggedItem = DraggedItemWidget->GetItem();
+				if (DraggedItem)
+				{
+					SourceInventoryComponent->ServerRequestAddItemToInventoryAtLocation(DraggedItem, SelectionOrigin);
+					UGameplayStatics::PlaySound2D(GetWorld(), DraggedItem->GetInteractionSound());
+				}
+				Controller->StopDraggingItem(false);
+				Controller->SetSelectedItem(nullptr);
+			}
+		}
+		else if (ClickedItemWidget)
+		{
+			// Selecting a new item to drag
+			ClickedItemWidget->StartDragging();
+			SourceInventoryComponent->ServerRequestRemoveItemFromInventory(ClickedItemWidget->GetItem());
+			UGameplayStatics::PlaySound2D(GetWorld(), BeginDragSound);
 		}
 	}
 }
@@ -498,8 +508,7 @@ FReply UInventoryGridWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InG
 		}
 		else if (InMouseEvent.GetEffectingButton() == EKeys::MiddleMouseButton)
 		{
-			ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
-			if (Character)
+			if (SourceInventoryComponent)
 			{
 				UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
 				if (SelectedItemWidget)
@@ -508,9 +517,8 @@ FReply UInventoryGridWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InG
 					AItem* ItemToDrop = SelectedItemWidget->GetItem();
 					if (ItemToDrop)
 					{
-						Character->Server_RequestRemoveItemFromInventory(ItemToDrop);
-						Character->Server_RequestDropItem(ItemToDrop, false);
-						UGameplayStatics::PlaySound2D(Character->GetWorld(), ItemToDrop->GetInteractionSound());
+						SourceInventoryComponent->ServerRequestDropItem(ItemToDrop);
+						UGameplayStatics::PlaySound2D(GetWorld(), ItemToDrop->GetInteractionSound());
 						Controller->SetSelectedItem(nullptr);
 						ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
 						if (HUD)
@@ -523,8 +531,7 @@ FReply UInventoryGridWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InG
 		}
 		else if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
 		{
-			ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
-			if (Character)
+			if (SourceInventoryComponent)
 			{
 				UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
 				if (SelectedItemWidget)
@@ -533,9 +540,12 @@ FReply UInventoryGridWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InG
 					AEquippable* Equippable = Cast<AEquippable>(SelectedItemWidget->GetItem());
 					if (Equippable)
 					{
-						Character->Server_RequestRemoveItemFromInventory(Equippable);
-						Character->Server_RequestEquipItem(Equippable, true);
-						UGameplayStatics::PlaySound2D(Character->GetWorld(), Equippable->GetInteractionSound());
+						SourceInventoryComponent->ServerRequestRemoveItemFromInventory(Equippable);
+						if (SourceEquipmentComponent)
+						{
+							SourceEquipmentComponent->ServerEquipItem(Equippable, true);
+						}
+						UGameplayStatics::PlaySound2D(GetWorld(), Equippable->GetInteractionSound());
 						Controller->SetSelectedItem(nullptr);
 						ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
 						if (HUD)

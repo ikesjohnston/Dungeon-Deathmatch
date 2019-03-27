@@ -1,10 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "EquipmentComponent.h"
-#include "DungeonCharacter.h"
-#include "UnrealNetwork.h"
+#include "InventoryComponent.h"
 #include "Armor.h"
 #include "Weapon.h"
+
+#include "UnrealNetwork.h"
+#include "RenderCaptureComponent.h"
 
 // Sets default values for this component's properties
 UEquipmentComponent::UEquipmentComponent()
@@ -14,6 +16,10 @@ UEquipmentComponent::UEquipmentComponent()
 	bIsPrimaryLoadoutActive = true;
 
 	Equipment = TMap<EEquipmentSlot, AEquippable*>();
+
+
+	SocketNameConsumableOne = "ConsumableOne";
+	SocketNameConsumableTwo = "ConsumableTwo";
 }
 
 // Called when the game starts
@@ -153,6 +159,182 @@ TArray<EEquipmentSlot> UEquipmentComponent::GetOpenSlotsForEquippable(AEquippabl
 	return OpenSlots;
 }
 
+FName UEquipmentComponent::GetNameForWeaponSocket(EWeaponSocketType WeaponSocketType)
+{
+	FName* NamePtr = WeaponSocketMap.Find(WeaponSocketType);
+	if (NamePtr)
+	{
+		return *NamePtr;
+	}
+
+	return FName();
+}
+
+void UEquipmentComponent::ServerEquipItem_Implementation(AEquippable* Equippable, bool TryMoveReplacementToInventory /*= false*/)
+{
+	TArray<EEquipmentSlot> OpenEquipmentSlots = GetOpenSlotsForEquippable(Equippable);
+	TArray<EEquipmentSlot> ValidEquipmentSlots = GetValidSlotsForEquippable(Equippable);
+	if (OpenEquipmentSlots.Num() > 0)
+	{
+		EEquipmentSlot SlotToEquipItem = OpenEquipmentSlots[0];
+
+		ServerEquipItemToSlot(Equippable, SlotToEquipItem, TryMoveReplacementToInventory);
+	}
+	else if (ValidEquipmentSlots.Num() > 0)
+	{
+		EEquipmentSlot SlotToEquipItem = ValidEquipmentSlots[0];
+
+		ServerEquipItemToSlot(Equippable, SlotToEquipItem, TryMoveReplacementToInventory);
+	}
+}
+
+bool UEquipmentComponent::ServerEquipItem_Validate(AEquippable* Equippable, bool TryMoveReplacementToInventory /*= false*/)
+{
+	return true;
+}
+
+void UEquipmentComponent::ServerEquipItemToSlot_Implementation(AEquippable* Equippable, EEquipmentSlot EquipmentSlot, bool TryMoveReplacementToInventory /*= false*/)
+{
+	// Unequip the item but don't move it back to the inventory until after the replacement item has been equipped, so we know there will be room in the inventory
+	AEquippable* EquipmentInSlot = GetEquipmentInSlot(EquipmentSlot);
+	if (EquipmentInSlot)
+	{
+		ServerUnequipItem(EquipmentInSlot, EquipmentSlot, false);
+	}
+
+	// If equipping a two handed weapon, unequip anything in the off hand slot. If equipping an offhand, unequip any equipped two hander.
+	AWeapon* WeaponToUnequip = nullptr;
+	AWeapon* Weapon = Cast<AWeapon>(Equippable);
+	if (Weapon)
+	{
+		if (Weapon->GetWeaponHand() == EWeaponHand::TwoHand)
+		{
+			if (EquipmentSlot == EEquipmentSlot::WeaponLoadoutOneMainHand)
+			{
+				WeaponToUnequip = Cast<AWeapon>(GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutOneOffHand));
+				if (WeaponToUnequip)
+				{
+					ServerUnequipItem(WeaponToUnequip, EEquipmentSlot::WeaponLoadoutOneOffHand, false);
+				}
+			}
+			else if (EquipmentSlot == EEquipmentSlot::WeaponLoadoutTwoMainHand)
+			{
+				WeaponToUnequip = Cast<AWeapon>(GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutTwoOffHand));
+				if (WeaponToUnequip)
+				{
+					ServerUnequipItem(WeaponToUnequip, EEquipmentSlot::WeaponLoadoutTwoOffHand, false);
+				}
+			}
+		}
+		else if (Weapon->GetWeaponHand() == EWeaponHand::OffHand || Weapon->GetWeaponHand() == EWeaponHand::OneHand)
+		{
+			if (EquipmentSlot == EEquipmentSlot::WeaponLoadoutOneOffHand)
+			{
+				WeaponToUnequip = Cast<AWeapon>(GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutOneMainHand));
+				if (WeaponToUnequip && WeaponToUnequip->GetWeaponHand() == EWeaponHand::TwoHand)
+				{
+					ServerUnequipItem(WeaponToUnequip, EEquipmentSlot::WeaponLoadoutOneMainHand, false);
+				}
+				else
+				{
+					WeaponToUnequip = nullptr;
+				}
+			}
+			else if (EquipmentSlot == EEquipmentSlot::WeaponLoadoutTwoOffHand)
+			{
+				WeaponToUnequip = Cast<AWeapon>(GetEquipmentInSlot(EEquipmentSlot::WeaponLoadoutTwoMainHand));
+				if (WeaponToUnequip && WeaponToUnequip->GetWeaponHand() == EWeaponHand::TwoHand)
+				{
+					ServerUnequipItem(WeaponToUnequip, EEquipmentSlot::WeaponLoadoutTwoMainHand, false);
+				}
+				else
+				{
+					WeaponToUnequip = nullptr;
+				}
+			}
+		}
+	}
+
+	bool WasItemEquipped = RequestEquipItem(Equippable, EquipmentSlot);
+	if (WasItemEquipped)
+	{
+		// Don't "despawn" weapons since they need to be directly attached to the character mesh
+		AWeapon* Weapon = Cast<AWeapon>(Equippable);
+		if (!Weapon)
+		{
+			Equippable->ServerDespawn();
+		}
+	}
+
+	UInventoryComponent* InventoryComponent = Cast<UInventoryComponent>(GetOwner()->GetComponentByClass(UInventoryComponent::StaticClass()));
+	if (InventoryComponent)
+	{
+		FVector DropLocation = InventoryComponent->GetItemDropLocation();
+
+		// Now try adding any replaced equipment back to the inventory
+		if (EquipmentInSlot && TryMoveReplacementToInventory)
+		{
+			// Spawn the item in front of the player in case the request to add it back to the inventory fails
+			EquipmentInSlot->ServerSpawnAtLocation(DropLocation);
+			InventoryComponent->ServerRequestAddItemToInventory(EquipmentInSlot);
+		}
+
+		// Now try adding any unequipped weapon back to the inventory
+		if (WeaponToUnequip)
+		{
+			// Spawn the item in front of the player in case the request to add it back to the inventory fails
+			WeaponToUnequip->ServerSpawnAtLocation(DropLocation);
+			InventoryComponent->ServerRequestAddItemToInventory(WeaponToUnequip);
+		}
+	}
+}
+
+bool UEquipmentComponent::ServerEquipItemToSlot_Validate(AEquippable* Equippable, EEquipmentSlot EquipmentSlot, bool TryMoveReplacementToInventory /*= false*/)
+{
+	return true;
+}
+
+void UEquipmentComponent::ServerUnequipItem_Implementation(AEquippable* Equippable, EEquipmentSlot EquipmentSlot, bool TryMoveToInventory /*= false*/)
+{
+	bool WasItemUnequipped = false;
+
+	AEquippable* EquipmentInSlot = GetEquipmentInSlot(EquipmentSlot);
+	if (EquipmentInSlot && EquipmentInSlot == Equippable)
+	{
+		bool WasItemUnequipped = RequestUnequipItem(Equippable, EquipmentSlot);
+		if (WasItemUnequipped && TryMoveToInventory)
+		{
+			FVector DropLocation = GetOwner()->GetActorLocation();
+			bool WasItemMovedToInventory = false;
+
+			UInventoryComponent* InventoryComponent = Cast<UInventoryComponent>(GetOwner()->GetComponentByClass(UInventoryComponent::StaticClass()));
+			if (InventoryComponent)
+			{
+				FVector DropLocation = InventoryComponent->GetItemDropLocation();
+				WasItemMovedToInventory = InventoryComponent->RequestAddItem(Equippable);
+			}
+
+			if (WasItemMovedToInventory)
+			{
+				Equippable->ServerDespawn();
+			}
+			else
+			{
+				Equippable->ServerSpawnAtLocation(DropLocation);
+			}
+		}
+		else
+		{
+			Equippable->ServerDespawn();
+		}
+	}
+}
+
+bool UEquipmentComponent::ServerUnequipItem_Validate(AEquippable* Equippable, EEquipmentSlot EquipmentSlot, bool TryMoveToInventory /*= false*/)
+{
+	return true;
+}
+
 bool UEquipmentComponent::RequestEquipItem(AEquippable* Equippable, EEquipmentSlot Slot)
 {
 	bool Result = false;
@@ -167,7 +349,7 @@ bool UEquipmentComponent::RequestUnequipItem(AEquippable* Equippable, EEquipment
 {
 	bool Result = false;
 
-	if (GetOwner() && GetOwner()->Role == ROLE_Authority)
+	if (GetOwner() && GetOwner()->HasAuthority())
 	{
 		AEquippable** EquippedItemPtr = Equipment.Find(Slot);
 		if (EquippedItemPtr)
@@ -184,12 +366,12 @@ bool UEquipmentComponent::RequestUnequipItem(AEquippable* Equippable, EEquipment
 	return Result;
 }
 
-void UEquipmentComponent::Server_ToggleActiveLoadout_Implementation()
+void UEquipmentComponent::ServerToggleActiveLoadout_Implementation()
 {
-	Multicast_ToggleActiveLoadout();
+	MulticastToggleActiveLoadout();
 }
 
-bool UEquipmentComponent::Server_ToggleActiveLoadout_Validate()
+bool UEquipmentComponent::ServerToggleActiveLoadout_Validate()
 {
 	return true;
 }
@@ -222,11 +404,11 @@ FWeaponLoadout UEquipmentComponent::GetActiveWeaponLoadout()
 
 void UEquipmentComponent::EquipItem(AEquippable* Equippable, EEquipmentSlot Slot)
 {
-	if (GetOwner() && GetOwner()->Role == ROLE_Authority)
+	if (GetOwner() && GetOwner()->HasAuthority())
 	{
 		Equipment.Add(TTuple<EEquipmentSlot, AEquippable*>(Slot, Equippable));
-		Multicast_OnItemEquipped(Equippable, Slot);
-		Equippable->Server_OnEquip(OwningCharacter, Slot);
+		MulticastOnItemEquipped(Equippable, Slot);
+		Equippable->ServerOnEquip(OwningCharacter, Slot);
 		Equippable->SetOwner(GetOwner());
 	}
 }
@@ -234,38 +416,104 @@ void UEquipmentComponent::EquipItem(AEquippable* Equippable, EEquipmentSlot Slot
 
 void UEquipmentComponent::UnequipItem(AEquippable* Equippable, EEquipmentSlot Slot)
 {
-	if (GetOwner() && GetOwner()->Role == ROLE_Authority)
+	if (GetOwner() && GetOwner()->HasAuthority())
 	{
 		Equipment.Remove(Slot);
-		Multicast_OnItemUnequipped(Equippable, Slot);
-		Equippable->Server_OnUnequip();
+		MulticastOnItemUnequipped(Equippable, Slot);
+		Equippable->ServerOnUnequip();
 		Equippable->SetOwner(nullptr);
 	}
 }
 
-void UEquipmentComponent::Multicast_ToggleActiveLoadout_Implementation()
+//void UEquipmentComponent::OnMoveToInventorySuccess(AEquippable* Equippable)
+//{
+//	Equippable->ServerDespawn();
+//}
+//
+//void UEquipmentComponent::OnMoveToInventoryFail(AEquippable* Equippable)
+//{
+//	FVector DropLocation = FVector::ZeroVector;
+//	IInventoryInterface* InventoryInterface = Cast<IInventoryInterface>(GetOwner());
+//	if (InventoryInterface)
+//	{
+//		DropLocation = InventoryInterface->GetItemDropLocation();
+//	}
+//	Equippable->ServerSpawnAtLocation(DropLocation);
+//}
+
+void UEquipmentComponent::MulticastToggleActiveLoadout_Implementation()
 {
 	bIsPrimaryLoadoutActive = !bIsPrimaryLoadoutActive;
 }
 
-void UEquipmentComponent::Multicast_OnItemEquipped_Implementation(AEquippable* Equippable, EEquipmentSlot EquipmentSlot)
+void UEquipmentComponent::MulticastOnItemEquipped_Implementation(AEquippable* Equippable, EEquipmentSlot EquipmentSlot)
 {
 	Equipment.Add(TTuple<EEquipmentSlot, AEquippable*>(EquipmentSlot, Equippable));
 
-	ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetOwner());
+	ACharacter* Character = Cast<ACharacter>(GetOwner());
 	if (Character && Character->IsLocallyControlled())
 	{
 		OnItemEquipped.Broadcast(Equippable, EquipmentSlot);
 	}
 }
 
-void UEquipmentComponent::Multicast_OnItemUnequipped_Implementation(AEquippable* Equippable, EEquipmentSlot EquipmentSlot)
+void UEquipmentComponent::MulticastOnItemUnequipped_Implementation(AEquippable* Equippable, EEquipmentSlot EquipmentSlot)
 {
 	Equipment.Remove(EquipmentSlot);
 
-	ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetOwner());
+	ACharacter* Character = Cast<ACharacter>(GetOwner());
 	if (Character && Character->IsLocallyControlled())
 	{
 		OnItemUnequipped.Broadcast(Equippable, EquipmentSlot);
+	}
+}
+
+void UEquipmentComponent::ServerAttachActorToSocket_Implementation(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation)
+{
+	MulticastAttachActorToSocket(Actor, SocketName, RelativePosition, RelativeRotation);
+}
+
+bool UEquipmentComponent::ServerAttachActorToSocket_Validate(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation)
+{
+	return true;
+}
+
+void UEquipmentComponent::ServerDetachActor_Implementation(AActor* Actor)
+{
+	MulticastDetachActor(Actor);
+}
+
+bool UEquipmentComponent::ServerDetachActor_Validate(AActor* Actor)
+{
+	return true;
+}
+
+void UEquipmentComponent::MulticastAttachActorToSocket_Implementation(AActor* Actor, FName SocketName, FVector RelativePosition, FRotator RelativeRotation)
+{
+	FAttachmentTransformRules AttachmentRules = FAttachmentTransformRules::SnapToTargetIncludingScale;
+	AttachmentRules.bWeldSimulatedBodies = true;
+
+	Actor->AttachToComponent(OwningCharacter->GetMesh(), AttachmentRules, SocketName);
+
+	Actor->SetActorRelativeLocation(RelativePosition);
+	Actor->SetActorRelativeRotation(RelativeRotation);
+
+	URenderCaptureComponent* RenderCaptureComponent = Cast<URenderCaptureComponent>(OwningCharacter->GetComponentByClass(URenderCaptureComponent::StaticClass()));
+	if (RenderCaptureComponent)
+	{
+		RenderCaptureComponent->AttachActorToSocket(Actor, SocketName, RelativePosition, RelativeRotation);
+	}
+}
+
+void UEquipmentComponent::MulticastDetachActor_Implementation(AActor* Actor)
+{
+	FDetachmentTransformRules DetachRules = FDetachmentTransformRules::KeepRelativeTransform;
+	DetachRules.bCallModify = true;
+	Actor->DetachFromActor(DetachRules);
+
+	URenderCaptureComponent* RenderCaptureComponent = Cast<URenderCaptureComponent>(OwningCharacter->GetComponentByClass(URenderCaptureComponent::StaticClass()));
+	if (RenderCaptureComponent)
+	{
+		RenderCaptureComponent->DetachActor(Actor);
 	}
 }

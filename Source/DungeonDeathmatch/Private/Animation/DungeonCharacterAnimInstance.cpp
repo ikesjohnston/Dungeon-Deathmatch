@@ -2,9 +2,10 @@
 
 #include "DungeonCharacterAnimInstance.h"
 #include "DungeonDeathmatch.h"
+#include "PlayerCharacter.h"
+
 #include <Kismet/KismetMathLibrary.h>
 #include "AnimationProfile.h"
-#include "DungeonCharacter.h"
 
 UDungeonCharacterAnimInstance::UDungeonCharacterAnimInstance(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -25,7 +26,7 @@ void UDungeonCharacterAnimInstance::NativeInitializeAnimation()
 {
 	Super::NativeInitializeAnimation();
 
-	OwningCharacter = Cast<ADungeonCharacter>(TryGetPawnOwner());
+	OwningCharacter = Cast<APlayerCharacter>(TryGetPawnOwner());
 	if (OwningCharacter)
 	{
 		OwningCharacterMovement = Cast<UCharacterMovementComponent>(OwningCharacter->GetMovementComponent());

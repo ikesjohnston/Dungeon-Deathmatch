@@ -12,7 +12,7 @@
 
 ADungeonGameMode::ADungeonGameMode()
 {
-	static ConstructorHelpers::FClassFinder<APawn> DefaultPawnBPClass(TEXT("/Game/Characters/Player/BP_DungeonCharacter"));
+	static ConstructorHelpers::FClassFinder<APawn> DefaultPawnBPClass(TEXT("/Game/Characters/Player/BP_PlayerCharacter"));
 	if (DefaultPawnBPClass.Class != NULL)
 	{
 		DefaultPawnClass = DefaultPawnBPClass.Class;

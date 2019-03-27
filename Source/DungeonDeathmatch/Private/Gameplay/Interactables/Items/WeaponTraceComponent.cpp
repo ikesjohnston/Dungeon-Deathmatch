@@ -72,7 +72,7 @@ void UWeaponTraceComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 			// Line trace for anything that blocks attack traces
 			FCollisionQueryParams LineQueryParams;
 			LineQueryParams.AddIgnoredActor(OwningWeapon);
-			LineQueryParams.AddIgnoredActor(OwningWeapon->EquippingCharacter);
+			LineQueryParams.AddIgnoredActor(OwningWeapon->EquippingActor);
 			LineQueryParams.bReturnPhysicalMaterial = true;
 
 			// Do a simple line trace in the component's forward direction

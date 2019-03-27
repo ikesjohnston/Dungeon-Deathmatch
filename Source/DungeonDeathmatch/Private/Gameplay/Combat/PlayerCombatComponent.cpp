@@ -1,19 +1,19 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "PlayerCombatComponent.h"
+#include "PlayerCharacter.h"
+#include "EquipmentComponent.h"
 #include "EquipmentGlobals.h"
 #include "Weapon.h"
-#include "DungeonCharacter.h"
 
 #include <AbilitySystemComponent.h>
 
-// Sets default values for this component's properties
 UPlayerCombatComponent::UPlayerCombatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	bReplicates = true;
 	
-	OwningCharacter = Cast<ADungeonCharacter>(GetOwner());
+	OwningCharacter = Cast<APlayerCharacter>(GetOwner());
 	if (!OwningCharacter)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UPlayerCombatComponent::UPlayerCombatComponent - OwningCharacter is null."))
@@ -39,7 +39,13 @@ void UPlayerCombatComponent::BeginPlay()
 	Super::BeginPlay();
 
 	AbilitySystemComponent = OwningCharacter->GetAbilitySystemComponent();
-	EquipmentComponent = OwningCharacter->GetEquipmentComponent();
+
+	EquipmentComponent = Cast<UEquipmentComponent>(OwningCharacter->GetComponentByClass(UEquipmentComponent::StaticClass()));
+	if (!EquipmentComponent)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UPlayerCombatComponent::BeginPlay - OwningCharacter does not have an EquipmentComponent."))
+		return;
+	}
 
 	if (OwningCharacter->HasAuthority())
 	{
@@ -60,7 +66,8 @@ void UPlayerCombatComponent::BeginPlay()
 
 void UPlayerCombatComponent::ToggleActiveLoadout()
 {
-	EquipmentComponent->Server_ToggleActiveLoadout();
+	if (!EquipmentComponent) return;
+	EquipmentComponent->ServerToggleActiveLoadout();
 }
 
 void UPlayerCombatComponent::SwitchLoadout()
@@ -87,26 +94,6 @@ void UPlayerCombatComponent::ToggleWeaponSheathe()
 			AbilitySystemComponent->TryActivateAbilityByClass(SheatheWeaponsAbility);
 		}
 	}
-}
-
-ECombatState UPlayerCombatComponent::GetCombatState()
-{
-	return CombatState;
-}
-
-EMeleeComboType UPlayerCombatComponent::GetActiveMeleeComboType()
-{
-	return ActiveMeleeComboType;
-}
-
-uint8 UPlayerCombatComponent::GetActiveMeleeComboCount()
-{
-	return ActiveMeleeComboCount;
-}
-
-bool UPlayerCombatComponent::IsMeleeComboReady()
-{
-	return bIsMeleeComboReady;
 }
 
 void UPlayerCombatComponent::ServerSetCombatState_Implementation(ECombatState NewCombatSate)

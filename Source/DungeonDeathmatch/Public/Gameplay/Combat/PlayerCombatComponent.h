@@ -8,7 +8,7 @@
 #include "Combat/CombatEnums.h"
 #include "PlayerCombatComponent.generated.h"
 
-class ADungeonCharacter;
+class APlayerCharacter;
 class AWeapon;
 class UDungeonGameplayAbility;
 class UAbilitySystemComponent;
@@ -66,7 +66,7 @@ protected:
 
 private:
 	/** The character that this component is attached to */
-	ADungeonCharacter* OwningCharacter;
+	APlayerCharacter* OwningCharacter;
 
 	UAbilitySystemComponent* AbilitySystemComponent;
 
@@ -89,24 +89,20 @@ public:
 	/* Calls the ability to perform the loadout switch */
 	void SwitchLoadout();
 
-	/* Toggles the character's weapon sheathe state */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void ToggleWeaponSheathe();
 
-	/** Gets the characters current combat state */
 	UFUNCTION(BlueprintPure, Category = "Combat")
-	ECombatState GetCombatState();
-
-	/** Gets the characters current melee combo type */
-	UFUNCTION(BlueprintPure, Category = "Combat")
-	EMeleeComboType GetActiveMeleeComboType();
-
-	/** Gets the characters current combo count */
-	UFUNCTION(BlueprintPure, Category = "Combat")
-	uint8 GetActiveMeleeComboCount();
+	ECombatState GetCombatState() { return CombatState; };
 
 	UFUNCTION(BlueprintPure, Category = "Combat")
-	bool IsMeleeComboReady();
+	EMeleeComboType GetActiveMeleeComboType() { return ActiveMeleeComboType; };
+
+	UFUNCTION(BlueprintPure, Category = "Combat")
+	uint8 GetActiveMeleeComboCount() { return ActiveMeleeComboCount; };
+
+	UFUNCTION(BlueprintPure, Category = "Combat")
+	bool IsMeleeComboReady() { return bIsMeleeComboReady; };
 
 	/** Sets the characters combat state and replicates it to all clients. Calls appropriate multicast functions based on state. */
 	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "Combat")

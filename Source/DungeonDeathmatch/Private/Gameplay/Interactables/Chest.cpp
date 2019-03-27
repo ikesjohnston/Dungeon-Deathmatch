@@ -1,11 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Chest.h"
-#include <WidgetComponent.h>
-#include "InteractionComponent.h"
-#include "Loot/LootComponent.h"
+#include "InteractableComponent.h"
+#include "LootComponent.h"
 #include "ChestAnimInstance.h"
 
+#include <WidgetComponent.h>
 
 AChest::AChest()
 {
@@ -21,10 +21,10 @@ AChest::AChest()
 	WidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
 	WidgetComponent->SetVisibility(false);
 
-	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
-	InteractionComponent->Server_SetCanInteract(true);
-	InteractionComponent->SetInteractionPromptText(FText::FromString("Open"));
-	InteractionComponent->SetInteractableName(FText::FromString("Chest"));
+	InteractableComponent = CreateDefaultSubobject<UInteractableComponent>(TEXT("InteractionComponent"));
+	InteractableComponent->ServerSetCanInteract(true);
+	InteractableComponent->SetInteractionPromptText(FText::FromString("Open"));
+	InteractableComponent->SetInteractableName(FText::FromString("Chest"));
 
 	LootComponent = CreateDefaultSubobject<ULootComponent>(TEXT("LootComponent"));
 

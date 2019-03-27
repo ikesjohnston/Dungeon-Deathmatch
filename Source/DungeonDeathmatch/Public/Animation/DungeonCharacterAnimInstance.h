@@ -3,13 +3,16 @@
 #pragma once
 
 #include "Animation/AnimInstance.h"
-#include "DungeonCharacter.h"
 #include "AnimGlobals.h"
+#include "PlayerCharacter.h"
+
 #include "DungeonCharacterAnimInstance.generated.h"
 
 class UBlendSpace;
 class UBlendSpace1D;
 class UAnimSequence;
+
+class APlayerCharacter;
 
 UCLASS(Blueprintable, BlueprintType)
 class UDungeonCharacterAnimInstance : public UAnimInstance
@@ -18,7 +21,7 @@ class UDungeonCharacterAnimInstance : public UAnimInstance
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
-	ADungeonCharacter* OwningCharacter;
+	APlayerCharacter* OwningCharacter;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
 	UCharacterMovementComponent* OwningCharacterMovement;

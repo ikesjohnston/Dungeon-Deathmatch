@@ -1,19 +1,21 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "DungeonPlayerController.h"
-#include <CollisionQueryParams.h>
-#include <UnrealNames.h>
-#include <GameFramework/Actor.h>
-#include <DrawDebugHelpers.h>
-#include "Interactable.h"
+#include "InteractableInterface.h"
 #include "DungeonHUD.h"
-#include "DungeonCharacter.h"
-#include <GameFramework/PlayerController.h>
+#include "PlayerCharacter.h"
 #include "Item.h"
 #include "DraggableItemWidget.h"
 #include "CharacterRenderCapture2D.h"
 #include "InGameOverlayWidget.h"
 #include "DungeonGameInstance.h"
+#include "InventoryComponent.h"
+
+#include <GameFramework/PlayerController.h>
+#include <GameFramework/Actor.h>
+#include <DrawDebugHelpers.h>
+#include <CollisionQueryParams.h>
+#include <UnrealNames.h>
 
 // Console command for drawing interaction cast debug shapes
 static int32 DebugInteraction = 0;
@@ -46,12 +48,12 @@ void ADungeonPlayerController::Tick(float DeltaTime)
 		}
 		else if (!bCanTraceForInteractables && FocusedInteractable)
 		{
-			IInteractable* InteractableInterface = Cast<IInteractable>(FocusedInteractable);
+			IInteractableInterface* InteractableInterface = Cast<IInteractableInterface>(FocusedInteractable);
 			if (FocusedInteractable)
 			{
 				InteractableInterface->Execute_OnUnfocused(FocusedInteractable);
 				FocusedInteractable = nullptr;
-				Server_SetFocusedInteractable(nullptr);
+				ServerSetFocusedInteractable(nullptr);
 			}
 		}
 	}
@@ -215,10 +217,10 @@ void ADungeonPlayerController::StartDraggingItem(UDraggableItemWidget* Draggable
 	}
 
 
-	ADungeonCharacter* Character = Cast<ADungeonCharacter>(GetPawn());
-	if (Character)
+	UInventoryComponent* InventoryComponent = Cast<UInventoryComponent>(GetPawn()->GetComponentByClass(UInventoryComponent::StaticClass()));
+	if (InventoryComponent)
 	{
-		Character->Server_RequestRemoveItemFromInventory(DraggedItem->GetItem());
+		InventoryComponent->ServerRequestRemoveItemFromInventory(DraggedItem->GetItem());
 	}
 
 	ADungeonHUD* DungeonHUD = Cast<ADungeonHUD>(GetHUD());
@@ -264,19 +266,19 @@ ACharacterRenderCapture2D* ADungeonPlayerController::GetSelectedRenderCaptureAct
 	return SelectedRenderCaptureActor;
 }
 
-void ADungeonPlayerController::Server_SetFocusedInteractable_Implementation(AActor* Interactable)
+void ADungeonPlayerController::ServerSetFocusedInteractable_Implementation(AActor* Interactable)
 {
 	FocusedInteractable = Interactable;
 }
 
-bool ADungeonPlayerController::Server_SetFocusedInteractable_Validate(AActor* Actor)
+bool ADungeonPlayerController::ServerSetFocusedInteractable_Validate(AActor* Actor)
 {
 	return true;
 }
 
 void ADungeonPlayerController::SetPawnCanLook(bool bCanLook)
 {
-	ADungeonCharacter* DungeonPawn = Cast<ADungeonCharacter>(GetPawn());
+	APlayerCharacter* DungeonPawn = Cast<APlayerCharacter>(GetPawn());
 	if (DungeonPawn)
 	{
 		DungeonPawn->SetIsCameraInputEnabled(bCanLook);
@@ -293,19 +295,19 @@ void ADungeonPlayerController::CheckFocus()
 		{
 			if (FocusedInteractable)
 			{
-				IInteractable::Execute_OnUnfocused(FocusedInteractable);
+				IInteractableInterface::Execute_OnUnfocused(FocusedInteractable);
 				// Throw event for UI updates
 				if (OnInteractableUnfocused.IsBound())
 				{
 					//OnInteractableUnfocused.Broadcast();
 				}
 				FocusedInteractable = nullptr;
-				Server_SetFocusedInteractable(nullptr);
+				ServerSetFocusedInteractable(nullptr);
 			}
 			return;
 		}
 
-		IInteractable* InteractableInterface = nullptr;
+		IInteractableInterface* InteractableInterface = nullptr;
 		AActor* ClosestInteractable = nullptr;
 
 		FHitResult LineTraceOutHit;
@@ -342,7 +344,7 @@ void ADungeonPlayerController::CheckFocus()
 				float HitDistance = FVector::Distance(HitActor->GetActorLocation(), PlayerPawn->GetActorLocation());
 				if (HitDistance <= MaxInteractionDistance)
 				{
-					InteractableInterface = Cast<IInteractable>(HitActor);
+					InteractableInterface = Cast<IInteractableInterface>(HitActor);
 					if (InteractableInterface && InteractableInterface->Execute_GetCanInteract(HitActor))
 					{
 						if (DebugInteraction)
@@ -380,7 +382,7 @@ void ADungeonPlayerController::CheckFocus()
 								float HitDistance = FVector::Distance(HitActor->GetActorLocation(), PlayerPawn->GetActorLocation());
 								if (HitDistance <= MaxInteractionDistance)
 								{
-									InteractableInterface = Cast<IInteractable>(HitActor);
+									InteractableInterface = Cast<IInteractableInterface>(HitActor);
 									if (InteractableInterface && InteractableInterface->Execute_GetCanInteract(HitActor))
 									{
 										if (DebugInteraction)
@@ -437,7 +439,7 @@ void ADungeonPlayerController::CheckFocus()
 							float HitDistance = FVector::Distance(HitActor->GetActorLocation(), PlayerPawn->GetActorLocation());
 							if (HitDistance <= MaxInteractionDistance)
 							{
-								InteractableInterface = Cast<IInteractable>(HitActor);
+								InteractableInterface = Cast<IInteractableInterface>(HitActor);
 								if (InteractableInterface && InteractableInterface->Execute_GetCanInteract(HitActor))
 								{
 									if (DebugInteraction)
@@ -470,7 +472,7 @@ void ADungeonPlayerController::CheckFocus()
 		// If interactable was found, set as focus and render outline
 		if (ClosestInteractable)
 		{
-			InteractableInterface = Cast<IInteractable>(ClosestInteractable);
+			InteractableInterface = Cast<IInteractableInterface>(ClosestInteractable);
 			if (FocusedInteractable)
 			{
 				if (FocusedInteractable == ClosestInteractable)
@@ -483,7 +485,7 @@ void ADungeonPlayerController::CheckFocus()
 					UE_LOG(LogTemp, Log, TEXT("ADungeonPlayerController::CheckFocus - Stopped focusing %s"), *FocusedInteractable->GetName());
 				}
 			}
-			Server_SetFocusedInteractable(ClosestInteractable);
+			ServerSetFocusedInteractable(ClosestInteractable);
 			FocusedInteractable = ClosestInteractable;
 			InteractableInterface->Execute_OnFocused(FocusedInteractable);
 			// Throw event for UI updates
@@ -500,7 +502,7 @@ void ADungeonPlayerController::CheckFocus()
 		{
 			if (FocusedInteractable)
 			{
-				InteractableInterface = Cast<IInteractable>(FocusedInteractable);
+				InteractableInterface = Cast<IInteractableInterface>(FocusedInteractable);
 				InteractableInterface->Execute_OnUnfocused(FocusedInteractable);
 				// Throw event for UI updates
 				if (OnInteractableUnfocused.IsBound())
@@ -511,7 +513,7 @@ void ADungeonPlayerController::CheckFocus()
 				{
 					UE_LOG(LogTemp, Log, TEXT("ADungeonPlayerController::CheckFocus - Stopped focusing %s"), *FocusedInteractable->GetName());
 				}
-				Server_SetFocusedInteractable(nullptr);
+				ServerSetFocusedInteractable(nullptr);
 				FocusedInteractable = nullptr;
 			}
 		}

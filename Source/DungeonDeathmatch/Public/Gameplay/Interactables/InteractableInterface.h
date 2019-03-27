@@ -2,9 +2,10 @@
 
 #pragma once
 
-#include "DungeonDeathmatch.h"
 #include "GameFramework/Actor.h"
-#include "Interactable.generated.h"
+
+#include "DungeonDeathmatch.h"
+#include "InteractableInterface.generated.h"
 
 class ADungeonCharacter;
 class UStaticMeshComponent;
@@ -14,12 +15,12 @@ class UWidgetComponent;
  * Interface class that all interactable objects, such as doors, chests, items, and NPCs should implement.
  */
 UINTERFACE(BlueprintType)
-class UInteractable : public UInterface
+class UInteractableInterface : public UInterface
 {
 	GENERATED_UINTERFACE_BODY()
 };
 
-class IInteractable
+class IInteractableInterface
 {
 	GENERATED_IINTERFACE_BODY()
 

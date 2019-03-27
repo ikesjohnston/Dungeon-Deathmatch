@@ -1,8 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "CharacterRenderCapture2D.h"
-#include "DungeonCharacter.h"
-#include "Armor.h"
+#include "ModularHumanoidMeshComponent.h"
 
 #include <Components/SceneCaptureComponent2D.h>
 #include <Components/SkeletalMeshComponent.h>
@@ -26,72 +25,72 @@ ACharacterRenderCapture2D::ACharacterRenderCapture2D()
 	MeshComponentHelm = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHelm"));
 	MeshComponentHelm->SetupAttachment(MeshComponentMaster);
 	MeshComponentHelm->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Helm, MeshComponentHelm));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::Helm, MeshComponentHelm));
 
 	MeshComponentHair = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHair"));
 	MeshComponentHair->SetupAttachment(MeshComponentMaster);
 	MeshComponentHair->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Hair, MeshComponentHair));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::Hair, MeshComponentHair));
 
 	MeshComponentHead = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHead"));
 	MeshComponentHead->SetupAttachment(MeshComponentMaster);
 	MeshComponentHead->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Head, MeshComponentHead));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::Head, MeshComponentHead));
 
 	MeshComponentShoulderLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentShoulderLeft"));
 	MeshComponentShoulderLeft->SetupAttachment(MeshComponentMaster);
 	MeshComponentShoulderLeft->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LeftShoulder, MeshComponentShoulderLeft));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::LeftShoulder, MeshComponentShoulderLeft));
 
 	MeshComponentShoulderRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentShoulderRight"));
 	MeshComponentShoulderRight->SetupAttachment(MeshComponentMaster);
 	MeshComponentShoulderRight->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::RightShoulder, MeshComponentShoulderRight));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::RightShoulder, MeshComponentShoulderRight));
 
 	MeshComponentTorso = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentTorso"));
 	MeshComponentTorso->SetupAttachment(MeshComponentMaster);
 	MeshComponentTorso->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Torso, MeshComponentTorso));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::Torso, MeshComponentTorso));
 
 	MeshComponentChestArmor = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentChestArmor"));
 	MeshComponentChestArmor->SetupAttachment(MeshComponentMaster);
 	MeshComponentChestArmor->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::ChestArmor, MeshComponentChestArmor));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::ChestArmor, MeshComponentChestArmor));
 
 	MeshComponentHandLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHandLeft"));
 	MeshComponentHandLeft->SetupAttachment(MeshComponentMaster);
 	MeshComponentHandLeft->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LeftHand, MeshComponentHandLeft));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::LeftHand, MeshComponentHandLeft));
 
 	MeshComponentHandRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHandRight"));
 	MeshComponentHandRight->SetupAttachment(MeshComponentMaster);
 	MeshComponentHandRight->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::RightHand, MeshComponentHandRight));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::RightHand, MeshComponentHandRight));
 
 	MeshComponentBelt = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentBelt"));
 	MeshComponentBelt->SetupAttachment(MeshComponentMaster);
 	MeshComponentBelt->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Waist, MeshComponentBelt));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::Waist, MeshComponentBelt));
 
 	MeshComponentLegs = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentLegs"));
 	MeshComponentLegs->SetupAttachment(MeshComponentMaster);
 	MeshComponentLegs->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::Legs, MeshComponentLegs));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::Legs, MeshComponentLegs));
 
 	MeshComponentLegArmor = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentLegArmor"));
 	MeshComponentLegArmor->SetupAttachment(MeshComponentMaster);
 	MeshComponentLegArmor->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LegArmor, MeshComponentLegArmor));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::LegArmor, MeshComponentLegArmor));
 
 	MeshComponentFootLeft = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentFootLeft"));
 	MeshComponentFootLeft->SetupAttachment(MeshComponentMaster);
 	MeshComponentFootLeft->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::LeftFoot, MeshComponentFootLeft));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::LeftFoot, MeshComponentFootLeft));
 
 	MeshComponentFootRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentFootRight"));
 	MeshComponentFootRight->SetupAttachment(MeshComponentMaster);
 	MeshComponentFootRight->SetMasterPoseComponent(MeshComponentMaster);
-	MeshComponentMap.Add(TTuple<EMeshSegment, USkeletalMeshComponent*>(EMeshSegment::RightFoot, MeshComponentFootRight));
+	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::RightFoot, MeshComponentFootRight));
 
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	CameraComponent->SetupAttachment(RootComponent);
@@ -144,7 +143,7 @@ void ACharacterRenderCapture2D::Tick(float DeltaTime)
 	RootMeshComponent->SetRelativeRotation(NewRotation);
 }
 
-void ACharacterRenderCapture2D::UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* NewMesh)
+void ACharacterRenderCapture2D::UpdateMeshSegment(EHumanoidMeshSegment MeshSegment, USkeletalMesh* NewMesh)
 {
 	USkeletalMeshComponent** MeshComponentPtr = MeshComponentMap.Find(MeshSegment);
 	if (MeshComponentPtr)
@@ -210,23 +209,22 @@ void ACharacterRenderCapture2D::DetachActor(AActor* Actor)
 	}
 }
 
-UTextureRenderTarget2D* ACharacterRenderCapture2D::GetRenderTargetTexture()
+void ACharacterRenderCapture2D::InitializeRender(AActor* CapturedActor)
 {
-	return RenderTargetTexture;
-}
-
-void ACharacterRenderCapture2D::InitializeCharacter(ADungeonCharacter* Character)
-{
-	TMap<EMeshSegment, USkeletalMeshComponent*> CharacterMeshComponentMap = Character->GetModularCharacterMeshComponent()->GetMeshComponentMap();
-	for (TPair<EMeshSegment, USkeletalMeshComponent*> MeshComponentPair : CharacterMeshComponentMap)
+	UModularHumanoidMeshComponent* ModularMeshComponent = Cast<UModularHumanoidMeshComponent>(CapturedActor->GetComponentByClass(UModularHumanoidMeshComponent::StaticClass()));
+	if (ModularMeshComponent)
 	{
-		EMeshSegment MeshSegment = MeshComponentPair.Key;
-		USkeletalMeshComponent* CharacterMeshComponent = MeshComponentPair.Value;
-
-		USkeletalMeshComponent* MeshComponent = *MeshComponentMap.Find(MeshSegment);
-		if (MeshComponent)
+		TMap<EHumanoidMeshSegment, USkeletalMeshComponent*> CharacterMeshComponentMap = ModularMeshComponent->GetMeshComponentMap();
+		for (TPair<EHumanoidMeshSegment, USkeletalMeshComponent*> MeshComponentPair : CharacterMeshComponentMap)
 		{
-			MeshComponent->SetSkeletalMesh(CharacterMeshComponent->SkeletalMesh);
+			EHumanoidMeshSegment MeshSegment = MeshComponentPair.Key;
+			USkeletalMeshComponent* CharacterMeshComponent = MeshComponentPair.Value;
+
+			USkeletalMeshComponent* MeshComponent = *MeshComponentMap.Find(MeshSegment);
+			if (MeshComponent)
+			{
+				MeshComponent->SetSkeletalMesh(CharacterMeshComponent->SkeletalMesh);
+			}
 		}
 	}
 }

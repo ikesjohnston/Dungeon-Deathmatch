@@ -3,15 +3,17 @@
 #include "EquipmentSlotWidget.h"
 #include "DraggableItemWidget.h"
 #include "DungeonGameInstance.h"
-#include <Image.h>
 #include "DungeonPlayerController.h"
 #include "Armor.h"
 #include "Weapon.h"
 #include "EquipmentComponent.h"
+#include "InventoryComponent.h"
+#include "DungeonHUD.h"
+
 #include <CanvasPanel.h>
 #include <WidgetBlueprintLibrary.h>
 #include <CanvasPanelSlot.h>
-#include "DungeonHUD.h"
+#include <Image.h>
 
 UEquipmentSlotWidget::UEquipmentSlotWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -68,30 +70,35 @@ bool UEquipmentSlotWidget::Initialize()
 void UEquipmentSlotWidget::BindToController()
 {
 	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
-
 	if (Controller)
 	{
-		ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
-		if(Character)
-		{
-			UEquipmentComponent* EquipmentComponent = Character->GetEquipmentComponent();
-			if (EquipmentComponent)
-			{
-				Controller->OnBeginItemDrag.AddDynamic(this, &UEquipmentSlotWidget::OnBeginItemDrag);
-				Controller->OnEndItemDrag.AddDynamic(this, &UEquipmentSlotWidget::OnEndItemDrag);
-
-				EquipmentComponent->OnItemEquipped.AddDynamic(this, &UEquipmentSlotWidget::OnItemEquipped);
-				EquipmentComponent->OnItemUnequipped.AddDynamic(this, &UEquipmentSlotWidget::OnItemUnequipped);
-
-				bIsSlotBound = true;
-			}
-		}
+		BindToSource(Controller->GetPawn());
+		Controller->OnBeginItemDrag.AddDynamic(this, &UEquipmentSlotWidget::OnBeginItemDrag);
+		Controller->OnEndItemDrag.AddDynamic(this, &UEquipmentSlotWidget::OnEndItemDrag);
+		bIsBoundToController = true;
 	}
-
-	if (!bIsSlotBound)
+	if (!bIsBoundToController)
 	{
-		GetWorld()->GetTimerManager().SetTimer(BindSlotTimerHandle, this, &UEquipmentSlotWidget::BindToController, BindingRetryTime, false);
+		GetWorld()->GetTimerManager().SetTimer(BindToControllerTimerHandle, this, &UEquipmentSlotWidget::BindToController, BindingRetryTime, false);
 	}
+}
+
+void UEquipmentSlotWidget::BindToSource(AActor* Source)
+{
+	if (SourceEquipmentComponent)
+	{
+		SourceEquipmentComponent->OnItemEquipped.RemoveDynamic(this, &UEquipmentSlotWidget::OnItemEquipped);
+		SourceEquipmentComponent->OnItemUnequipped.RemoveDynamic(this, &UEquipmentSlotWidget::OnItemUnequipped);
+	}
+
+	SourceEquipmentComponent = Cast<UEquipmentComponent>(Source->GetComponentByClass(UEquipmentComponent::StaticClass()));
+	if (SourceEquipmentComponent)
+	{
+		SourceEquipmentComponent->OnItemEquipped.AddDynamic(this, &UEquipmentSlotWidget::OnItemEquipped);
+		SourceEquipmentComponent->OnItemUnequipped.AddDynamic(this, &UEquipmentSlotWidget::OnItemUnequipped);
+	}
+
+	SourceInventoryComponent = Cast<UInventoryComponent>(Source->GetComponentByClass(UInventoryComponent::StaticClass()));
 }
 
 void UEquipmentSlotWidget::ResetDefaultImage()
@@ -132,8 +139,7 @@ void UEquipmentSlotWidget::ProcessItemDragAndDrop()
 	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
 	if (Controller)
 	{
-		ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
-		if (Character)
+		if (SourceEquipmentComponent)
 		{
 			UDraggableItemWidget* DraggedItemWidget = Controller->GetDraggedItem();
 			UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
@@ -148,17 +154,17 @@ void UEquipmentSlotWidget::ProcessItemDragAndDrop()
 					{
 						Controller->StopDraggingItem(false);
 						SelectedItemWidget->StartDragging();
-						Character->Server_RequestUnequipItem(ItemToUnequip, SlotType);
-						Character->Server_RequestEquipItemToSlot(ItemToEquip, SlotType);
-						UGameplayStatics::PlaySound2D(Character->GetWorld(), ItemToEquip->GetInteractionSound());
+						SourceEquipmentComponent->ServerUnequipItem(ItemToUnequip, SlotType);
+						SourceEquipmentComponent->ServerEquipItemToSlot(ItemToEquip, SlotType);
+						UGameplayStatics::PlaySound2D(GetWorld(), ItemToEquip->GetInteractionSound());
 						Controller->SetSelectedItem(EquippedItemWidget);
 					}
 				}
 				else
 				{
 					// Equipping a new item
-					Character->Server_RequestEquipItemToSlot(ItemToEquip, SlotType);
-					UGameplayStatics::PlaySound2D(Character->GetWorld(), ItemToEquip->GetInteractionSound());
+					SourceEquipmentComponent->ServerEquipItemToSlot(ItemToEquip, SlotType);
+					UGameplayStatics::PlaySound2D(GetWorld(), ItemToEquip->GetInteractionSound());
 					Controller->StopDraggingItem(false);
 					Controller->SetSelectedItem(nullptr);
 					if (SlotHighlight)
@@ -173,9 +179,9 @@ void UEquipmentSlotWidget::ProcessItemDragAndDrop()
 				AEquippable* ItemToUnequip = Cast<AEquippable>(ClickedItemWidget->GetItem());
 				if (ItemToUnequip)
 				{
-					Character->Server_RequestUnequipItem(ItemToUnequip, SlotType);
+					SourceEquipmentComponent->ServerUnequipItem(ItemToUnequip, SlotType);
 					ClickedItemWidget->StartDragging();
-					UGameplayStatics::PlaySound2D(Character->GetWorld(), BeginDragSound);
+					UGameplayStatics::PlaySound2D(GetWorld(), BeginDragSound);
 				}
 			}
 		}
@@ -523,17 +529,19 @@ FReply UEquipmentSlotWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InG
 			}
 			else if (InMouseEvent.GetEffectingButton() == EKeys::MiddleMouseButton)
 			{
-				ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
-				if (Character)
+				if (SourceEquipmentComponent)
 				{
 					UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
 					// Unequip item and drop it
 					AEquippable* ItemToDrop = Cast<AEquippable>(SelectedItemWidget->GetItem());
 					if (ItemToDrop)
 					{
-						Character->Server_RequestUnequipItem(ItemToDrop, SlotType);
-						Character->Server_RequestDropItem(ItemToDrop, false);
-						UGameplayStatics::PlaySound2D(Character->GetWorld(), ItemToDrop->GetInteractionSound());
+						SourceEquipmentComponent->ServerUnequipItem(ItemToDrop, SlotType);
+						if (SourceInventoryComponent)
+						{
+							SourceInventoryComponent->ServerRequestDropItem(ItemToDrop);
+						}
+						UGameplayStatics::PlaySound2D(GetWorld(), ItemToDrop->GetInteractionSound());
 						Controller->SetSelectedItem(nullptr);
 						ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
 						if (HUD)
@@ -545,16 +553,15 @@ FReply UEquipmentSlotWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InG
 			}
 			else if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
 			{
-				ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
-				if (Character)
+				if (SourceEquipmentComponent)
 				{
 					UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
 					// Unequip item and attempt to move it to the character's inventory
 					AEquippable* ItemToUnequip = Cast<AEquippable>(SelectedItemWidget->GetItem());
 					if (ItemToUnequip)
 					{
-						Character->Server_RequestUnequipItem(ItemToUnequip, SlotType, true);
-						UGameplayStatics::PlaySound2D(Character->GetWorld(), ItemToUnequip->GetInteractionSound());
+						SourceEquipmentComponent->ServerUnequipItem(ItemToUnequip, SlotType, true);
+						UGameplayStatics::PlaySound2D(GetWorld(), ItemToUnequip->GetInteractionSound());
 						Controller->SetSelectedItem(nullptr);
 						ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
 						if (HUD)

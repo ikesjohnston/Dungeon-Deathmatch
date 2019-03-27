@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "Equippable.h"
 #include "EquipmentGlobals.h"
 #include "WeaponTraceComponent.h"
@@ -12,6 +13,7 @@ class UCapsuleComponent;
 class UStaticMeshComponent;
 class UBlendSpace;
 class UBlendSpace1D;
+
 class UDungeonGameplayAbility;
 
 /**
@@ -149,13 +151,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon\|Animation")
 	UBlendSpace* CombatLandingBlendSpaceOverride;
 
-	/** List of all actors already hit during this swing */
 	TArray<AActor*> HitActorsThisSwing;
-
-	/** List of all actors that were hit and damaged during this swing */
 	TArray<AActor*> DamagedActorsThisSwing;
-
-	/** List of all actors that caused a blocking hit during this swing */
 	TArray<AActor*> BlockingActorsThisSwing;
 
 private:
@@ -163,13 +160,11 @@ private:
 	UParticleSystemComponent* SwingParticleSystemComponent;
 
 public:
-	// Sets default values for this actor's properties
 	AWeapon(const FObjectInitializer& ObjectInitializer);
 
 	virtual ~AWeapon() override;
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 public:
@@ -252,19 +247,17 @@ public:
 	void StopSwing();
 
 protected:
-	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
-	virtual void ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot) override;
-	virtual void MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot) override;
+	virtual void ServerOnEquip_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot) override;
+	virtual void MulticastOnEquip_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot) override;
 
 	virtual void ServerOnUnequip_Implementation() override;
 	virtual void MulticastOnUnequip_Implementation() override;
-	// ------------------------ BEGIN EQUIPPABLE OVERRIDES ------------------------
 
 	void OnHitDetected(FWeaponHitResult WeaponHitResult);
 
 	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_OnHitDetected(FWeaponHitResult WeaponHitResult);
+	void ServerOnHitDetected(FWeaponHitResult WeaponHitResult);
 
 	UFUNCTION(Server, Reliable, WithValidation)
-	void Multicast_OnHitDetected(FWeaponHitResult WeaponHitResult);
+	void MulticastOnHitDetected(FWeaponHitResult WeaponHitResult);
 };

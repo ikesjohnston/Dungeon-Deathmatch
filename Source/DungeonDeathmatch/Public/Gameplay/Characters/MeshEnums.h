@@ -3,10 +3,10 @@
 #include "CoreMinimal.h"
 
 /**
- * Enum representation of all available mesh segments for a character
+ * Enum representation of all available mesh segments for a humanoid character
  */
 UENUM(BlueprintType)
-enum class EMeshSegment : uint8
+enum class EHumanoidMeshSegment : uint8
 {
 	Helm						UMETA(DisplayName = "Helm"),
 	Hair						UMETA(DisplayName = "Hair"),

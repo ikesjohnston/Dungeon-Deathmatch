@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Interactable.h"
+#include "InteractableInterface.h"
 #include "InventoryGlobals.h"
 #include "Item.generated.h"
 
@@ -27,7 +27,7 @@ UENUM(BlueprintType) enum class EItemQualityTier : uint8 {
  * Base class for all items in the game.
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API AItem : public AActor, public IInteractable
+class DUNGEONDEATHMATCH_API AItem : public AActor, public IInteractableInterface
 {
 	GENERATED_BODY()
 
@@ -179,17 +179,17 @@ public:
 
 	/** Server side function to set if an interactable can be interacted with */
 	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_SetCanInteract(bool CanInteract);
+	void ServerSetCanInteract(bool CanInteract);
 
 	/** Server side function that "despawns" the item by hiding its mesh(es), disabling physics and collision, and moving it to the world origin */
 	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_Despawn();
+	void ServerDespawn();
 
 	/** Server side function that "spawns" the item at the specified location; showing all meshes and enabling physics and collision.
 	 *  An optional ejection force vector can be used, which may be desired for things like ejecting loot from a chest 
 	 */
 	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_SpawnAtLocation(const FVector Location, const FVector EjectionForce = FVector(0, 0, 0));
+	void ServerSpawnAtLocation(const FVector Location, const FVector EjectionForce = FVector(0, 0, 0));
 
 protected:
 	/**
@@ -199,12 +199,12 @@ protected:
 
 	/** Multicast function that "despawns" the item by hiding its mesh(es), disabling physics and collision, and moving it to the world origin */
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_Despawn();
+	void MulticastDespawn();
 
 	/** Multicast function that "spawns" the item at the specified location; showing all meshes and enabling physics and collision.
 	 *  An optional ejection force vector can be used, which may be desired for things like ejecting loot from a chest
 	 */
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_SpawnAtLocation(const FVector Location, const FVector EjectionForce = FVector(0, 0, 0));
+	void MulticastSpawnAtLocation(const FVector Location, const FVector EjectionForce = FVector(0, 0, 0));
 
 };

@@ -6,6 +6,7 @@
 #include "CharacterRenderCapture2D.h"
 #include <Image.h>
 #include <Kismet/KismetMaterialLibrary.h>
+#include "RenderCaptureComponent.h"
 
 UInteractiveCharacterRenderWidget::UInteractiveCharacterRenderWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -41,8 +42,15 @@ FReply UInteractiveCharacterRenderWidget::NativeOnPreviewMouseButtonDown(const F
 			ADungeonCharacter* Character = Cast<ADungeonCharacter>(Controller->GetPawn());
 			if (Character)
 			{
-				RenderCaptureActor = Character->GetRenderCaptureActor();
-				Controller->SetSelectedRenderCaptureActor(RenderCaptureActor);
+				URenderCaptureComponent* RenderCaptureComponent = Cast<URenderCaptureComponent>(Character->GetComponentByClass(URenderCaptureComponent::StaticClass()));
+				if (RenderCaptureComponent)
+				{
+					RenderCaptureActor = RenderCaptureComponent->GetRenderCaptureActor();
+					if (RenderCaptureActor)
+					{
+						Controller->SetSelectedRenderCaptureActor(RenderCaptureActor);
+					}
+				}
 			}
 		}
 	}

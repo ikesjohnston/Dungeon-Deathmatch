@@ -7,13 +7,15 @@
 #include "InteractTooltipWidget.h"
 #include "ItemTooltipWidget.h"
 #include "DungeonGameInstance.h"
-#include "DungeonCharacter.h"
 #include "WeaponTraceComponent.h"
 #include "DungeonDeathmatch.h"
 #include "PlayerCombatComponent.h"
 
 #include <Components/CapsuleComponent.h>
 #include <Components/StaticMeshComponent.h>
+#include "EquipmentComponent.h"
+#include <AbilitySystemInterface.h>
+#include <AbilitySystemComponent.h>
 
 // Sets default values
 AWeapon::AWeapon(const FObjectInitializer& ObjectInitializer)
@@ -204,7 +206,7 @@ void AWeapon::StartSwing()
 
 	// Activate all attached hit trace components on the server
 	AActor* Owner = GetOwner();
-	if (Owner && Owner->Role == ROLE_Authority)
+	if (Owner && Owner->HasAuthority())
 	{
 		TArray<UActorComponent*> WeaponTraceComponents = GetComponentsByClass(UWeaponTraceComponent::StaticClass());
 		for (UActorComponent* ActorComponent : WeaponTraceComponents)
@@ -228,7 +230,7 @@ void AWeapon::StopSwing()
 	// Deactivate all attached hit trace components on the server
 	// Activate all attached hit trace components on server
 	AActor* Owner = GetOwner();
-	if (Owner && Owner->Role == ROLE_Authority)
+	if (Owner && Owner->HasAuthority())
 	{
 		TArray<UActorComponent*> WeaponTraceComponents = GetComponentsByClass(UWeaponTraceComponent::StaticClass());
 		for (UActorComponent* ActorComponent : WeaponTraceComponents)
@@ -246,9 +248,9 @@ void AWeapon::StopSwing()
 	BlockingActorsThisSwing.Empty();
 }
 
-void AWeapon::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
+void AWeapon::ServerOnEquip_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot)
 {
-	Super::ServerOnEquip_Implementation(NewEquippingCharacter, EquipmentSlot);
+	Super::ServerOnEquip_Implementation(InEquippingActor, EquipmentSlot);
 
 	switch (EquipmentSlot)
 	{
@@ -296,67 +298,94 @@ void AWeapon::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharac
 		break;
 	}
 
-	Server_SpawnAtLocation(NewEquippingCharacter->GetActorLocation());
-	Server_SetCanInteract(false);
-	FName AttachSocketName = NAME_None;
+	ServerSpawnAtLocation(InEquippingActor->GetActorLocation());
+	ServerSetCanInteract(false);
 
-	FWeaponLoadout ActiveLoadout = NewEquippingCharacter->GetEquipmentComponent()->GetActiveWeaponLoadout();
-	ECombatState CombatState = NewEquippingCharacter->GetCombatComponent()->GetCombatState();
-	
-	if (CombatState != ECombatState::Sheathed && ActiveLoadout.MainHandWeapon == this)
+	UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(InEquippingActor->GetComponentByClass(UEquipmentComponent::StaticClass()));
+	if (EquipmentComponent)
 	{
-		AttachSocketName = FName("MainHand");
-	}
-	else if (CombatState != ECombatState::Sheathed && ActiveLoadout.OffHandWeapon == this)
-	{
-		AttachSocketName = FName("OffHand");
-	}
-	else {
-		AttachSocketName = NewEquippingCharacter->GetNameForWeaponSocket(WeaponSocketType);
-	}
-
-	FVector SocketPositionAdjustment = FVector::ZeroVector;
-	if (CombatState != ECombatState::Sheathed && (ActiveLoadout.MainHandWeapon == this || ActiveLoadout.OffHandWeapon == this))
-	{
-		FVector* VectorPtr = UnsheathedSocketPositionAdjustments.Find(WeaponSocketType);
-		if (VectorPtr)
+		FName AttachSocketName = NAME_None;
+		FVector SocketPositionAdjustment = FVector::ZeroVector;
+		FRotator SocketRotationAdjustment = FRotator::ZeroRotator;
+		FWeaponLoadout ActiveLoadout = EquipmentComponent->GetActiveWeaponLoadout();
+		UPlayerCombatComponent* CombatComponent = Cast<UPlayerCombatComponent>(InEquippingActor->GetComponentByClass(UPlayerCombatComponent::StaticClass()));
+		if (CombatComponent)
 		{
-			SocketPositionAdjustment = *VectorPtr;
+			ECombatState CombatState = CombatComponent->GetCombatState();
+			if (CombatState != ECombatState::Sheathed && ActiveLoadout.MainHandWeapon == this)
+			{
+				AttachSocketName = FName("MainHand");
+			}
+			else if (CombatState != ECombatState::Sheathed && ActiveLoadout.OffHandWeapon == this)
+			{
+				AttachSocketName = FName("OffHand");
+			}
+			else {
+				//		AttachSocketName = NewEquippingCharacter->GetNameForWeaponSocket(WeaponSocketType);
+			}
+
+			if (CombatState != ECombatState::Sheathed && (ActiveLoadout.MainHandWeapon == this || ActiveLoadout.OffHandWeapon == this))
+			{
+				FVector* VectorPtr = UnsheathedSocketPositionAdjustments.Find(WeaponSocketType);
+				if (VectorPtr)
+				{
+					SocketPositionAdjustment = *VectorPtr;
+				}
+			}
+			else
+			{
+				FVector* VectorPtr = SheathedSocketPositionAdjustments.Find(WeaponSocketType);
+				if (VectorPtr)
+				{
+					SocketPositionAdjustment = *VectorPtr;
+				}
+			}
+
+			if (CombatState != ECombatState::Sheathed && (ActiveLoadout.MainHandWeapon == this || ActiveLoadout.OffHandWeapon == this))
+			{
+				FRotator* RotatorPtr = UnsheathedSocketRotationAdjustments.Find(WeaponSocketType);
+				if (RotatorPtr)
+				{
+					SocketRotationAdjustment = *RotatorPtr;
+				}
+			}
+			else
+			{
+				FRotator* RotatorPtr = SheathedSocketRotationAdjustments.Find(WeaponSocketType);
+				if (RotatorPtr)
+				{
+					SocketRotationAdjustment = *RotatorPtr;
+				}
+			}
+		}
+		EquipmentComponent->ServerAttachActorToSocket(this, AttachSocketName, SocketPositionAdjustment, SocketRotationAdjustment);
+	}
+
+	IAbilitySystemInterface* AbilitySystemInterface = Cast<IAbilitySystemInterface>(InEquippingActor);
+	if (AbilitySystemInterface)
+	{
+		for (TSubclassOf<UGameplayAbility> Ability : MainHandAbilities)
+		{
+			AbilitySystemInterface->GetAbilitySystemComponent()->GiveAbility(Ability);
+		}
+		for (TSubclassOf<UGameplayAbility> Ability : MainHandAltAbilities)
+		{
+			AbilitySystemInterface->GetAbilitySystemComponent()->GiveAbility(Ability);
+		}
+		for (TSubclassOf<UGameplayAbility> Ability : OffHandAbilities)
+		{
+			AbilitySystemInterface->GetAbilitySystemComponent()->GiveAbility(Ability);
+		}
+		for (TSubclassOf<UGameplayAbility> Ability : OffHandAltAbilities)
+		{
+			AbilitySystemInterface->GetAbilitySystemComponent()->GiveAbility(Ability);
 		}
 	}
-	else
-	{
-		FVector* VectorPtr = SheathedSocketPositionAdjustments.Find(WeaponSocketType);
-		if (VectorPtr)
-		{
-			SocketPositionAdjustment = *VectorPtr;
-		}
-	}
-
-	FRotator SocketRotationAdjustment = FRotator::ZeroRotator;
-	if (CombatState != ECombatState::Sheathed && (ActiveLoadout.MainHandWeapon == this || ActiveLoadout.OffHandWeapon == this))
-	{
-		FRotator* RotatorPtr = UnsheathedSocketRotationAdjustments.Find(WeaponSocketType);
-		if (RotatorPtr)
-		{
-			SocketRotationAdjustment = *RotatorPtr;
-		}
-	}
-	else
-	{
-		FRotator* RotatorPtr = SheathedSocketRotationAdjustments.Find(WeaponSocketType);
-		if (RotatorPtr)
-		{
-			SocketRotationAdjustment = *RotatorPtr;
-		}
-	}
-
-	NewEquippingCharacter->Server_AttachActorToSocket(this, AttachSocketName, SocketPositionAdjustment, SocketRotationAdjustment);
 }
 
-void AWeapon::MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
+void AWeapon::MulticastOnEquip_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot)
 {
-	Super::MulticastOnEquip_Implementation(NewEquippingCharacter, EquipmentSlot);
+	Super::MulticastOnEquip_Implementation(InEquippingActor, EquipmentSlot);
 	GetRootMeshComponent()->SetSimulatePhysics(false);
 
 	// Disable interactable trace collision on meshes so they don't block interactable tracing from camera
@@ -370,28 +399,15 @@ void AWeapon::MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCha
 			MeshComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECR_Ignore);
 		}
 	}
-
-	for (TSubclassOf<UGameplayAbility> Ability : MainHandAbilities)
-	{
-		NewEquippingCharacter->GiveAbility(Ability);
-	}
-	for (TSubclassOf<UGameplayAbility> Ability : MainHandAltAbilities)
-	{
-		NewEquippingCharacter->GiveAbility(Ability);
-	}
-	for (TSubclassOf<UGameplayAbility> Ability : OffHandAbilities)
-	{
-		NewEquippingCharacter->GiveAbility(Ability);
-	}
-	for (TSubclassOf<UGameplayAbility> Ability : OffHandAltAbilities)
-	{
-		NewEquippingCharacter->GiveAbility(Ability);
-	}
 }
 
 void AWeapon::ServerOnUnequip_Implementation()
 {
-	EquippingCharacter->Server_DetachActor(this);
+	UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(EquippingActor->GetComponentByClass(UEquipmentComponent::StaticClass()));
+	if (EquipmentComponent)
+	{
+		EquipmentComponent->ServerDetachActor(this);
+	}
 	Super::ServerOnUnequip_Implementation();
 }
 
@@ -430,21 +446,21 @@ void AWeapon::OnHitDetected(FWeaponHitResult WeaponHitResult)
 {
 	if (Role == ROLE_Authority)
 	{
-		Server_OnHitDetected(WeaponHitResult);
+		ServerOnHitDetected(WeaponHitResult);
 	}
 }
 
-void AWeapon::Server_OnHitDetected_Implementation(FWeaponHitResult WeaponHitResult)
+void AWeapon::ServerOnHitDetected_Implementation(FWeaponHitResult WeaponHitResult)
 {
-	Multicast_OnHitDetected(WeaponHitResult);
+	MulticastOnHitDetected(WeaponHitResult);
 }
 
-bool AWeapon::Server_OnHitDetected_Validate(FWeaponHitResult WeaponHitResult)
+bool AWeapon::ServerOnHitDetected_Validate(FWeaponHitResult WeaponHitResult)
 {
 	return true;
 }
 
-void AWeapon::Multicast_OnHitDetected_Implementation(FWeaponHitResult WeaponHitResult)
+void AWeapon::MulticastOnHitDetected_Implementation(FWeaponHitResult WeaponHitResult)
 {
 	AActor* HitActor = WeaponHitResult.HitResult.GetActor();
 	if (!HitActorsThisSwing.Contains(HitActor))
@@ -454,7 +470,7 @@ void AWeapon::Multicast_OnHitDetected_Implementation(FWeaponHitResult WeaponHitR
 		FVector HitDirection = WeaponHitResult.HitResult.TraceEnd - WeaponHitResult.HitResult.TraceStart;
 		HitDirection.Normalize();
 
-		HitActor->TakeDamage(100000, FDamageEvent(), EquippingCharacter->GetController(), this);
+		HitActor->TakeDamage(100000, FDamageEvent(), EquippingActor->GetInstigatorController(), this);
 		UPrimitiveComponent* HitComponent = WeaponHitResult.HitResult.GetComponent();
 		if (HitComponent)
 		{
@@ -522,7 +538,7 @@ void AWeapon::Multicast_OnHitDetected_Implementation(FWeaponHitResult WeaponHitR
 	}
 }
 
-bool AWeapon::Multicast_OnHitDetected_Validate(FWeaponHitResult WeaponHitResult)
+bool AWeapon::MulticastOnHitDetected_Validate(FWeaponHitResult WeaponHitResult)
 {
 	return true;
 }

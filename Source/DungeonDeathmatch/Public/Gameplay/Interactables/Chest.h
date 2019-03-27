@@ -3,20 +3,20 @@
 #pragma once
 
 #include "DungeonDeathmatch.h"
-#include "Interactable.h"
-#include "InteractionComponent.h"
+#include "InteractableInterface.h"
+#include "InteractableComponent.h"
 #include "Chest.generated.h"
 
 class USkeletalMeshComponent;
 class UWidgetComponent;
-class UInteractionComponent;
+class UInteractableComponent;
 class ULootComponent;
 
 /**
  * 
  */
 UCLASS()
-class DUNGEONDEATHMATCH_API AChest : public AActor, public IInteractable
+class DUNGEONDEATHMATCH_API AChest : public AActor, public IInteractableInterface
 {
 	GENERATED_BODY()
 
@@ -32,7 +32,7 @@ protected:
 	UWidgetComponent* WidgetComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
-	UInteractionComponent* InteractionComponent;
+	UInteractableComponent* InteractableComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Loot")
 	ULootComponent* LootComponent;

@@ -17,12 +17,12 @@ void AEquippable::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(AEquippable, EquippingCharacter);
+	DOREPLIFETIME(AEquippable, EquippingActor);
 }
 
 FText AEquippable::GetInventoryUseTooltipText()
 {
-	if (EquippingCharacter)
+	if (EquippingActor)
 	{
 		return FText::FromString("Unequip");
 	}
@@ -30,56 +30,56 @@ FText AEquippable::GetInventoryUseTooltipText()
 	return FText::FromString("Equip");
 }
 
-void AEquippable::Server_OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
+void AEquippable::ServerOnEquip_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot)
 {
-	ServerOnEquip(NewEquippingCharacter, EquipmentSlot);
-	Multicast_OnEquip(NewEquippingCharacter, EquipmentSlot);
+	ServerOnEquipEvent(InEquippingActor, EquipmentSlot);
+	MulticastOnEquip(InEquippingActor, EquipmentSlot);
 }
 
-bool AEquippable::Server_OnEquip_Validate(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
+bool AEquippable::ServerOnEquip_Validate(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot)
 {
 	return true;
 }
 
-void AEquippable::ServerOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
+void AEquippable::ServerOnEquipEvent_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot)
 {
-	EquippingCharacter = NewEquippingCharacter;
+	EquippingActor = InEquippingActor;
 	Execute_SetCanInteract(this, false);
 }
 
-void AEquippable::Multicast_OnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
+void AEquippable::MulticastOnEquip_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot)
 {
-	MulticastOnEquip(NewEquippingCharacter, EquipmentSlot);
+	MulticastOnEquipEvent(InEquippingActor, EquipmentSlot);
 }
 
-void AEquippable::MulticastOnEquip_Implementation(ADungeonCharacter* NewEquippingCharacter, EEquipmentSlot EquipmentSlot)
+void AEquippable::MulticastOnEquipEvent_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot)
 {
 	
 }
 
-void AEquippable::Server_OnUnequip_Implementation()
+void AEquippable::ServerOnUnequip_Implementation()
 {
-	ServerOnUnequip();
-	Multicast_OnUnequip();
+	ServerOnUnequipEvent();
+	MulticastOnUnequip();
 }
 
-bool AEquippable::Server_OnUnequip_Validate()
+bool AEquippable::ServerOnUnequip_Validate()
 {
 	return true;
 }
 
-void AEquippable::ServerOnUnequip_Implementation()
+void AEquippable::ServerOnUnequipEvent_Implementation()
 {
-	EquippingCharacter = nullptr;
+	EquippingActor = nullptr;
 	Execute_SetCanInteract(this, true);
 }
 
-void AEquippable::Multicast_OnUnequip_Implementation()
+void AEquippable::MulticastOnUnequip_Implementation()
 {
-	MulticastOnUnequip();
+	MulticastOnUnequipEvent();
 }
 
-void AEquippable::MulticastOnUnequip_Implementation()
+void AEquippable::MulticastOnUnequipEvent_Implementation()
 {
 
 }

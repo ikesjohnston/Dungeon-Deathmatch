@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "InteractTooltipWidget.h"
-#include "Interactable.h"
+#include "InteractableInterface.h"
 #include "ItemTooltipWidget.h"
 #include <UserWidget.h>
 #include "Item.h"
@@ -13,7 +13,7 @@ void UInteractTooltipWidget::SetInteractable(AActor* NewInteractable)
 {
 	Interactable = NewInteractable;
 
-	IInteractable* InteractableInterface = Cast<IInteractable>(Interactable);
+	IInteractableInterface* InteractableInterface = Cast<IInteractableInterface>(Interactable);
 	if (InteractableInterface)
 	{
 		FFormatNamedArguments Args;

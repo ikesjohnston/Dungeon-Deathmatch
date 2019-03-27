@@ -27,7 +27,7 @@ void URenderCaptureComponent::BeginPlay()
 		RenderCaptureActor = Cast<ACharacterRenderCapture2D>(GetWorld()->SpawnActor(RenderCaptureClass));
 		if (RenderCaptureActor)
 		{
-			RenderCaptureActor->InitializeCharacter(OwningCharacter);
+			RenderCaptureActor->InitializeRender(OwningCharacter);
 			RenderCaptureActor->SetActorLocation(FVector(0, 0, -1000));
 		}
 	}
@@ -38,7 +38,7 @@ ACharacterRenderCapture2D* URenderCaptureComponent::GetRenderCaptureActor()
 	return RenderCaptureActor;
 }
 
-void URenderCaptureComponent::UpdateMeshSegment(EMeshSegment MeshSegment, USkeletalMesh* Mesh)
+void URenderCaptureComponent::UpdateMeshSegment(EHumanoidMeshSegment MeshSegment, USkeletalMesh* Mesh)
 {
 	if (OwningCharacter->IsLocallyControlled() && RenderCaptureActor)
 	{

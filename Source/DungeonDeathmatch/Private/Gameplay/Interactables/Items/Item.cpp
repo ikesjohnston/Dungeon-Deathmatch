@@ -249,7 +249,11 @@ FText AItem::GetInventoryUseTooltipText()
 // ------------------------ BEGIN INTERACTABLE INTERFACE FUNCTIONS ------------------------
 void AItem::OnInteract_Implementation(ADungeonCharacter* InteractingCharacter)
 {
-	InteractingCharacter->Server_RequestPickUpItem(this);
+	UInventoryComponent* InventoryComponent = Cast<UInventoryComponent>(InteractingCharacter->GetComponentByClass(UInventoryComponent::StaticClass()));
+	if (InventoryComponent)
+	{
+		InventoryComponent->ServerRequestPickUpItem(this);
+	}
 }
 
 void AItem::OnFocused_Implementation()
@@ -304,28 +308,28 @@ FText AItem::GetInteractableName_Implementation()
 	return ItemName;
 }
 
-void AItem::Server_SetCanInteract_Implementation(bool CanInteract)
+void AItem::ServerSetCanInteract_Implementation(bool CanInteract)
 {
 	Execute_SetCanInteract(this, CanInteract);
 }
 
-bool AItem::Server_SetCanInteract_Validate(bool CanInteract)
+bool AItem::ServerSetCanInteract_Validate(bool CanInteract)
 {
 	return true;
 }
 
-void AItem::Server_Despawn_Implementation()
+void AItem::ServerDespawn_Implementation()
 {
-	Server_SetCanInteract(false);
-	Multicast_Despawn();
+	ServerSetCanInteract(false);
+	MulticastDespawn();
 }
 
-bool AItem::Server_Despawn_Validate()
+bool AItem::ServerDespawn_Validate()
 {
 	return true;
 }
 
-void AItem::Multicast_Despawn_Implementation()
+void AItem::MulticastDespawn_Implementation()
 {
 	WidgetComponent->SetVisibility(false);
 
@@ -354,18 +358,18 @@ void AItem::Multicast_Despawn_Implementation()
 	Execute_OnUnfocused(this);
 }
 
-void AItem::Server_SpawnAtLocation_Implementation(const FVector Location, const FVector EjectionForce /*= FVector(0, 0, 0)*/)
+void AItem::ServerSpawnAtLocation_Implementation(const FVector Location, const FVector EjectionForce /*= FVector(0, 0, 0)*/)
 {
-	Multicast_SpawnAtLocation(Location, EjectionForce);
-	Server_SetCanInteract(true);
+	MulticastSpawnAtLocation(Location, EjectionForce);
+	ServerSetCanInteract(true);
 }
 
-bool AItem::Server_SpawnAtLocation_Validate(const FVector Location, const FVector EjectionForce /*= FVector(0, 0, 0)*/)
+bool AItem::ServerSpawnAtLocation_Validate(const FVector Location, const FVector EjectionForce /*= FVector(0, 0, 0)*/)
 {
 	return true;
 }
 
-void AItem::Multicast_SpawnAtLocation_Implementation(const FVector Location, const FVector EjectionForce /*= FVector(0, 0, 0)*/)
+void AItem::MulticastSpawnAtLocation_Implementation(const FVector Location, const FVector EjectionForce /*= FVector(0, 0, 0)*/)
 {
 	// Enable collision and rendering on all mesh components
 	TArray<UActorComponent*> MeshComponents = GetComponentsByClass(UMeshComponent::StaticClass());

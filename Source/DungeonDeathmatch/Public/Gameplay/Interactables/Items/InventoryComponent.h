@@ -4,15 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+
 #include "InventoryGlobals.h"
 #include "InventoryComponent.generated.h"
 
+class AItem;
+
 /* Event delegate for when an item is added to the inventory; for UI updates */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemAddedSignature, class AItem*, Item, FInventoryGridPair, OriginGridSlot);
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemAddedSignature, AItem*, Item, FInventoryGridPair, OriginGridSlot);
 /* Event delegate for when an item is removed from the inventory; for UI updates */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemRemovedSignature, class AItem*, Item, FInventoryGridPair, OriginGridSlot);
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemRemovedSignature, AItem*, Item, FInventoryGridPair, OriginGridSlot);
 /* Event delegate for when the size of the inventory changes; for UI updates */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInventorySizeChangedSignature, uint8, GridRows, uint8, GridColumns);
 
@@ -71,33 +72,46 @@ protected:
 	UPROPERTY(Replicated, EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory")
 	FInventoryGridPair InventoryGridSize;
 
+	/** The force to apply to items when dropping them */
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	float DropEjectionForce;
+
+	/** The relative location to drop items */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (MakeEditWidget = true))
+	FVector ItemDropRelativeLocation;
+
 public:	
-	// Sets default values for this component's properties
 	UInventoryComponent();
-
-protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
-
-public:
-	/**
-	 * Returns the list of items stored in the inventory
-	 */
-	UFUNCTION(BlueprintPure, Category = "Inventory")
+	
 	TArray<AItem*> GetItems();
 
-	/**
-	 * Returns the size of the inventory grid
-	 */
-	UFUNCTION(BlueprintPure, Category = "Inventory")
 	FInventoryGridPair GetInventoryGridSize();
 
+	FVector GetItemDropLocation();
+
 	/**
-	 * Attempts to add an item to the inventory and returns the result. Only runs on the server.
+	 * Server side function that attempts to add an item to the character's inventory and makes a multicast RPC with the result. Used for items that are currently "despawned" and may only be visible from UI elements.
 	 *
-	 * @param Item The desired item to be added to the inventory
+	 * @param Item The item to attempt to add to the inventory
 	 */
+	UFUNCTION(Server, Unreliable, WithValidation)
+	virtual void ServerRequestAddItemToInventory(AItem* Item);
+
+	/**
+	* Attempts to add an item to the inventory and returns the result. Only runs on the server.
+	*
+	* @param Item The desired item to be added to the inventory
+	*/
 	bool RequestAddItem(AItem* Item);
+
+	/**
+	 * Server side function that attempts to add an item to the character's inventory at the specified location and makes a multicast RPC with the result. Used for items that are currently "despawned" and may only be visible from UI elements.
+	 *
+	 * @param Item The item to attempt to add to the inventory
+	 * @param OriginSlot The upper left most grid slot where the item should be placed
+	 */
+	UFUNCTION(Server, Unreliable, WithValidation)
+	virtual void ServerRequestAddItemToInventoryAtLocation(AItem* Item, FInventoryGridPair OriginSlot);
 
 	/**
 	 * Attempts to add an item to the inventory at the specified grid location and returns the result. Only runs on the server.
@@ -108,6 +122,22 @@ public:
 	bool RequestAddItem(AItem* Item, FInventoryGridPair OriginSlot);
 
 	/**
+	 * Server side function that attempts to pick up an item and add it to the character's inventory and makes a multicast RPC with the result. Used when interacting with items in the world.
+	 *
+	 * @param Item The item to attempt to pick up
+	 */
+	UFUNCTION(Server, Unreliable, WithValidation, Category = "Inventory")
+	virtual void ServerRequestPickUpItem(AItem* Item);
+
+	/**
+	 * Server side function that attempts to remove an item from the character's inventory and makes a multicast RPC with the result. Used for items that should remain "despawned" and only be visible from UI elements.
+	 *
+	 * @param Item The item to attempt to remove from the inventory
+	 */
+	UFUNCTION(Server, Unreliable, WithValidation, Category = "Inventory")
+	virtual void ServerRequestRemoveItemFromInventory(AItem* Item);
+
+	/**
 	 * Attempts to remove an item from the inventory and returns the result. Only runs on the server.
 	 *
 	 * @param Item The desired item to be removed from the inventory
@@ -115,15 +145,18 @@ public:
 	bool RequestRemoveItem(AItem* Item);
 
 	/**
-	 * Local function that makes a server call to change the size of the inventory grid and then broadcasts an event for UI updates.
+	 * Server side function that attempts to remove an item from the character's inventory and "spawn" it in front of the character and makes a multicast RPC with the result.
 	 *
-	 * @param Rows The new amount of rows for the inventory grid
-	 * @param Columns The new amount of columns for the inventory grid
+	 * @param Item The item to attempt to drop
+	 * @param CheckInventory Whether to check if the item is in the inventory before dropping it. This should only not be done when dropping via Drag & Drop operation from the inventory
+	 * in which case the item has already been removed from the inventory.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void ChangeInventorySize(uint8 Rows, uint8 Columns);
+	UFUNCTION(Server, Unreliable, WithValidation, Category = "Inventory")
+	virtual void ServerRequestDropItem(AItem* Item, bool CheckInventory = true);
 
 protected:
+	virtual void BeginPlay() override;
+
 	/**
 	 * Adds an item to the inventory at the specified grid location. Only called on the server.
 	 *
@@ -132,14 +165,14 @@ protected:
 	 */
 	void AddItem(AItem* Item, FInventoryGridPair OriginSlot);
 
-	/** 
+	/**
 	 * Broadcasts OnItemAdded event for UI updates. Should only be called from server side functions.
 	 *
 	 * @param Item The item that was added to the inventory
 	 * @param OriginSlot The upper left most slot that this item occupies in the inventory grid
 	 */
 	UFUNCTION(NetMulticast, Reliable, Category = "Inventory")
-	void Multicast_OnItemAdd(AItem* Item, FInventoryGridPair OriginSlot);
+	void MulticastOnItemAdded(AItem* Item, FInventoryGridPair OriginSlot);
 
 	/** 
 	 * Removes an item from the inventory. Only called on the server.
@@ -155,7 +188,16 @@ protected:
 	 * @param OriginSlot The upper left most slot that this item occupies in the inventory grid
 	 */
 	UFUNCTION(NetMulticast, Reliable, Category = "Inventory")
-	void Multicast_OnItemRemove(AItem* Item, FInventoryGridPair OriginSlot);
+	void MulticastOnItemRemoved(AItem* Item, FInventoryGridPair OriginSlot);
+
+	/**
+	 * Local function that makes a server call to change the size of the inventory grid and then broadcasts an event for UI updates.
+	 *
+	 * @param Rows The new amount of rows for the inventory grid
+	 * @param Columns The new amount of columns for the inventory grid
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void ChangeInventorySize(uint8 Rows, uint8 Columns);
 
 	/**
 	 * Changes the size of the inventory grid. Only called on the server.
@@ -164,5 +206,5 @@ protected:
 	 * @param Columns The new amount of columns for the inventory grid
 	 */
 	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Inventory")
-	void Server_ChangeInventorySize(uint8 Rows, uint8 Columns);
+	void ServerChangeInventorySize(uint8 Rows, uint8 Columns);
 };

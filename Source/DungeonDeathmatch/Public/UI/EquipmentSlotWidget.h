@@ -4,13 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+
 #include "EquipmentGlobals.h"
 #include "Item.h"
 #include "EquipmentSlotWidget.generated.h"
 
 class UImage;
-class UDraggableItemWidget;
 class UCanvasPanel;
+
+class UDraggableItemWidget;
+class UEquipmentComponent;
+class UInventoryComponent;
 
 /**
  * Widget for displaying an equipment slot and any item currently in that slot
@@ -103,10 +107,13 @@ protected:
 
 private:
 	/** Has the slot been bound to a player controller yet? */
-	bool bIsSlotBound;
+	bool bIsBoundToController;
 
 	/** Timer handle for retrying slot binding on failure */
-	FTimerHandle BindSlotTimerHandle;
+	FTimerHandle BindToControllerTimerHandle;
+
+	UEquipmentComponent* SourceEquipmentComponent;
+	UInventoryComponent* SourceInventoryComponent;
 
 public:
 	UEquipmentSlotWidget(const FObjectInitializer& ObjectInitializer);
@@ -116,6 +123,9 @@ public:
 protected:
 	/** Attempts to get the local player controller and bind the slot to it */
 	void BindToController();
+
+	/** Attempts to bind the slot to a particular source's EquipmentComponent*/
+	void BindToSource(AActor* Source);
 
 	/** Resets the default item image to the global default for the slot type */
 	void ResetDefaultImage();
