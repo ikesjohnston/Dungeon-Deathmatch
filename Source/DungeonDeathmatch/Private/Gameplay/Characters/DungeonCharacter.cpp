@@ -19,6 +19,7 @@
 #include <Private/KismetTraceUtils.h>
 #include <AbilitySystemComponent.h>
 #include "DungeonAttributeSet.h"
+#include <UnrealNetwork.h>
 
 
 // Console command for logging melee combo states
@@ -57,6 +58,9 @@ ADungeonCharacter::ADungeonCharacter()
 	BaseCrouchedMovementSpeed = 200.0f;
 	GetCharacterMovement()->MaxWalkSpeedCrouched = BaseCrouchedMovementSpeed;
 	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
+
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 720.0f, 0.0f);
 }
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -75,7 +79,7 @@ void ADungeonCharacter::BeginPlay()
 
 void ADungeonCharacter::PossessedBy(AController* NewController)
 {
-
+	Super::PossessedBy(NewController);
 }
 
 void ADungeonCharacter::InitializeAbilities()
@@ -90,7 +94,6 @@ void ADungeonCharacter::InitializeAbilities()
 void ADungeonCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 UAbilitySystemComponent* ADungeonCharacter::GetAbilitySystemComponent() const

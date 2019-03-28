@@ -13,6 +13,7 @@
 class UCameraComponent;
 class USpringArmComponent;
 class UGameplayEffect;
+class UBehaviorTree;
 
 class UDungeonAbilitySystemComponent;
 class UDungeonAttributeSet;
@@ -33,6 +34,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	USpringArmComponent* SpringArm;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI")
+	UBehaviorTree* BehaviorTree;
 
 	/** The component used to handle gameplay ability system interactions */
 	UPROPERTY()
@@ -78,6 +82,8 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	UBehaviorTree* GetBehaviorTree() { return BehaviorTree; };
 
 	/** Gets the character's AbilitySystemComponent, required by IAbilitySystemInterface */
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;

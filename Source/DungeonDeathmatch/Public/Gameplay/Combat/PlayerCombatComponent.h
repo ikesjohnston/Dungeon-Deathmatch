@@ -65,9 +65,6 @@ protected:
 	TSubclassOf<UDungeonGameplayAbility> SwitchWeaponLoadoutAbility;
 
 private:
-	/** The character that this component is attached to */
-	APlayerCharacter* OwningCharacter;
-
 	UAbilitySystemComponent* AbilitySystemComponent;
 
 	UEquipmentComponent* EquipmentComponent;

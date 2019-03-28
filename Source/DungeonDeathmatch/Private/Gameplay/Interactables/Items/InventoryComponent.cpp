@@ -49,7 +49,7 @@ FInventoryGridPair UInventoryComponent::GetInventoryGridSize()
 
 FVector UInventoryComponent::GetItemDropLocation()
 {
-	return GetOwner()->GetActorLocation() + ItemDropRelativeLocation;
+	return GetOwner()->GetActorLocation() + (GetOwner()->GetActorForwardVector() * ItemDropRelativeLocation);
 }
 
 void UInventoryComponent::ServerRequestAddItemToInventory_Implementation(AItem* Item)

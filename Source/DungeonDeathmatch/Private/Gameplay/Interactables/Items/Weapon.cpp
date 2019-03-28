@@ -321,7 +321,7 @@ void AWeapon::ServerOnEquip_Implementation(AActor* InEquippingActor, EEquipmentS
 				AttachSocketName = FName("OffHand");
 			}
 			else {
-				//		AttachSocketName = NewEquippingCharacter->GetNameForWeaponSocket(WeaponSocketType);
+				AttachSocketName = EquipmentComponent->GetNameForWeaponSocket(WeaponSocketType);
 			}
 
 			if (CombatState != ECombatState::Sheathed && (ActiveLoadout.MainHandWeapon == this || ActiveLoadout.OffHandWeapon == this))

@@ -13,13 +13,6 @@ UPlayerCombatComponent::UPlayerCombatComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 	bReplicates = true;
 	
-	OwningCharacter = Cast<APlayerCharacter>(GetOwner());
-	if (!OwningCharacter)
-	{
-		UE_LOG(LogTemp, Error, TEXT("UPlayerCombatComponent::UPlayerCombatComponent - OwningCharacter is null."))
-		return;
-	}
-
 	bIsMeleeComboReady = true;
 	CombatState = ECombatState::Sheathed;
 }
@@ -38,16 +31,19 @@ void UPlayerCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	AbilitySystemComponent = OwningCharacter->GetAbilitySystemComponent();
-
-	EquipmentComponent = Cast<UEquipmentComponent>(OwningCharacter->GetComponentByClass(UEquipmentComponent::StaticClass()));
-	if (!EquipmentComponent)
+	AbilitySystemComponent = Cast<UAbilitySystemComponent>(GetOwner()->GetComponentByClass(UAbilitySystemComponent::StaticClass()));
+	if (!AbilitySystemComponent)
 	{
-		UE_LOG(LogTemp, Error, TEXT("UPlayerCombatComponent::BeginPlay - OwningCharacter does not have an EquipmentComponent."))
-		return;
+		UE_LOG(LogTemp, Error, TEXT("UPlayerCombatComponent::BeginPlay - Owner does not have an AbilitySystemComponent."))
 	}
 
-	if (OwningCharacter->HasAuthority())
+	EquipmentComponent = Cast<UEquipmentComponent>(GetOwner()->GetComponentByClass(UEquipmentComponent::StaticClass()));
+	if (!EquipmentComponent)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UPlayerCombatComponent::BeginPlay - Owner does not have an EquipmentComponent."))
+	}
+
+	if (GetOwner()->HasAuthority())
 	{
 		if (SheatheWeaponsAbility)
 		{
@@ -72,6 +68,7 @@ void UPlayerCombatComponent::ToggleActiveLoadout()
 
 void UPlayerCombatComponent::SwitchLoadout()
 {
+	if (!AbilitySystemComponent) return;
 	if (SwitchWeaponLoadoutAbility)
 	{
 		AbilitySystemComponent->TryActivateAbilityByClass(SwitchWeaponLoadoutAbility);
@@ -80,6 +77,7 @@ void UPlayerCombatComponent::SwitchLoadout()
 
 void UPlayerCombatComponent::ToggleWeaponSheathe()
 {
+	if (!AbilitySystemComponent) return;
 	if (CombatState == ECombatState::Sheathed)
 	{
 		if (UnsheatheWeaponsAbility)
@@ -189,6 +187,7 @@ void UPlayerCombatComponent::PerformOffHandAltAttack()
 
 void UPlayerCombatComponent::TryPerformAttack(EMeleeComboType AttackType)
 {
+	if (!AbilitySystemComponent) return;
 	if (CombatState == ECombatState::Sheathed)
 	{
 		if (UnsheatheWeaponsAbility)
@@ -234,6 +233,7 @@ void UPlayerCombatComponent::TryPerformAttack(EMeleeComboType AttackType)
 
 void UPlayerCombatComponent::PerformAttack(TArray<TSubclassOf<UDungeonGameplayAbility>> Abilities, EMeleeComboType ComboType)
 {
+	if (!AbilitySystemComponent) return;
 	if (ActiveMeleeComboType != ComboType)
 	{
 		// Make multicast calls first to ensure they happen on the client before proceeding

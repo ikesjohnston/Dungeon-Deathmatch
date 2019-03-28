@@ -17,7 +17,6 @@ UEquipmentComponent::UEquipmentComponent()
 
 	Equipment = TMap<EEquipmentSlot, AEquippable*>();
 
-
 	SocketNameConsumableOne = "ConsumableOne";
 	SocketNameConsumableTwo = "ConsumableTwo";
 }
@@ -26,11 +25,35 @@ UEquipmentComponent::UEquipmentComponent()
 void UEquipmentComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	EquipStartingItems();
+}
 
-	ADungeonCharacter* DungeonCharacter = Cast<ADungeonCharacter>(GetOwner());
-	if (DungeonCharacter)
+void UEquipmentComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+}
+
+void UEquipmentComponent::EquipStartingItems()
+{
+	for (TTuple<EEquipmentSlot, AEquippable*> EquipmentTuple : Equipment)
 	{
-		OwningCharacter = DungeonCharacter;
+		ServerUnequipItem(EquipmentTuple.Value, EquipmentTuple.Key);
+		EquipmentTuple.Value->Destroy();
+	}
+
+	FActorSpawnParameters EquipmentSpawnParams = FActorSpawnParameters();
+	EquipmentSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	for (TTuple<EEquipmentSlot, TSubclassOf<AEquippable>> EquipmentTuple : StartingEquipment)
+	{
+		if (EquipmentTuple.Value != NULL)
+		{
+			AEquippable* Equippable = GetWorld()->SpawnActor<AEquippable>(EquipmentTuple.Value, FTransform::Identity, EquipmentSpawnParams);
+			if (Equippable)
+			{
+				ServerEquipItemToSlot(Equippable, EquipmentTuple.Key);
+			}
+		}
 	}
 }
 
@@ -408,7 +431,7 @@ void UEquipmentComponent::EquipItem(AEquippable* Equippable, EEquipmentSlot Slot
 	{
 		Equipment.Add(TTuple<EEquipmentSlot, AEquippable*>(Slot, Equippable));
 		MulticastOnItemEquipped(Equippable, Slot);
-		Equippable->ServerOnEquip(OwningCharacter, Slot);
+		Equippable->ServerOnEquip(GetOwner(), Slot);
 		Equippable->SetOwner(GetOwner());
 	}
 }
@@ -424,22 +447,6 @@ void UEquipmentComponent::UnequipItem(AEquippable* Equippable, EEquipmentSlot Sl
 		Equippable->SetOwner(nullptr);
 	}
 }
-
-//void UEquipmentComponent::OnMoveToInventorySuccess(AEquippable* Equippable)
-//{
-//	Equippable->ServerDespawn();
-//}
-//
-//void UEquipmentComponent::OnMoveToInventoryFail(AEquippable* Equippable)
-//{
-//	FVector DropLocation = FVector::ZeroVector;
-//	IInventoryInterface* InventoryInterface = Cast<IInventoryInterface>(GetOwner());
-//	if (InventoryInterface)
-//	{
-//		DropLocation = InventoryInterface->GetItemDropLocation();
-//	}
-//	Equippable->ServerSpawnAtLocation(DropLocation);
-//}
 
 void UEquipmentComponent::MulticastToggleActiveLoadout_Implementation()
 {
@@ -493,12 +500,28 @@ void UEquipmentComponent::MulticastAttachActorToSocket_Implementation(AActor* Ac
 	FAttachmentTransformRules AttachmentRules = FAttachmentTransformRules::SnapToTargetIncludingScale;
 	AttachmentRules.bWeldSimulatedBodies = true;
 
-	Actor->AttachToComponent(OwningCharacter->GetMesh(), AttachmentRules, SocketName);
+	AItem* Item = Cast<AItem>(Actor);
+	if (Item)
+	{
+		UMeshComponent* RootMesh = Item->GetRootMeshComponent();
+		if (RootMesh)
+		{
+			RootMesh->SetSimulatePhysics(false);
+		}
 
-	Actor->SetActorRelativeLocation(RelativePosition);
-	Actor->SetActorRelativeRotation(RelativeRotation);
+		Item->Execute_OnUnfocused(Item);
+	}
 
-	URenderCaptureComponent* RenderCaptureComponent = Cast<URenderCaptureComponent>(OwningCharacter->GetComponentByClass(URenderCaptureComponent::StaticClass()));
+	ACharacter* Character = Cast<ACharacter>(GetOwner());
+	if (Character)
+	{
+		Actor->AttachToComponent(Character->GetMesh(), AttachmentRules, SocketName);
+
+		Actor->SetActorRelativeLocation(RelativePosition);
+		Actor->SetActorRelativeRotation(RelativeRotation);
+	}
+
+	URenderCaptureComponent* RenderCaptureComponent = Cast<URenderCaptureComponent>(GetOwner()->GetComponentByClass(URenderCaptureComponent::StaticClass()));
 	if (RenderCaptureComponent)
 	{
 		RenderCaptureComponent->AttachActorToSocket(Actor, SocketName, RelativePosition, RelativeRotation);
@@ -511,7 +534,7 @@ void UEquipmentComponent::MulticastDetachActor_Implementation(AActor* Actor)
 	DetachRules.bCallModify = true;
 	Actor->DetachFromActor(DetachRules);
 
-	URenderCaptureComponent* RenderCaptureComponent = Cast<URenderCaptureComponent>(OwningCharacter->GetComponentByClass(URenderCaptureComponent::StaticClass()));
+	URenderCaptureComponent* RenderCaptureComponent = Cast<URenderCaptureComponent>(GetOwner()->GetComponentByClass(URenderCaptureComponent::StaticClass()));
 	if (RenderCaptureComponent)
 	{
 		RenderCaptureComponent->DetachActor(Actor);

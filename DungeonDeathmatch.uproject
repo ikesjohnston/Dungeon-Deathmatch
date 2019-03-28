@@ -12,44 +12,45 @@
 				"Engine",
 				"CoreUObject",
 				"GameplayAbilities",
-				"UMG"
+				"UMG",
+				"AIModule"
 			]
 		}
 	],
-  "Plugins": [
-    {
-      "Name": "DungeonArchitect",
-      "Enabled": false,
-      "MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/1a4ad2a06f174a26af8a29728241ce42"
-    },
-    {
-      "Name": "OculusVR",
-      "Enabled": false
-    },
-    {
-      "Name": "SteamVR",
-      "Enabled": false
-    },
-    {
-      "Name": "MixamoAnimationRetargeting",
-      "Enabled": true,
-      "MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/7d332d8c59f743f4a068710ab88599f6"
-    },
-    {
-      "Name": "GameplayAbilities",
-      "Enabled": true
-    },
-    {
-      "Name": "ApexDestruction",
-      "Enabled": true
-    },
-    {
-      "Name": "OnlineSubsystemSteam",
-      "Enabled": true
-    },
-    {
-      "Name": "GameMenuSystem",
-      "Enabled": true
-    }
-  ]
+	"Plugins": [
+		{
+			"Name": "DungeonArchitect",
+			"Enabled": false,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/1a4ad2a06f174a26af8a29728241ce42"
+		},
+		{
+			"Name": "OculusVR",
+			"Enabled": false
+		},
+		{
+			"Name": "SteamVR",
+			"Enabled": false
+		},
+		{
+			"Name": "MixamoAnimationRetargeting",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/7d332d8c59f743f4a068710ab88599f6"
+		},
+		{
+			"Name": "GameplayAbilities",
+			"Enabled": true
+		},
+		{
+			"Name": "ApexDestruction",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineSubsystemSteam",
+			"Enabled": true
+		},
+		{
+			"Name": "GameMenuSystem",
+			"Enabled": true
+		}
+	]
 }

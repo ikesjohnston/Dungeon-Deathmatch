@@ -12,7 +12,7 @@ class UBlendSpace;
 class UBlendSpace1D;
 class UAnimSequence;
 
-class APlayerCharacter;
+class ADungeonCharacter;
 
 UCLASS(Blueprintable, BlueprintType)
 class UDungeonCharacterAnimInstance : public UAnimInstance
@@ -21,7 +21,7 @@ class UDungeonCharacterAnimInstance : public UAnimInstance
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
-	APlayerCharacter* OwningCharacter;
+	ADungeonCharacter* OwningCharacter;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
 	UCharacterMovementComponent* OwningCharacterMovement;

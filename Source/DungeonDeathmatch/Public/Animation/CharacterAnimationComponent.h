@@ -11,7 +11,7 @@
 class UBlendSpace;
 class UBlendSpace1D;
 class UAnimSequence;
-class APlayerCharacter;
+class ADungeonCharacter;
 
 /**
  * Enum for movement direction used for implementing certain gameplay abilities in blueprint
@@ -132,7 +132,7 @@ protected:
 
 private:
 	/** The player character that this component is attached to */
-	APlayerCharacter* OwningCharacter;
+	ADungeonCharacter* OwningCharacter;
 
 public:	
 	// Sets default values for this component's properties

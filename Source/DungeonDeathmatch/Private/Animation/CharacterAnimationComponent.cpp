@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "CharacterAnimationComponent.h"
+#include "DungeonCharacter.h"
 #include "PlayerCharacter.h"
 #include "EquipmentComponent.h"
 #include "EquipmentGlobals.h"
@@ -19,7 +20,7 @@ UCharacterAnimationComponent::UCharacterAnimationComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 	bReplicates = true;
 
-	OwningCharacter = Cast<APlayerCharacter>(GetOwner());
+	OwningCharacter = Cast<ADungeonCharacter>(GetOwner());
 	if (!OwningCharacter)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UPlayerCombatComponent::UPlayerCombatComponent - OwningCharacter is null."))
@@ -55,8 +56,6 @@ void UCharacterAnimationComponent::GetLifetimeReplicatedProps(TArray<FLifetimePr
 void UCharacterAnimationComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	OwningCharacter->UseControllerDesiredRotation(!(bIsManuallyFreeLooking || bIsAutoFreeLooking));
 }
 
 void UCharacterAnimationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -74,6 +73,12 @@ void UCharacterAnimationComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	if (bIsJumping && !OwningCharacter->GetCharacterMovement()->IsFalling())
 	{
 		SetIsJumping(false);
+	}
+
+	APlayerCharacter* OwningPlayer = Cast<APlayerCharacter>(OwningCharacter);
+	if (OwningPlayer)
+	{
+		OwningPlayer->UseControllerDesiredRotation(!(bIsManuallyFreeLooking || bIsAutoFreeLooking));
 	}
 }
 
@@ -222,7 +227,8 @@ UBlendSpace* UCharacterAnimationComponent::GetDefaultLandingBlendSpace()
 
 UBlendSpace* UCharacterAnimationComponent::GetCombatStandingMovementBlendSpace()
 {
-	if (OwningCharacter->GetCombatComponent()->GetCombatState() != ECombatState::Sheathed)
+	UPlayerCombatComponent* CombatComponent = Cast<UPlayerCombatComponent>(OwningCharacter->GetComponentByClass(UPlayerCombatComponent::StaticClass()));
+	if (CombatComponent && CombatComponent->GetCombatState() != ECombatState::Sheathed)
 	{
 		UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(OwningCharacter->GetComponentByClass(UEquipmentComponent::StaticClass()));
 		if (EquipmentComponent)
@@ -260,7 +266,8 @@ UBlendSpace* UCharacterAnimationComponent::GetCombatStandingMovementBlendSpace()
 
 UBlendSpace* UCharacterAnimationComponent::GetCombatCrouchingMovementBlendSpace()
 {
-	if (OwningCharacter->GetCombatComponent()->GetCombatState() != ECombatState::Sheathed)
+	UPlayerCombatComponent* CombatComponent = Cast<UPlayerCombatComponent>(OwningCharacter->GetComponentByClass(UPlayerCombatComponent::StaticClass()));
+	if (CombatComponent && CombatComponent->GetCombatState() != ECombatState::Sheathed)
 	{
 		UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(OwningCharacter->GetComponentByClass(UEquipmentComponent::StaticClass()));
 		if (EquipmentComponent)
@@ -298,7 +305,8 @@ UBlendSpace* UCharacterAnimationComponent::GetCombatCrouchingMovementBlendSpace(
 
 UAnimSequence* UCharacterAnimationComponent::GetCombatJumpingAnimation()
 {
-	if (OwningCharacter->GetCombatComponent()->GetCombatState() != ECombatState::Sheathed)
+	UPlayerCombatComponent* CombatComponent = Cast<UPlayerCombatComponent>(OwningCharacter->GetComponentByClass(UPlayerCombatComponent::StaticClass()));
+	if (CombatComponent && CombatComponent->GetCombatState() != ECombatState::Sheathed)
 	{
 		UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(OwningCharacter->GetComponentByClass(UEquipmentComponent::StaticClass()));
 		if (EquipmentComponent)
@@ -336,7 +344,8 @@ UAnimSequence* UCharacterAnimationComponent::GetCombatJumpingAnimation()
 
 UBlendSpace1D* UCharacterAnimationComponent::GetCombatFallingBlendSpace()
 {
-	if (OwningCharacter->GetCombatComponent()->GetCombatState() != ECombatState::Sheathed)
+	UPlayerCombatComponent* CombatComponent = Cast<UPlayerCombatComponent>(OwningCharacter->GetComponentByClass(UPlayerCombatComponent::StaticClass()));
+	if (CombatComponent && CombatComponent->GetCombatState() != ECombatState::Sheathed)
 	{
 		UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(OwningCharacter->GetComponentByClass(UEquipmentComponent::StaticClass()));
 		if (EquipmentComponent)
@@ -374,7 +383,8 @@ UBlendSpace1D* UCharacterAnimationComponent::GetCombatFallingBlendSpace()
 
 UBlendSpace* UCharacterAnimationComponent::GetCombatLandingBlendSpace()
 {
-	if (OwningCharacter->GetCombatComponent()->GetCombatState() != ECombatState::Sheathed)
+	UPlayerCombatComponent* CombatComponent = Cast<UPlayerCombatComponent>(OwningCharacter->GetComponentByClass(UPlayerCombatComponent::StaticClass()));
+	if (CombatComponent && CombatComponent->GetCombatState() != ECombatState::Sheathed)
 	{
 		UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(OwningCharacter->GetComponentByClass(UEquipmentComponent::StaticClass()));
 		if (EquipmentComponent)

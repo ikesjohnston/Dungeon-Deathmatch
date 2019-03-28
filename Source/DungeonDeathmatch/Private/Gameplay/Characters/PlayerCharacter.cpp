@@ -18,6 +18,7 @@
 #include "Kismet/GameplayStatics.h"
 #include <Private/KismetTraceUtils.h>
 #include <AbilitySystemComponent.h>
+#include <UnrealNetwork.h>
 
 APlayerCharacter::APlayerCharacter()
 {
@@ -36,6 +37,8 @@ APlayerCharacter::APlayerCharacter()
 
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("Inventory"));
 	EquipmentComponent = CreateDefaultSubobject<UEquipmentComponent>(TEXT("Equipment"));
+
+	GetCharacterMovement()->bOrientRotationToMovement = false;
 
 	bIsMovementInputEnabled = true;
 	bIsCameraInputEnabled = true;

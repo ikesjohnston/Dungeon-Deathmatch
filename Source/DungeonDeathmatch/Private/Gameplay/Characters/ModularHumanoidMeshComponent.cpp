@@ -18,6 +18,9 @@ UModularHumanoidMeshComponent::UModularHumanoidMeshComponent()
 		return;
 	}
 
+	FAttachmentTransformRules MeshSegmentAttachRules = FAttachmentTransformRules::KeepRelativeTransform;
+	MeshSegmentAttachRules.bWeldSimulatedBodies = false;
+
 	MeshComponentHelm = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentHelm"));
 	MeshComponentHelm->SetupAttachment(OwningCharacter->GetMesh());
 	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::Helm, MeshComponentHelm));
@@ -73,6 +76,8 @@ UModularHumanoidMeshComponent::UModularHumanoidMeshComponent()
 	MeshComponentFootRight = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponentFootRight"));
 	MeshComponentFootRight->SetupAttachment(OwningCharacter->GetMesh());
 	MeshComponentMap.Add(TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*>(EHumanoidMeshSegment::RightFoot, MeshComponentFootRight));
+
+	InitializeDefaultMeshSegments();
 }
 
 void UModularHumanoidMeshComponent::BeginPlay()
@@ -98,7 +103,7 @@ void UModularHumanoidMeshComponent::InitializeDefaultMeshSegments()
 	OwningCharacter->GetMesh()->SetCollisionObjectType(ECC_Pawn);
 	OwningCharacter->GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	OwningCharacter->GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
-	OwningCharacter->GetMesh()->SetVisibility(false);
+	//OwningCharacter->GetMesh()->SetVisibility(false);
 
 	for (TTuple<EHumanoidMeshSegment, USkeletalMeshComponent*> Tuple : MeshComponentMap)
 	{

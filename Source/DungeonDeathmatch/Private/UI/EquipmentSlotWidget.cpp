@@ -539,7 +539,7 @@ FReply UEquipmentSlotWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InG
 						SourceEquipmentComponent->ServerUnequipItem(ItemToDrop, SlotType);
 						if (SourceInventoryComponent)
 						{
-							SourceInventoryComponent->ServerRequestDropItem(ItemToDrop);
+							SourceInventoryComponent->ServerRequestDropItem(ItemToDrop, false);
 						}
 						UGameplayStatics::PlaySound2D(GetWorld(), ItemToDrop->GetInteractionSound());
 						Controller->SetSelectedItem(nullptr);

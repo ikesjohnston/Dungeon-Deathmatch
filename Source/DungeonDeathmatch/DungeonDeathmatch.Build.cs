@@ -19,6 +19,7 @@ public class DungeonDeathmatch : ModuleRules
             "UMG",
             "Slate",
             "SlateCore",
+            "AIModule",
             "OnlineSubsystem",
             "OnlineSubsystemSteam",
             "RHI",

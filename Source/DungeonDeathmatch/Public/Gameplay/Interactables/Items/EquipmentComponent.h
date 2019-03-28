@@ -8,7 +8,6 @@
 #include "EquipmentGlobals.h"
 #include "EquipmentComponent.generated.h"
 
-class ADungeonCharacter;
 class AEquippable;
 class AWeapon;
 
@@ -33,11 +32,11 @@ public:
 	FOnItemUnequipped OnItemUnequipped;
 
 protected:
-	/** The DungeonCharacter that this equipment component belongs to. Initialized when the game starts. */
-	UPROPERTY(BlueprintReadOnly, Category = "Equipment")
-	ADungeonCharacter* OwningCharacter;
+	/** The map of equipment the actor should equip to each slot on game start */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment")
+	TMap<EEquipmentSlot, TSubclassOf<AEquippable>> StartingEquipment;
 
-	/** The map of equipment the player has equipped in each slot */
+	/** The map of equipment the actor has equipped in each slot */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
 	TMap<EEquipmentSlot, AEquippable*> Equipment;
 
@@ -64,6 +63,10 @@ public:
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
+
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+
+	void EquipStartingItems();
 
 public:	
 	
@@ -180,6 +183,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	FWeaponLoadout GetActiveWeaponLoadout();
 
+	/** Gets socket name on the character for a given weapon socket type*/
+	FName GetNameForWeaponSocket(EWeaponSocketType WeaponSocketType);
+
 protected:
 
 	/**
@@ -215,9 +221,6 @@ protected:
 	 */
 	UFUNCTION(NetMulticast, Reliable, Category = "Equipment")
 	void MulticastOnItemUnequipped(AEquippable* Equippable, EEquipmentSlot EquipmentSlot);
-
-	/** Gets socket name on the character for a given weapon socket type*/
-	FName GetNameForWeaponSocket(EWeaponSocketType WeaponSocketType);
 
 	/**
 	 * Attaches an actor to the character mesh at the specified socket. Should only be called by the server.
