@@ -4,12 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include <Perception/AIPerceptionTypes.h>
 
 #include "DungeonAIController.generated.h"
 
 class UBehaviorTreeComponent;
 class UBlackboardComponent;
 class UAISenseConfig_Sight;
+class UAISenseConfig_Hearing;
 
 UCLASS()
 class DUNGEONDEATHMATCH_API ADungeonAIController : public AAIController
@@ -23,20 +25,27 @@ protected:
 	UPROPERTY(Transient)
 	UBehaviorTreeComponent* BehaviorTreeComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Perception|Sight")
 	UAISenseConfig_Sight* SightConfig;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Perception|Sight")
-	float AISightRadius = 500.0f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Perception|Sight")
+	float AISightRadius = 2000.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Perception|Sight")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Perception|Sight")
 	float AISightAge = 5.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Perception|Sight")
-	float AILoseSightRadius = AISightRadius + 50.0f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Perception|Sight")
+	float AILoseSightRadius = AISightRadius + 500.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Perception|Sight")
-	float AIFieldOfView = 90.0f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Perception|Sight")
+	float AIFieldOfView = 60.0f;
+
+	UAISenseConfig_Hearing* HearingConfig;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Perception|Hearing")
+	float AIHearingRange = 1500.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Perception|Hearing")
+	float AIHearingAge = 5.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Blackboard")
 	FName TargetKeyName = FName("Target");
@@ -59,5 +68,8 @@ public:
 
 protected:
 	UFUNCTION()
-	void OnPawnDetected(const TArray<AActor*>& DetectedPawns);
+	void OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors);
+
+	UFUNCTION()
+	void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
 };

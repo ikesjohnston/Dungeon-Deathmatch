@@ -9,7 +9,7 @@
 /**
  * AnimNotify that attaches a character's weapon to a specific hand
  */
-UCLASS()
+UCLASS(meta = (DisplayName = "Unsheathe Weapon"))
 class DUNGEONDEATHMATCH_API UAnimNotify_UnsheatheWeapon : public UAnimNotify
 {
 	GENERATED_BODY()

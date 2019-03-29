@@ -10,7 +10,7 @@
 /**
  * 
  */
-UCLASS()
+UCLASS(meta = (DisplayName = "Slot Anim Playing"))
 class DUNGEONDEATHMATCH_API UAnimNotifyState_SlotAnimPlaying : public UAnimNotifyState
 {
 	GENERATED_BODY()

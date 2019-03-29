@@ -10,7 +10,7 @@
 /**
  * AnimNotify that attaches a character's weapon to a specific weapon sheathe
  */
-UCLASS()
+UCLASS(meta = (DisplayName = "Sheathe Weapon"))
 class DUNGEONDEATHMATCH_API UAnimNotify_SheatheWeapon : public UAnimNotify
 {
 	GENERATED_BODY()

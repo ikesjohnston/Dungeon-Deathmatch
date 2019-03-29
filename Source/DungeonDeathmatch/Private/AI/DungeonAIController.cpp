@@ -8,8 +8,9 @@
 #include <BehaviorTree/Blackboard/BlackboardKeyAllTypes.h>
 #include <BehaviorTree/BehaviorTree.h>
 #include <BehaviorTree/BehaviorTreeComponent.h>
-#include <Perception/AISenseConfig_Sight.h>
 #include <Perception/AIPerceptionComponent.h>
+#include <Perception/AISenseConfig_Sight.h>
+#include <Perception/AISenseConfig_Hearing.h>
 
 ADungeonAIController::ADungeonAIController()
 {
@@ -26,14 +27,23 @@ ADungeonAIController::ADungeonAIController()
 	SightConfig->LoseSightRadius = AILoseSightRadius;
 	SightConfig->PeripheralVisionAngleDegrees = AIFieldOfView;
 	SightConfig->SetMaxAge(AISightAge);
-
 	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
 	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
 	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
 
-	GetPerceptionComponent()->SetDominantSense(SightConfig->GetSenseImplementation());
-	GetPerceptionComponent()->OnPerceptionUpdated.AddDynamic(this, &ADungeonAIController::OnPawnDetected);
-	GetPerceptionComponent()->ConfigureSense(*SightConfig);
+	HearingConfig = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("HearingConfig"));
+	HearingConfig->HearingRange = AIHearingRange;
+	HearingConfig->SetMaxAge(AIHearingAge);
+	HearingConfig->DetectionByAffiliation.bDetectEnemies = true;
+	HearingConfig->DetectionByAffiliation.bDetectFriendlies = true;
+	HearingConfig->DetectionByAffiliation.bDetectNeutrals = true;
+
+	//GetPerceptionComponent()->SetDominantSense(SightConfig->GetSenseImplementation());
+	GetPerceptionComponent()->SetDominantSense(HearingConfig->GetSenseImplementation());
+	GetPerceptionComponent()->OnPerceptionUpdated.AddDynamic(this, &ADungeonAIController::OnPerceptionUpdated);
+	GetPerceptionComponent()->OnTargetPerceptionUpdated.AddDynamic(this, &ADungeonAIController::OnTargetPerceptionUpdated);
+	//GetPerceptionComponent()->ConfigureSense(*SightConfig);
+	GetPerceptionComponent()->ConfigureSense(*HearingConfig);
 }
 
 void ADungeonAIController::BeginPlay()
@@ -70,6 +80,14 @@ void ADungeonAIController::PostEditChangeProperty(FPropertyChangedEvent& Propert
 	{
 		SightConfig->SetMaxAge(AISightAge);
 	}
+	else if (PropertyChangedEvent.GetPropertyName() == "AIHearingRange")
+	{
+		HearingConfig->HearingRange = AIHearingRange;
+	}
+	else if (PropertyChangedEvent.GetPropertyName() == "AIHearingAge")
+	{
+		HearingConfig->SetMaxAge(AIHearingAge);
+	}
 }
 
 void ADungeonAIController::Possess(APawn* InPawn)
@@ -100,14 +118,23 @@ FRotator ADungeonAIController::GetControlRotation() const
 	return FRotator(0.0f, GetPawn()->GetActorRotation().Yaw, 0.0f);
 }
 
-void ADungeonAIController::OnPawnDetected(const TArray<AActor*>& DetectedPawns)
+void ADungeonAIController::OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors)
 {
 	APlayerCharacter* TargetPlayer = nullptr;
-	for (AActor* Actor : DetectedPawns)
+	for (AActor* Actor : UpdatedActors)
 	{
 		TargetPlayer = Cast<APlayerCharacter>(Actor);
 		if (TargetPlayer) break;
 	}
-	
-	BlackboardComponent->SetValueAsObject(TargetKeyName, TargetPlayer);
+}
+
+void ADungeonAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
+{
+	UE_LOG(LogTemp, Warning, TEXT("%s detected new %s stimulus from %s"), *GetPawn()->GetName(), *Stimulus.Type.Name.ToString(), *Actor->GetName())
+
+	APlayerCharacter* TargetPlayer = Cast<APlayerCharacter>(Actor);
+	if (TargetPlayer)
+	{
+		BlackboardComponent->SetValueAsObject(TargetKeyName, TargetPlayer);
+	}
 }

@@ -11,7 +11,7 @@ class AWeapon;
 /**
  * 
  */
-UCLASS()
+UCLASS(meta = (DisplayName = "Swing Weapon"))
 class DUNGEONDEATHMATCH_API UAnimNotifyState_SwingWeapon : public UAnimNotifyState
 {
 	GENERATED_BODY()

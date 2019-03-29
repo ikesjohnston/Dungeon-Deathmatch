@@ -75,9 +75,13 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+
 	virtual void PossessedBy(AController* NewController) override;
 
 	virtual void InitializeAbilities();
+
+	void InitializeMovement();
 
 public:	
 	// Called every frame

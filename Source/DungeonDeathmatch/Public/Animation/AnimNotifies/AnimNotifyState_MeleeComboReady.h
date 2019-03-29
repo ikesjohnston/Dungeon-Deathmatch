@@ -9,7 +9,7 @@
 /**
  * 
  */
-UCLASS()
+UCLASS(meta = (DisplayName = "Melee Combo Ready"))
 class DUNGEONDEATHMATCH_API UAnimNotifyState_MeleeComboReady : public UAnimNotifyState
 {
 	GENERATED_BODY()

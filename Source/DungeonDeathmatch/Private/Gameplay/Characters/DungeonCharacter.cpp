@@ -52,16 +52,12 @@ ADungeonCharacter::ADungeonCharacter()
 
 	bAbilitiesInitialized = false;
 
-	// Initialize movement systems
 	BaseStandingMovementSpeed = 400.0f;
-	GetCharacterMovement()->MaxWalkSpeed = BaseStandingMovementSpeed;
 	BaseCrouchedMovementSpeed = 200.0f;
-	GetCharacterMovement()->MaxWalkSpeedCrouched = BaseCrouchedMovementSpeed;
-	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
 
-	GetCharacterMovement()->bOrientRotationToMovement = true;
-	GetCharacterMovement()->RotationRate = FRotator(0.0f, 720.0f, 0.0f);
+	InitializeMovement();
 }
+
 
 void ADungeonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -77,6 +73,14 @@ void ADungeonCharacter::BeginPlay()
 	InitializeAbilities();
 }
 
+void ADungeonCharacter::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	if (PropertyChangedEvent.GetPropertyName() == "BaseStandingMovementSpeed" || PropertyChangedEvent.GetPropertyName() == "BaseCrouchedMovementSpeed")
+	{
+		InitializeMovement();
+	}
+}
+
 void ADungeonCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
@@ -89,6 +93,16 @@ void ADungeonCharacter::InitializeAbilities()
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 		AddStartupGameplayAbilities();
 	}
+}
+
+void ADungeonCharacter::InitializeMovement()
+{
+	GetCharacterMovement()->MaxWalkSpeed = BaseStandingMovementSpeed;
+	GetCharacterMovement()->MaxWalkSpeedCrouched = BaseCrouchedMovementSpeed;
+	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
+
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 720.0f, 0.0f);
 }
 
 void ADungeonCharacter::Tick(float DeltaTime)
