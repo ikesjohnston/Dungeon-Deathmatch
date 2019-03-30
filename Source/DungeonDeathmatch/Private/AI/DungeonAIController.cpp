@@ -38,12 +38,10 @@ ADungeonAIController::ADungeonAIController()
 	HearingConfig->DetectionByAffiliation.bDetectFriendlies = true;
 	HearingConfig->DetectionByAffiliation.bDetectNeutrals = true;
 
-	//GetPerceptionComponent()->SetDominantSense(SightConfig->GetSenseImplementation());
-	GetPerceptionComponent()->SetDominantSense(HearingConfig->GetSenseImplementation());
-	GetPerceptionComponent()->OnPerceptionUpdated.AddDynamic(this, &ADungeonAIController::OnPerceptionUpdated);
-	GetPerceptionComponent()->OnTargetPerceptionUpdated.AddDynamic(this, &ADungeonAIController::OnTargetPerceptionUpdated);
-	//GetPerceptionComponent()->ConfigureSense(*SightConfig);
+	GetPerceptionComponent()->ConfigureSense(*SightConfig);
 	GetPerceptionComponent()->ConfigureSense(*HearingConfig);
+	GetPerceptionComponent()->SetDominantSense(SightConfig->GetSenseImplementation());
+	GetPerceptionComponent()->OnPerceptionUpdated.AddDynamic(this, &ADungeonAIController::OnPerceptionUpdated);
 }
 
 void ADungeonAIController::BeginPlay()
@@ -98,7 +96,10 @@ void ADungeonAIController::Possess(APawn* InPawn)
 	if (Character && Character->GetBehaviorTree())
 	{
 		BlackboardComponent->InitializeBlackboard(*Character->GetBehaviorTree()->BlackboardAsset);
-		TargetKeyID = BlackboardComponent->GetKeyID(TargetKeyName);
+		SightTargetKeyID = BlackboardComponent->GetKeyID(SightTargetKeyName);
+		HearingTargetKeyID = BlackboardComponent->GetKeyID(HearingTargetKeyName);
+		PatrolTargetKeyID = BlackboardComponent->GetKeyID(PatrolTargetKeyName);
+		BlackboardComponent->SetValueAsVector(PatrolTargetKeyName, Character->GetActorLocation());
 		BehaviorTreeComponent->StartTree(*Character->GetBehaviorTree());
 	}
 }
@@ -120,21 +121,35 @@ FRotator ADungeonAIController::GetControlRotation() const
 
 void ADungeonAIController::OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors)
 {
-	APlayerCharacter* TargetPlayer = nullptr;
+	APlayerCharacter* SightedTarget = Cast<APlayerCharacter>(BlackboardComponent->GetValueAsObject(SightTargetKeyName));
+	FVector HeardTargetLocation = BlackboardComponent->GetValueAsVector(HearingTargetKeyName);
 	for (AActor* Actor : UpdatedActors)
 	{
-		TargetPlayer = Cast<APlayerCharacter>(Actor);
-		if (TargetPlayer) break;
-	}
-}
+		if (SightedTarget && Actor == SightedTarget)
+		{
+			FActorPerceptionBlueprintInfo PerceptionInfo;
+			GetPerceptionComponent()->GetActorsPerception(Actor, PerceptionInfo);
+			for (FAIStimulus Stimulus : PerceptionInfo.LastSensedStimuli)
+			{
+			}
+		}
 
-void ADungeonAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
-{
-	UE_LOG(LogTemp, Warning, TEXT("%s detected new %s stimulus from %s"), *GetPawn()->GetName(), *Stimulus.Type.Name.ToString(), *Actor->GetName())
-
-	APlayerCharacter* TargetPlayer = Cast<APlayerCharacter>(Actor);
-	if (TargetPlayer)
-	{
-		BlackboardComponent->SetValueAsObject(TargetKeyName, TargetPlayer);
+		FActorPerceptionBlueprintInfo PerceptionInfo;
+		GetPerceptionComponent()->GetActorsPerception(Actor, PerceptionInfo);
+		for (FAIStimulus Stimulus : PerceptionInfo.LastSensedStimuli)
+		{
+			if (Stimulus.Type == UAISense::GetSenseID<UAISense_Hearing>())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("%s heard a sound at %s. Expired: %d"), *GetPawn()->GetName(), *Stimulus.StimulusLocation.ToString(), Stimulus.IsExpired());
+				FVector SoundLocation = Stimulus.IsExpired() ? FVector::ZeroVector : Stimulus.StimulusLocation;
+				BlackboardComponent->SetValueAsVector(HearingTargetKeyName, SoundLocation);
+			}
+			if (Stimulus.Type == UAISense::GetSenseID<UAISense_Sight>())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("%s saw something at %s. Expired: %d"), *GetPawn()->GetName(), *Stimulus.StimulusLocation.ToString(), Stimulus.IsExpired());
+				APlayerCharacter* TargetPlayer = Stimulus.IsExpired() ? nullptr : Cast<APlayerCharacter>(Actor);
+				BlackboardComponent->SetValueAsObject(SightTargetKeyName, TargetPlayer);
+			}
+		}
 	}
 }

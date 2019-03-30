@@ -18,6 +18,7 @@ class UBehaviorTree;
 class UDungeonAbilitySystemComponent;
 class UDungeonAttributeSet;
 class UDungeonGameplayAbility;
+class UAIStimulusComponent;
 
 UCLASS()
 class DUNGEONDEATHMATCH_API ADungeonCharacter : public ACharacter, public IAbilitySystemInterface, public IGameplayTagAssetInterface
@@ -68,6 +69,9 @@ protected:
 	/** The base movement speed when crouched, used to calculate new movement speeds when speed attributes are changed */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
 	float BaseCrouchedMovementSpeed;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
+	UAIStimulusComponent* AIStimulusComponent;
 
 public:
 	ADungeonCharacter();

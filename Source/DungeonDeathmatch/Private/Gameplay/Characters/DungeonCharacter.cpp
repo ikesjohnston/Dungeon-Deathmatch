@@ -12,6 +12,7 @@
 #include "CharacterRenderCapture2D.h"
 #include "ModularHumanoidMeshComponent.h"
 #include "CharacterAnimationComponent.h"
+#include "AIStimulusComponent.h"
 
 #include <WidgetComponent.h>
 #include "DrawDebugHelpers.h"
@@ -20,7 +21,6 @@
 #include <AbilitySystemComponent.h>
 #include "DungeonAttributeSet.h"
 #include <UnrealNetwork.h>
-
 
 // Console command for logging melee combo states
 static int32 LogCombos = 0;
@@ -56,6 +56,8 @@ ADungeonCharacter::ADungeonCharacter()
 	BaseCrouchedMovementSpeed = 200.0f;
 
 	InitializeMovement();
+
+	AIStimulusComponent = CreateDefaultSubobject<UAIStimulusComponent>(TEXT("AIStimulusComponent"));
 }
 
 
@@ -71,6 +73,8 @@ void ADungeonCharacter::BeginPlay()
 	Super::BeginPlay();
 	
 	InitializeAbilities();
+
+	UseControllerDesiredRotation(true);
 }
 
 void ADungeonCharacter::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)

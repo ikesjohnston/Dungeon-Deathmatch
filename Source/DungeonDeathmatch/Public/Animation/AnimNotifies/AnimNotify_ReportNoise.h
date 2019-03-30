@@ -17,10 +17,7 @@ class DUNGEONDEATHMATCH_API UAnimNotify_ReportNoise : public UAnimNotify
 
 protected:
 	UPROPERTY(EditAnywhere, Category = "AnimNotify")
-	float Loudness = 1.0f;
-
-	UPROPERTY(EditAnywhere, Category = "AnimNotify")
-	float MaxRange = 0.0f;
+	bool bIsNoiseStealthed;
 
 	UPROPERTY(EditAnywhere, Category = "AnimNotify")
 	FName SocketName;

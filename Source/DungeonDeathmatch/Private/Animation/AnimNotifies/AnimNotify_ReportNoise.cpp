@@ -20,6 +20,16 @@ void UAnimNotify_ReportNoise::Notify(class USkeletalMeshComponent* MeshComp, cla
 		{
 			NoiseLocation = MeshComp->GetSocketLocation(SocketName);
 		}
+
+		float Loudness = 1.0f;
+		float MaxRange = 0.0f;
+		UAIStimulusComponent* StimulusComponent = Cast<UAIStimulusComponent>(Owner->GetComponentByClass(UAIStimulusComponent::StaticClass()));
+		if (StimulusComponent)
+		{
+			Loudness = StimulusComponent->GetNoiseLoudness(bIsNoiseStealthed);
+			MaxRange = StimulusComponent->GetNoiseMaxRange();
+		}
+
 		UAISense_Hearing::ReportNoiseEvent(Owner->GetWorld(), NoiseLocation, Loudness, Owner, MaxRange);
 	}
 }
