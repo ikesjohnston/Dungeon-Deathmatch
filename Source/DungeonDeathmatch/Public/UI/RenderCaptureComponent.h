@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 
-#include "MeshEnums.h"
+#include "MeshGlobals.h"
 #include "RenderCaptureComponent.generated.h"
 
 class ACharacterRenderCapture2D;

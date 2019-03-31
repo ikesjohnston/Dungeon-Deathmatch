@@ -13,13 +13,6 @@ class UBlackboardComponent;
 class UAISenseConfig_Sight;
 class UAISenseConfig_Hearing;
 
-UENUM(BlueprintType)
-enum class EPatrolState : uint8
-{
-	PatrolArrivedAtNewLocation		UMETA(DisplayName = "Patrol Arrived At New Location"),
-	PatrolMovingNewLocation			UMETA(DisplayName = "Patrol Moving To New Location"),
-};
-
 UCLASS()
 class DUNGEONDEATHMATCH_API ADungeonAIController : public AAIController
 {
@@ -54,24 +47,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Perception|Hearing")
 	float AIHearingAge = 5.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Blackboard")
-	FName PatrolStatusKeyName = FName("PatrolStatus");
-	uint8 PatrolStatusID;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Blackboard")
-	FName PatrolTargetKeyName = FName("PatrolTarget");
-	uint8 PatrolTargetKeyID;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Blackboard")
-	FName SightTargetKeyName = FName("SightTarget");
-	uint8 SightTargetKeyID;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Blackboard")
-	FName HearingTargetKeyName = FName("HearingTarget");
-	uint8 HearingTargetKeyID;
+	uint8 SelfActorKeyID;
+	uint8 AIStateKeyID;
+	uint8 PatrolStateKeyID;
+	uint8 PatrolPointKeyID;
 
 public:
 	ADungeonAIController();
+
+	void StartPatrol();
 
 protected:
 	virtual void BeginPlay() override;

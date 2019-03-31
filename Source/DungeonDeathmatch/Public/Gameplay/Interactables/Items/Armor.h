@@ -6,7 +6,7 @@
 
 #include "Equippable.h"
 #include "EquipmentGlobals.h"
-#include "MeshEnums.h"
+#include "MeshGlobals.h"
 #include "Armor.generated.h"
 
 UCLASS()

@@ -19,6 +19,7 @@ class UDungeonAbilitySystemComponent;
 class UDungeonAttributeSet;
 class UDungeonGameplayAbility;
 class UAIStimulusComponent;
+class AAIPatrolPoint;
 
 UCLASS()
 class DUNGEONDEATHMATCH_API ADungeonCharacter : public ACharacter, public IAbilitySystemInterface, public IGameplayTagAssetInterface
@@ -38,6 +39,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI")
 	UBehaviorTree* BehaviorTree;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI")
+	TArray<AAIPatrolPoint*> PatrolPoints;
 
 	/** The component used to handle gameplay ability system interactions */
 	UPROPERTY()
@@ -92,6 +96,8 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	UBehaviorTree* GetBehaviorTree() { return BehaviorTree; };
+
+	TArray<AAIPatrolPoint*> GetPatrolPoints() { return PatrolPoints; };
 
 	/** Gets the character's AbilitySystemComponent, required by IAbilitySystemInterface */
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;

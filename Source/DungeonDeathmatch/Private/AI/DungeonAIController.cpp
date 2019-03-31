@@ -11,6 +11,7 @@
 #include <Perception/AIPerceptionComponent.h>
 #include <Perception/AISenseConfig_Sight.h>
 #include <Perception/AISenseConfig_Hearing.h>
+#include "AIGlobals.h"
 
 ADungeonAIController::ADungeonAIController()
 {
@@ -96,10 +97,12 @@ void ADungeonAIController::Possess(APawn* InPawn)
 	if (Character && Character->GetBehaviorTree())
 	{
 		BlackboardComponent->InitializeBlackboard(*Character->GetBehaviorTree()->BlackboardAsset);
-		SightTargetKeyID = BlackboardComponent->GetKeyID(SightTargetKeyName);
-		HearingTargetKeyID = BlackboardComponent->GetKeyID(HearingTargetKeyName);
-		PatrolTargetKeyID = BlackboardComponent->GetKeyID(PatrolTargetKeyName);
-		BlackboardComponent->SetValueAsVector(PatrolTargetKeyName, Character->GetActorLocation());
+		SelfActorKeyID = BlackboardComponent->GetKeyID(BLACKBOARD_KEYNAME_SELFACTOR);
+		BlackboardComponent->SetValueAsObject(BLACKBOARD_KEYNAME_SELFACTOR, Character);
+		AIStateKeyID = BlackboardComponent->GetKeyID(BLACKBOARD_KEYNAME_AISTATE);
+		PatrolStateKeyID = BlackboardComponent->GetKeyID(BLACKBOARD_KEYNAME_PATROLSTATE);
+		PatrolPointKeyID = BlackboardComponent->GetKeyID(BLACKBOARD_KEYNAME_PATROLPOINT);
+		StartPatrol();
 		BehaviorTreeComponent->StartTree(*Character->GetBehaviorTree());
 	}
 }
@@ -119,9 +122,15 @@ FRotator ADungeonAIController::GetControlRotation() const
 	return FRotator(0.0f, GetPawn()->GetActorRotation().Yaw, 0.0f);
 }
 
+void ADungeonAIController::StartPatrol()
+{
+	BlackboardComponent->SetValueAsEnum(BLACKBOARD_KEYNAME_AISTATE, (uint8) EAIState::Patrol);
+	BlackboardComponent->SetValueAsEnum(BLACKBOARD_KEYNAME_PATROLSTATE, (uint8) EAIPatrolState::PatrolStart);
+}
+
 void ADungeonAIController::OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors)
 {
-	APlayerCharacter* SightedTarget = Cast<APlayerCharacter>(BlackboardComponent->GetValueAsObject(SightTargetKeyName));
+	/*APlayerCharacter* SightedTarget = Cast<APlayerCharacter>(BlackboardComponent->GetValueAsObject(SightTargetKeyName));
 	FVector HeardTargetLocation = BlackboardComponent->GetValueAsVector(HearingTargetKeyName);
 	for (AActor* Actor : UpdatedActors)
 	{
@@ -151,5 +160,5 @@ void ADungeonAIController::OnPerceptionUpdated(const TArray<AActor*>& UpdatedAct
 				BlackboardComponent->SetValueAsObject(SightTargetKeyName, TargetPlayer);
 			}
 		}
-	}
+	}*/
 }

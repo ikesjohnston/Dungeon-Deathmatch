@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 
-#include "MeshEnums.h"
+#include "MeshGlobals.h"
 #include "ModularHumanoidMeshComponent.generated.h"
 
 class USkeletalMesh;
