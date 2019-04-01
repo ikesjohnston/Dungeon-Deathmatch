@@ -47,10 +47,21 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Perception|Hearing")
 	float AIHearingAge = 5.0f;
 
+	FAIStimulus PrimaryHearingStimulus;
+	FAIStimulus PrimarySightStimulus;
+
 	uint8 SelfActorKeyID;
 	uint8 AIStateKeyID;
 	uint8 PatrolStateKeyID;
 	uint8 PatrolPointKeyID;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Combat")
+	float TargetLostEndCombatTimer = 5.0f;
+
+private:
+	EAIState AIState;
+	bool bIsTargetVisible;
+	FTimerHandle TargetLostHandle;
 
 public:
 	ADungeonAIController();
@@ -69,7 +80,14 @@ public:
 
 	virtual FRotator GetControlRotation() const override;
 
+	void ClearStimuli();
+
 protected:
+	void SetAIState(EAIState State);
+
 	UFUNCTION()
 	void OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors);
+
+	UFUNCTION()
+	void OnTargetLost();
 };

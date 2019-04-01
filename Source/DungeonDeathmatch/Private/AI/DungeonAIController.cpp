@@ -1,8 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "DungeonAIController.h"
+#include "DungeonDeathmatch.h"
 #include "DungeonCharacter.h"
 #include "PlayerCharacter.h"
+#include "AIGlobals.h"
 
 #include <BehaviorTree/BlackboardComponent.h>
 #include <BehaviorTree/Blackboard/BlackboardKeyAllTypes.h>
@@ -11,7 +13,7 @@
 #include <Perception/AIPerceptionComponent.h>
 #include <Perception/AISenseConfig_Sight.h>
 #include <Perception/AISenseConfig_Hearing.h>
-#include "AIGlobals.h"
+#include <TimerManager.h>
 
 ADungeonAIController::ADungeonAIController()
 {
@@ -122,43 +124,144 @@ FRotator ADungeonAIController::GetControlRotation() const
 	return FRotator(0.0f, GetPawn()->GetActorRotation().Yaw, 0.0f);
 }
 
+void ADungeonAIController::ClearStimuli()
+{
+	PrimarySightStimulus = FAIStimulus();
+	PrimaryHearingStimulus = FAIStimulus();
+}
+
 void ADungeonAIController::StartPatrol()
 {
-	BlackboardComponent->SetValueAsEnum(BLACKBOARD_KEYNAME_AISTATE, (uint8) EAIState::Patrol);
+	SetAIState(EAIState::Patrol);
+
 	BlackboardComponent->SetValueAsEnum(BLACKBOARD_KEYNAME_PATROLSTATE, (uint8) EAIPatrolState::PatrolStart);
+}
+
+void ADungeonAIController::SetAIState(EAIState State)
+{
+	AIState = State;
+	if (State != EAIState::Combat)
+	{
+		BlackboardComponent->SetValueAsObject(BLACKBOARD_KEYNAME_COMBATTARGET, nullptr);
+	}
+	ClearStimuli();
+	BlackboardComponent->SetValueAsEnum(BLACKBOARD_KEYNAME_AISTATE, (uint8)AIState);
+	UE_LOG(LogTemp, Warning, TEXT("ADungeonAIController::SetAIState - AI State for %s set to %s"), *GetPawn()->GetName(), *GetEnumValueAsString<EAIState>(TEXT("EAIState"), AIState));
+	
 }
 
 void ADungeonAIController::OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors)
 {
-	/*APlayerCharacter* SightedTarget = Cast<APlayerCharacter>(BlackboardComponent->GetValueAsObject(SightTargetKeyName));
-	FVector HeardTargetLocation = BlackboardComponent->GetValueAsVector(HearingTargetKeyName);
+	APlayerCharacter* CombatTarget = Cast<APlayerCharacter>(BlackboardComponent->GetValueAsObject(BLACKBOARD_KEYNAME_COMBATTARGET));
+	AIState = (EAIState) BlackboardComponent->GetValueAsEnum(BLACKBOARD_KEYNAME_AISTATE);
+	EAICombatState CombatState = (EAICombatState) BlackboardComponent->GetValueAsEnum(BLACKBOARD_KEYNAME_COMBATSTATE);
 	for (AActor* Actor : UpdatedActors)
 	{
-		if (SightedTarget && Actor == SightedTarget)
+		if(Actor == GetPawn()) continue;
+
+		if (AIState == EAIState::Combat)
+		{
+			if (CombatTarget && Actor == CombatTarget)
+			{
+				bool WasVisible = bIsTargetVisible;
+				bIsTargetVisible = false;
+				FActorPerceptionBlueprintInfo PerceptionInfo;
+				GetPerceptionComponent()->GetActorsPerception(Actor, PerceptionInfo);
+				for (FAIStimulus Stimulus : PerceptionInfo.LastSensedStimuli)
+				{
+					if (Stimulus.IsActive())
+					{
+						if (Stimulus.Type == UAISense::GetSenseID<UAISense_Sight>())
+						{
+							bIsTargetVisible = true;
+							if (Stimulus.Strength > PrimarySightStimulus.Strength)
+							{
+								PrimarySightStimulus = Stimulus;
+								UE_LOG(LogTemp, Warning, TEXT("ADungeonAIController::OnPerceptionUpdated - %s's primary sight stimulus location changed to %s."), *GetPawn()->GetName(), *PrimarySightStimulus.StimulusLocation.ToString());
+							}
+						}
+						else if (Stimulus.Type == UAISense::GetSenseID<UAISense_Hearing>())
+						{
+							if (Stimulus.Strength > PrimaryHearingStimulus.Strength)
+							{
+								PrimaryHearingStimulus = Stimulus;
+								UE_LOG(LogTemp, Warning, TEXT("ADungeonAIController::OnPerceptionUpdated - %s's primary hearing stimulus location changed to %s."), *GetPawn()->GetName(), *PrimaryHearingStimulus.StimulusLocation.ToString());
+							}
+						}
+					}	
+				}
+				if (bIsTargetVisible)
+				{
+					if (CombatState == EAICombatState::TargetLost)
+					{
+						UE_LOG(LogTemp, Warning, TEXT("ADungeonAIController::OnPerceptionUpdated - %s regained visual on target, now repositioning towards it."), *GetPawn()->GetName());
+						BlackboardComponent->SetValueAsEnum(BLACKBOARD_KEYNAME_COMBATSTATE, (uint8)EAICombatState::Repositioning);
+					}
+					GetWorld()->GetTimerManager().ClearTimer(TargetLostHandle);
+				}
+				else if(WasVisible)
+				{
+					FVector InvestigateLocation = PrimarySightStimulus.Strength >= PrimaryHearingStimulus.Strength ? PrimarySightStimulus.StimulusLocation : PrimaryHearingStimulus.StimulusLocation;
+					BlackboardComponent->SetValueAsVector(BLACKBOARD_KEYNAME_INVESTIGATELOCATION, InvestigateLocation);
+					BlackboardComponent->SetValueAsEnum(BLACKBOARD_KEYNAME_COMBATSTATE, (uint8)EAICombatState::TargetLost);
+					UE_LOG(LogTemp, Warning, TEXT("ADungeonAIController::OnPerceptionUpdated - %s lost visual on target. Moving to last known stimulus location %s."), *GetPawn()->GetName(), *InvestigateLocation.ToString());
+					FTimerManager& TimerManager = GetWorld()->GetTimerManager();
+					if (!TimerManager.IsTimerActive(TargetLostHandle))
+					{
+						TimerManager.SetTimer(TargetLostHandle, this, &ADungeonAIController::OnTargetLost, TargetLostEndCombatTimer, false);
+					}		
+				}
+			}
+		}
+		else
 		{
 			FActorPerceptionBlueprintInfo PerceptionInfo;
 			GetPerceptionComponent()->GetActorsPerception(Actor, PerceptionInfo);
 			for (FAIStimulus Stimulus : PerceptionInfo.LastSensedStimuli)
 			{
+				if (Stimulus.Type == UAISense::GetSenseID<UAISense_Hearing>())
+				{
+					if (Stimulus.IsActive() && Stimulus.Strength >= PrimaryHearingStimulus.Strength)
+					{
+						PrimaryHearingStimulus = Stimulus;
+						UE_LOG(LogTemp, Warning, TEXT("ADungeonAIController::OnPerceptionUpdated - %s heard a sound at %s."), *GetPawn()->GetName(), *Stimulus.StimulusLocation.ToString());
+						FVector NoiseLocation = Stimulus.StimulusLocation;
+						BlackboardComponent->SetValueAsVector(BLACKBOARD_KEYNAME_INVESTIGATELOCATION, NoiseLocation);
+						if (AIState != EAIState::Combat)
+						{
+							UE_LOG(LogTemp, Warning, TEXT("ADungeonAIController::OnPerceptionUpdated - %s investigating new noise at %s."), *GetPawn()->GetName(), *NoiseLocation.ToString());
+							SetAIState(EAIState::Investigate);
+							BlackboardComponent->SetValueAsEnum(BLACKBOARD_KEYNAME_INVESTIGATESTATE, (uint8)EAIInvestigateState::HeardNoise);
+						}
+					}
+				}
+				else if (Stimulus.Type == UAISense::GetSenseID<UAISense_Sight>())
+				{
+					if (Stimulus.IsActive())
+					{
+						if (Stimulus.Strength >= PrimarySightStimulus.Strength)
+						{
+							PrimarySightStimulus = Stimulus;
+						}
+						if (AIState != EAIState::Combat)
+						{
+							UE_LOG(LogTemp, Warning, TEXT("ADungeonAIController::OnPerceptionUpdated - %s saw something at %s."), *GetPawn()->GetName(), *Stimulus.StimulusLocation.ToString(), Stimulus.IsExpired());
+							APlayerCharacter* SightedPlayer = Stimulus.IsExpired() ? nullptr : Cast<APlayerCharacter>(Actor);
+							BlackboardComponent->SetValueAsObject(BLACKBOARD_KEYNAME_COMBATTARGET, SightedPlayer);
+							UE_LOG(LogTemp, Warning, TEXT("ADungeonAIController::OnPerceptionUpdated - %s initiating combat."), *GetPawn()->GetName());
+							SetAIState(EAIState::Combat);
+							BlackboardComponent->SetValueAsEnum(BLACKBOARD_KEYNAME_COMBATSTATE, (uint8)EAICombatState::CombatStart);
+						}	
+					}
+				}
 			}
 		}
+	}
+}
 
-		FActorPerceptionBlueprintInfo PerceptionInfo;
-		GetPerceptionComponent()->GetActorsPerception(Actor, PerceptionInfo);
-		for (FAIStimulus Stimulus : PerceptionInfo.LastSensedStimuli)
-		{
-			if (Stimulus.Type == UAISense::GetSenseID<UAISense_Hearing>())
-			{
-				UE_LOG(LogTemp, Warning, TEXT("%s heard a sound at %s. Expired: %d"), *GetPawn()->GetName(), *Stimulus.StimulusLocation.ToString(), Stimulus.IsExpired());
-				FVector SoundLocation = Stimulus.IsExpired() ? FVector::ZeroVector : Stimulus.StimulusLocation;
-				BlackboardComponent->SetValueAsVector(HearingTargetKeyName, SoundLocation);
-			}
-			if (Stimulus.Type == UAISense::GetSenseID<UAISense_Sight>())
-			{
-				UE_LOG(LogTemp, Warning, TEXT("%s saw something at %s. Expired: %d"), *GetPawn()->GetName(), *Stimulus.StimulusLocation.ToString(), Stimulus.IsExpired());
-				APlayerCharacter* TargetPlayer = Stimulus.IsExpired() ? nullptr : Cast<APlayerCharacter>(Actor);
-				BlackboardComponent->SetValueAsObject(SightTargetKeyName, TargetPlayer);
-			}
-		}
-	}*/
+void ADungeonAIController::OnTargetLost()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ADungeonAIController::OnTargetLost - %s has lost target. Returning to patrol."), *GetPawn()->GetName());
+	BlackboardComponent->SetValueAsObject(BLACKBOARD_KEYNAME_COMBATTARGET, nullptr);
+	SetAIState(EAIState::Patrol);
 }

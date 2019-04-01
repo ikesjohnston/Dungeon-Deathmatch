@@ -21,3 +21,14 @@
 #define STENCIL_ITEM_RARE		253
 #define STENCIL_ITEM_EPIC		252
 #define STENCIL_ITEM_LEGENDARY	251
+
+template<typename TEnum>
+static FORCEINLINE FString GetEnumValueAsString(const FString& Name, TEnum Value)
+{
+	const UEnum* enumPtr = FindObject<UEnum>(ANY_PACKAGE, *Name, true);
+	if (!enumPtr)
+	{
+		return FString("Invalid");
+	}
+	return enumPtr->GetNameByValue((int64)Value).ToString();
+}
