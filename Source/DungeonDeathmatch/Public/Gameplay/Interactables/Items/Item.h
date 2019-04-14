@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
 #include "InteractableInterface.h"
 #include "InventoryGlobals.h"
 #include "Item.generated.h"
@@ -155,27 +156,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Item")
 	virtual FText GetInventoryUseTooltipText();
 
-	// ------------------------ BEGIN INTERACTABLE INTERFACE FUNCTIONS ------------------------
 	virtual void OnInteract_Implementation(ADungeonCharacter* InteractingCharacter) override;
-
-
 	virtual void OnFocused_Implementation() override;
-
-
 	virtual void OnUnfocused_Implementation() override;
-
-
 	virtual bool GetCanInteract_Implementation() override;
-
-
 	virtual void SetCanInteract_Implementation(bool CanInteract) override;
-
-
 	virtual FText GetInteractionPromptText_Implementation() override;
-
-
 	virtual FText GetInteractableName_Implementation() override;
-	// ------------------------ END INTERACTABLE INTERFACE FUNCTIONS ------------------------
 
 	/** Server side function to set if an interactable can be interacted with */
 	UFUNCTION(Server, Reliable, WithValidation)

@@ -26,41 +26,37 @@ bool UEquipmentSlotWidget::Initialize()
 {
 	bool Result = Super::Initialize();
 
-	if (SlotBackground)
+	if (!ValidateWidgets())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UEquipmentSlotWidget::Initialize - Essential widgets missing from %s. Verify that widgets are correctly set."), *GetName());
+		Result = false;
+	}
+	else
 	{
 		SlotBackground->SetColorAndOpacity(DefaultBackgroundColor);
-	}
-	if (SlotHighlight)
-	{
 		SlotHighlight->SetVisibility(ESlateVisibility::Collapsed);
-	}
-	if (SlotBorder)
-	{
 		SlotBorder->SetColorAndOpacity(DefaultBorderColor);
+
+		float GridSlotSize = 40.0f;
+		UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
+		if (GameInstance)
+		{
+			GridSlotSize = GameInstance->GetInventoryGridSlotSize();
+		}
+
+		// Resize slot based on type
+		FInventoryGridPair* EquipmentSizePtr = EquipmentSlotSizes.Find(SlotType);
+		if (EquipmentSizePtr)
+		{
+			FInventoryGridPair SlotGridSize = *EquipmentSizePtr;
+			FVector2D SlotSize = FVector2D(GridSlotSize * SlotGridSize.Column, GridSlotSize * SlotGridSize.Row);
+			SlotBackground->SetBrushSize(SlotSize);
+			SlotBorder->SetBrushSize(SlotSize + FVector2D(BorderSize, BorderSize));
+			SlotHighlight->SetBrushSize(SlotSize);
+		}
+
+		ResetDefaultImage();
 	}
-
-	// Initialize the slot size
-	float GridSlotSize = 40.0f;
-
-	UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
-	if (GameInstance)
-	{
-		GridSlotSize = GameInstance->GetInventoryGridSlotSize();
-	}
-
-	// Resize slot based on type
-	FInventoryGridPair* EquipmentSizePtr = EquipmentSlotSizes.Find(SlotType);
-	if (EquipmentSizePtr)
-	{
-		FInventoryGridPair SlotGridSize = *EquipmentSizePtr;
-		FVector2D SlotSize = FVector2D(GridSlotSize * SlotGridSize.Column, GridSlotSize * SlotGridSize.Row);
-		SlotBackground->SetBrushSize(SlotSize);
-		SlotBorder->SetBrushSize(SlotSize + FVector2D(BorderSize, BorderSize));
-		// Temporary highlighting method, will be using a dedicated texture, but for now just using a basic translucent square highlight
-		SlotHighlight->SetBrushSize(SlotSize);
-	}
-
-	ResetDefaultImage();
 
 	BindToController();
 
@@ -127,11 +123,6 @@ void UEquipmentSlotWidget::ResetDefaultImage()
 		FVector2D TextureSize = FVector2D(GridSlotSize * SlotTextureSize.Column, GridSlotSize * SlotTextureSize.Row);
 		DefaultEquipmentImage->SetBrushSize(TextureSize);
 	}
-}
-
-bool UEquipmentSlotWidget::GetCanFitDraggedItem()
-{
-	return bCanFitDraggedItem;
 }
 
 void UEquipmentSlotWidget::ProcessItemDragAndDrop()
@@ -589,7 +580,6 @@ FReply UEquipmentSlotWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, 
 			Controller->SetSelectedRenderCaptureActor(nullptr);
 		}
 	}
-
 	return FReply::Handled();
 }
 
@@ -607,4 +597,15 @@ void UEquipmentSlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, con
 			Controller->SetClickedItem(nullptr);
 		}
 	}
+}
+
+bool UEquipmentSlotWidget::ValidateWidgets()
+{
+	bool Result = false;
+	if (SlotBackground && SlotHighlight && SlotBorder && DefaultEquipmentImage && DraggableEquipmentCanvas)
+	{
+		Result = true;
+	}
+
+	return Result;
 }

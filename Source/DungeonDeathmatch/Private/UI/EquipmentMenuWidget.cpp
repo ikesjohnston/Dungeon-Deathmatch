@@ -7,22 +7,3 @@ UEquipmentMenuWidget::UEquipmentMenuWidget(const FObjectInitializer& ObjectIniti
 {
 
 }
-
-bool UEquipmentMenuWidget::Initialize()
-{
-	bool Result = Super::Initialize();
-
-	return Result;
-}
-
-bool UEquipmentMenuWidget::TryEquipItem(AEquippable* Equippable)
-{
-	bool Result = false;
-
-	return Result;
-}
-
-void UEquipmentMenuWidget::UnequipItem(AEquippable* Equippable)
-{
-
-}

@@ -192,10 +192,12 @@ void UInGameOverlayWidget::StopDragAndDropOperation(bool WasCanceled)
 			UDraggableItemWidget* DraggedItemWidget = PlayerController->GetDraggedItem();
 			if (DraggedItemWidget && DraggedItemWidget->GetItem())
 			{
-				ADungeonCharacter* Character = Cast<ADungeonCharacter>(PlayerController->GetPawn());
-				if (Character)
+				UInventoryComponent* InventoryComponent = Cast<UInventoryComponent>(PlayerController->GetPawn()->GetComponentByClass(UInventoryComponent::StaticClass()));
+				if (InventoryComponent)
 				{
-//					Character->ServerRequestDropItem(DraggedItemWidget->GetItem(), false);
+					AItem* DraggedItem = DraggedItemWidget->GetItem();
+					UGameplayStatics::PlaySound2D(DraggedItem->GetWorld(), DraggedItem->GetInteractionSound());
+					InventoryComponent->ServerRequestDropItem(DraggedItem, false);
 				}
 			}
 		}
@@ -223,7 +225,7 @@ void UInGameOverlayWidget::CheckForItemDrop()
 			if (InventoryComponent)
 			{
 				AItem* DraggedItem = DraggedItemWidget->GetItem();
-				InventoryComponent->ServerRequestDropItem(DraggedItem);
+				InventoryComponent->ServerRequestDropItem(DraggedItem, false);
 				UGameplayStatics::PlaySound2D(DraggedItem->GetWorld(), DraggedItem->GetInteractionSound());
 			}
 			PlayerController->StopDraggingItem(true);

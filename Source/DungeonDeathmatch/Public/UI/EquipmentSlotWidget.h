@@ -25,15 +25,12 @@ class DUNGEONDEATHMATCH_API UEquipmentSlotWidget : public UUserWidget
 	GENERATED_BODY()
 	
 protected:
-	/** The image widget for the slot background */
 	UPROPERTY(meta = (BindWidget))
 	UImage* SlotBackground;
 
-	/** The image widget for the slot highlight */
 	UPROPERTY(meta = (BindWidget))
 	UImage* SlotHighlight;
 
-	/** The border image widget for the slot */
 	UPROPERTY(meta = (BindWidget))
 	UImage* SlotBorder;
 
@@ -124,14 +121,14 @@ protected:
 	/** Attempts to get the local player controller and bind the slot to it */
 	void BindToController();
 
-	/** Attempts to bind the slot to a particular source's EquipmentComponent*/
+	/** Attempts to bind the slot to a particular source's EquipmentComponent */
 	void BindToSource(AActor* Source);
 
 	/** Resets the default item image to the global default for the slot type */
 	void ResetDefaultImage();
 
 	/** Can this slot accept the currently dragged item? */
-	bool GetCanFitDraggedItem();
+	bool GetCanFitDraggedItem() { return bCanFitDraggedItem; };
 
 	/** Event for when a draggable item is dropped on top of the slot. Processes the validity of the drop and makes any necessary additions or replacements to equipment. */
 	void ProcessItemDragAndDrop();
@@ -144,31 +141,20 @@ protected:
 	UFUNCTION()
 	void OnEndItemDrag(AItem* Item);
 
-	/**
-	 * Event for when a new item is equipped to the character that owns this widget
-	 *
-	 * @param Equippable The item that was equipped
-	 * @param EquipmentSlot The equipment slot the item went into
-	 */
+	/** Event for when a new item is equipped to the character that owns this widget */
 	UFUNCTION()
 	void OnItemEquipped(AEquippable* Equippable, EEquipmentSlot EquipmentSlot);
 
-	/**
-	 * Event for when an item is unequipped from the character that owns this widget
-	 *
-	 * @param Equippable The item that was unequipped
-	 * @param EquipmentSlot The equipment slot the item was removed from
-	 */
+	/** Event for when an item is unequipped from the character that owns this widget */
 	UFUNCTION()
 	void OnItemUnequipped(AEquippable* Equippable, EEquipmentSlot EquipmentSlot);
 
 	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-
 	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
-
 	virtual FReply NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-
 	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
+
+private:
+	bool ValidateWidgets();
 };

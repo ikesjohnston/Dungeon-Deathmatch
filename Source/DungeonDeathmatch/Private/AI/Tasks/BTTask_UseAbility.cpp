@@ -16,7 +16,9 @@ EBTNodeResult::Type UBTTask_UseAbility::ExecuteTask(UBehaviorTreeComponent& Owne
 	ADungeonCharacter* Character = Cast<ADungeonCharacter>(BlackboardComponent->GetValueAsObject(BLACKBOARD_KEYNAME_SELFACTOR));
 	if (Character)
 	{
-		Character->GetAbilitySystemComponent()->GiveAbilityAndActivateOnce(FGameplayAbilitySpec(Ability, Character->GetCharacterLevel(), INDEX_NONE, Character));
+		//Character->GetAbilitySystemComponent()->GiveAbilityAndActivateOnce(FGameplayAbilitySpec(Ability, Character->GetCharacterLevel(), INDEX_NONE, Character));
+		Character->GetAbilitySystemComponent()->GiveAbility(FGameplayAbilitySpec(Ability, Character->GetCharacterLevel(), INDEX_NONE, Character));
+		Character->GetAbilitySystemComponent()->TryActivateAbilityByClass(Ability);
 		return EBTNodeResult::Succeeded;
 	}
 

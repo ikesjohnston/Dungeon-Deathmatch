@@ -1,15 +1,16 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "DraggableItemWidget.h"
-#include <CanvasPanel.h>
-#include <Image.h>
-#include <Button.h>
 #include "DungeonGameInstance.h"
 #include "DungeonPlayerController.h"
 #include "DungeonHUD.h"
-#include <SlateBlueprintLibrary.h>
 #include "EquipmentGlobals.h"
 #include "Equippable.h"
+
+#include <CanvasPanel.h>
+#include <Image.h>
+#include <Button.h>
+#include <SlateBlueprintLibrary.h>
 
 UDraggableItemWidget::UDraggableItemWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -111,8 +112,6 @@ void UDraggableItemWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const
 	if (GameInstance)
 	{
 		float GridSize = GameInstance->GetInventoryGridSlotSize();
-		//FVector2D RenderTranslation = FVector2D(GridSize * GridLocation.Column, GridSize * GridLocation.Row);
-
 		ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
 		if (Controller)
 		{
@@ -123,7 +122,6 @@ void UDraggableItemWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const
 				FVector2D PixelPosition;
 				FVector2D ViewportPosition;
 				USlateBlueprintLibrary::LocalToViewport(GetWorld(), GetCachedGeometry(), FVector2D(0, 0), PixelPosition, ViewportPosition);
-				//ViewportPosition += RenderTranslation;
 				HUD->ShowTooltipAtLocation(ViewportPosition, Item);
 			}
 		}

@@ -3,6 +3,7 @@
 #include "DragAndDropItemWidget.h"
 #include "Item.h"
 #include "DungeonGameInstance.h"
+
 #include <Image.h>
 #include <WidgetLayoutLibrary.h>
 
@@ -15,9 +16,7 @@ UDragAndDropItemWidget::UDragAndDropItemWidget(const FObjectInitializer& ObjectI
 bool UDragAndDropItemWidget::Initialize()
 {
 	bool Result = Super::Initialize();
-
 	ItemImage->SetVisibility(ESlateVisibility::Collapsed);
-
 	return Result;
 }
 

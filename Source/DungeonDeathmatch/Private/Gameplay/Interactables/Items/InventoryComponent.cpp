@@ -6,20 +6,17 @@
 #include "Equippable.h"
 #include "Weapon.h"
 
-#include "UnrealNetwork.h"
+#include <DrawDebugHelpers.h>
 
-// Sets default values for this component's properties
 UInventoryComponent::UInventoryComponent()
 {
 	bReplicates = true;
+	PrimaryComponentTick.bCanEverTick = true;
 
 	InventoryGridSize.Row = 5;
 	InventoryGridSize.Column = 6;
-
-	DropEjectionForce = 20000;
 }
 
-// Called when the game starts
 void UInventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
@@ -37,19 +34,9 @@ void UInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	DOREPLIFETIME(UInventoryComponent, InventoryGridSize);
 }
 
-TArray<AItem*> UInventoryComponent::GetItems()
-{
-	return Items;
-}
-
-FInventoryGridPair UInventoryComponent::GetInventoryGridSize()
-{
-	return InventoryGridSize;
-}
-
 FVector UInventoryComponent::GetItemDropLocation()
 {
-	return GetOwner()->GetActorLocation() + (GetOwner()->GetActorForwardVector() * ItemDropRelativeLocation);
+	return GetOwner()->GetActorLocation() + GetOwner()->GetActorRotation().RotateVector(ItemDropRelativeLocation);
 }
 
 void UInventoryComponent::ServerRequestAddItemToInventory_Implementation(AItem* Item)
@@ -63,7 +50,8 @@ void UInventoryComponent::ServerRequestAddItemToInventory_Implementation(AItem* 
 
 bool UInventoryComponent::ServerRequestAddItemToInventory_Validate(AItem* Item)
 {
-	return true;
+	bool Result = ValidateItem(Item);
+	return Result;
 }
 
 void UInventoryComponent::ServerRequestAddItemToInventoryAtLocation_Implementation(AItem* Item, FInventoryGridPair OriginSlot)
@@ -77,23 +65,23 @@ void UInventoryComponent::ServerRequestAddItemToInventoryAtLocation_Implementati
 
 bool UInventoryComponent::ServerRequestAddItemToInventoryAtLocation_Validate(AItem* Item, FInventoryGridPair OriginSlot)
 {
-	return true;
+	bool Result = ValidateItem(Item);
+	return Result;
 }
 
 bool UInventoryComponent::RequestAddItem(AItem* Item)
 {
 	bool Result = false;
 
-	if (GetOwner() && GetOwner()->HasAuthority())
+	if (Item && GetOwner() && GetOwner()->HasAuthority())
 	{
-		if (Item)
+		// Go through every grid slot and it's surrounding slots to see if the item will fit.
+		FInventoryGridPair ItemSize = Item->GetGridSize();
+		if (ItemSize.Row <= InventoryGridSize.Row && ItemSize.Column <= InventoryGridSize.Column)
 		{
-			// Go through every grid slot and it's surrounding slots to see if the item will fit.
-			// Only search columns and rows up to the point where there could still be slots to the right and below in the grid to accommodate the item size.
-			FInventoryGridPair ItemSize = Item->GetGridSize();
-			for (int GridRowIndex = 0; GridRowIndex < InventoryGridSize.Row; GridRowIndex++)
+			for (int GridRowIndex = 0; GridRowIndex <= InventoryGridSize.Row; GridRowIndex++)
 			{
-				for (int GridColumnIndex = 0; GridColumnIndex < InventoryGridSize.Column; GridColumnIndex++)
+				for (int GridColumnIndex = 0; GridColumnIndex <= InventoryGridSize.Column; GridColumnIndex++)
 				{
 					FInventoryGridPair OriginSlot = FInventoryGridPair(GridRowIndex, GridColumnIndex);
 					Result = RequestAddItem(Item, OriginSlot);
@@ -117,85 +105,75 @@ bool UInventoryComponent::RequestAddItem(AItem* Item, FInventoryGridPair OriginS
 {
 	bool Result = true;
 
-	if (GetOwner() && GetOwner()->HasAuthority())
+	if (Item && GetOwner() && GetOwner()->HasAuthority())
 	{
-		if (Item)
-		{
-			FInventoryGridPair ItemSize = Item->GetGridSize();
-			uint8 ItemRowExtent = OriginSlot.Row + ItemSize.Row;
-			uint8 ItemColumnExtent = OriginSlot.Column + ItemSize.Column;
+		FInventoryGridPair ItemSize = Item->GetGridSize();
+		uint8 ItemRowExtent = OriginSlot.Row + ItemSize.Row;
+		uint8 ItemColumnExtent = OriginSlot.Column + ItemSize.Column;
 
-			// Go through the selected grid slots once to determine if there is more than one item in the selection area, and that it is within the grid bounds
-			for (int GridRowIndex = OriginSlot.Row; GridRowIndex < ItemRowExtent; GridRowIndex++)
+		// Go through the selected grid slots once to determine if there is more than one item in the selection area, and if it is within the grid bounds
+		for (int GridRowIndex = OriginSlot.Row; GridRowIndex < ItemRowExtent; GridRowIndex++)
+		{
+			for (int GridColumnIndex = OriginSlot.Column; GridColumnIndex < ItemColumnExtent; GridColumnIndex++)
 			{
-				for (int GridColumnIndex = OriginSlot.Column; GridColumnIndex < ItemColumnExtent; GridColumnIndex++)
+				uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumnIndex;
+				if (GridSlotIndex >= 0 && GridSlotIndex < InventoryGrid.Num())
 				{
-					uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumnIndex;
-					if (GridSlotIndex >= 0 && GridSlotIndex < InventoryGrid.Num())
-					{
-						FInventoryGridSlot& GridSlot = InventoryGrid[GridSlotIndex];
-						if (GridSlot.Item)
-						{
-							Result = false;
-							break;
-						}
-					}
-					else
+					FInventoryGridSlot& GridSlot = InventoryGrid[GridSlotIndex];
+					if (GridSlot.Item)
 					{
 						Result = false;
 						break;
 					}
 				}
-				if (!Result)
+				else
 				{
+					Result = false;
 					break;
 				}
 			}
-
-			if (Result)
+			if (!Result)
 			{
-				AddItem(Item, OriginSlot);
+				break;
 			}
+		}
+
+		if (Result)
+		{
+			AddItem(Item, OriginSlot);
 		}
 	}
 
 	return Result;
 }
 
-void UInventoryComponent::AddItem(AItem* Item, FInventoryGridPair OriginSlot)
+void UInventoryComponent::AddItem(AItem* Item, FInventoryGridPair &OriginSlot)
 {
-	if (GetOwner() && GetOwner()->HasAuthority())
+	Items.Add(Item);
+
+	// Update the grid data
+	FInventoryGridPair ItemSize = Item->GetGridSize();
+	uint8 ItemRowExtent = OriginSlot.Row + ItemSize.Row;
+	uint8 ItemColumnExtent = OriginSlot.Column + ItemSize.Column;
+
+	for (int GridRowIndex = OriginSlot.Row; GridRowIndex < ItemRowExtent; GridRowIndex++)
 	{
-		Items.Add(Item);
-
-		// Update the grid data
-		FInventoryGridPair ItemSize = Item->GetGridSize();
-		uint8 ItemRowExtent = OriginSlot.Row + ItemSize.Row;
-		uint8 ItemColumnExtent = OriginSlot.Column + ItemSize.Column;
-
-		for (int GridRowIndex = OriginSlot.Row; GridRowIndex < ItemRowExtent; GridRowIndex++)
+		for (int GridColumIndex = OriginSlot.Column; GridColumIndex < ItemColumnExtent; GridColumIndex++)
 		{
-			for (int GridColumIndex = OriginSlot.Column; GridColumIndex < ItemColumnExtent; GridColumIndex++)
-			{
-				uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumIndex;
-				FInventoryGridSlot& GridSlot = InventoryGrid[GridSlotIndex];
-				GridSlot.Item = Item;
-			}
+			uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumIndex;
+			FInventoryGridSlot& GridSlot = InventoryGrid[GridSlotIndex];
+			GridSlot.Item = Item;
+			GridSlot.ItemOriginGridLocation = OriginSlot;
 		}
-
-		Item->SetOwner(GetOwner());
-
-		MulticastOnItemAdded(Item, OriginSlot);
 	}
+
+	Item->SetOwner(GetOwner());
+	MulticastOnItemAdded(Item, OriginSlot);
 }
 
 void UInventoryComponent::MulticastOnItemAdded_Implementation(AItem* Item, FInventoryGridPair OriginSlot)
 {
-	ACharacter* Character = Cast<ACharacter>(GetOwner());
-	if (Character && Character->IsLocallyControlled())
-	{
-		OnItemAdded.Broadcast(Item, OriginSlot);
-	}
+	OnItemAdded.Broadcast(Item, OriginSlot);
 }
 
 void UInventoryComponent::ServerRequestRemoveItemFromInventory_Implementation(AItem* Item)
@@ -205,7 +183,8 @@ void UInventoryComponent::ServerRequestRemoveItemFromInventory_Implementation(AI
 
 bool UInventoryComponent::ServerRequestRemoveItemFromInventory_Validate(AItem* Item)
 {
-	return true;
+	bool Result = ValidateItem(Item);
+	return Result;
 }
 
 bool UInventoryComponent::RequestRemoveItem(AItem* Item)
@@ -214,12 +193,13 @@ bool UInventoryComponent::RequestRemoveItem(AItem* Item)
 
 	if (GetOwner() && GetOwner()->HasAuthority())
 	{
-		for (int32 i = 0; i < Items.Num(); i++)
+		for (int32 ItemIndex = 0; ItemIndex < Items.Num(); ItemIndex++)
 		{
-			if (Items[i] == Item)
+			if (Items[ItemIndex] == Item)
 			{
-				RemoveItem(i);
+				RemoveItem(ItemIndex);
 				Result = true;
+				break;
 			}
 		}
 	}
@@ -227,48 +207,51 @@ bool UInventoryComponent::RequestRemoveItem(AItem* Item)
 	return Result;
 }
 
-void UInventoryComponent::RemoveItem(int32 InventoryIndex)
+void UInventoryComponent::RemoveItem(int32 ItemIndex)
 {
-	if (GetOwner() && GetOwner()->HasAuthority())
-	{
-		AItem* ItemToRemove = Items[InventoryIndex];
-		Items.RemoveAtSwap(InventoryIndex);
+	AItem* ItemToRemove = Items[ItemIndex];
+	Items.RemoveAtSwap(ItemIndex);
 
-		// Find first slot containing the item, this will be the origin to broadcast
-		FInventoryGridPair OriginSlot;
-		bool OriginFound = false;
-		for (int GridRowIndex = 0; GridRowIndex < InventoryGridSize.Row; GridRowIndex++)
+	// Find first slot containing the item, this will be the origin to broadcast
+	FInventoryGridPair OriginSlot;
+	bool OriginFound = false;
+	for (int GridRowIndex = 0; GridRowIndex < InventoryGridSize.Row; GridRowIndex++)
+	{
+		for (int GridColumIndex = 0; GridColumIndex < InventoryGridSize.Column; GridColumIndex++)
 		{
-			for (int GridColumIndex = 0; GridColumIndex < InventoryGridSize.Column; GridColumIndex++)
+			uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumIndex;
+			FInventoryGridSlot& GridSlot = InventoryGrid[GridSlotIndex];
+			if (GridSlot.Item && GridSlot.Item == ItemToRemove)
 			{
-				uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumIndex;
-				FInventoryGridSlot& GridSlot = InventoryGrid[GridSlotIndex];
-				if (GridSlot.Item && GridSlot.Item == ItemToRemove)
+				if (!OriginFound)
 				{
-					if (!OriginFound)
-					{
-						OriginSlot = FInventoryGridPair(GridColumIndex, GridRowIndex);
-						OriginFound = true;
-					}
-					GridSlot.Item = nullptr;
-					GridSlot.StartingGridLocation = FInventoryGridPair(GridColumIndex, GridRowIndex);
+					OriginSlot = FInventoryGridPair(GridColumIndex, GridRowIndex);
+					OriginFound = true;
 				}
+				GridSlot.Item = nullptr;
+				GridSlot.ItemOriginGridLocation = FInventoryGridPair(GridColumIndex, GridRowIndex);
 			}
 		}
-
-		ItemToRemove->SetOwner(nullptr);
-
-		MulticastOnItemRemoved(ItemToRemove, OriginSlot);
 	}
+
+	ItemToRemove->SetOwner(nullptr);
+	MulticastOnItemRemoved(ItemToRemove, OriginSlot);
+}
+
+bool UInventoryComponent::ValidateItem(AItem* Item)
+{
+	bool Result = true;
+	FInventoryGridPair ItemSize = Item->GetGridSize();
+	if (ItemSize.Row <= 0 || ItemSize.Column <= 0)
+	{
+		Result = false;
+	}
+	return Result;
 }
 
 void UInventoryComponent::MulticastOnItemRemoved_Implementation(AItem* Item, FInventoryGridPair OriginSlot)
 {
-	ACharacter* Character = Cast<ACharacter>(GetOwner());
-	if (Character && Character->IsLocallyControlled())
-	{
-		OnItemRemoved.Broadcast(Item, OriginSlot);
-	}
+	OnItemRemoved.Broadcast(Item, OriginSlot);
 }
 
 void UInventoryComponent::ServerRequestPickUpItem_Implementation(AItem* Item)
@@ -307,6 +290,7 @@ void UInventoryComponent::ServerRequestPickUpItem_Implementation(AItem* Item)
 			WasItemEquipped = EquipmentComponent->RequestEquipItem(Equippable, SlotToEquipItem);
 		}
 	}
+
 	if (WasItemEquipped)
 	{
 		// Don't "despawn" weapons since they need to be directly attached to the character mesh
@@ -320,6 +304,7 @@ void UInventoryComponent::ServerRequestPickUpItem_Implementation(AItem* Item)
 	{
 		WasItemAdded = RequestAddItem(Item);
 	}
+
 	if (WasItemAdded)
 	{
 		Item->ServerDespawn();
@@ -334,10 +319,12 @@ bool UInventoryComponent::ServerRequestPickUpItem_Validate(AItem* Item)
 void UInventoryComponent::ServerRequestDropItem_Implementation(AItem* Item, bool CheckInventory /*= true*/)
 {
 	bool WasItemRemoved = true;
+
 	if (CheckInventory)
 	{
 		WasItemRemoved = RequestRemoveItem(Item);
 	}
+
 	if (WasItemRemoved)
 	{
 		Item->ServerSpawnAtLocation(GetItemDropLocation());
@@ -345,23 +332,6 @@ void UInventoryComponent::ServerRequestDropItem_Implementation(AItem* Item, bool
 }
 
 bool UInventoryComponent::ServerRequestDropItem_Validate(AItem* Item, bool CheckInventory /*= true*/)
-{
-	return true;
-}
-
-void UInventoryComponent::ChangeInventorySize(uint8 Rows, uint8 Columns)
-{
-	ServerChangeInventorySize(Rows, Columns);
-
-	OnInventorySizeChanged.Broadcast(Rows, Columns);
-}
-
-void UInventoryComponent::ServerChangeInventorySize_Implementation(uint8 Rows, uint8 Columns)
-{
-
-}
-
-bool UInventoryComponent::ServerChangeInventorySize_Validate(uint8 Rows, uint8 Columns)
 {
 	return true;
 }

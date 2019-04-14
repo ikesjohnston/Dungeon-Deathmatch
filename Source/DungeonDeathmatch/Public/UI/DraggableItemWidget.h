@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+
 #include "Item.h"
 #include "DraggableItemWidget.generated.h"
 
@@ -20,11 +21,9 @@ class DUNGEONDEATHMATCH_API UDraggableItemWidget : public UUserWidget
 	GENERATED_BODY()
 
 protected:
-	/** The canvas widget for the draggable */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Widgets", meta = (BindWidget))
 	UCanvasPanel* ItemCanvas;
 
-	/** The item image widget for the draggable */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Widgets", meta = (BindWidget))
 	UImage* ItemImage;
 
@@ -59,6 +58,5 @@ public:
 
 protected:
 	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-
 	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
 };

@@ -250,8 +250,6 @@ void AWeapon::StopSwing()
 
 void AWeapon::ServerOnEquip_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot)
 {
-	Super::ServerOnEquip_Implementation(InEquippingActor, EquipmentSlot);
-
 	switch (EquipmentSlot)
 	{
 	case EEquipmentSlot::WeaponLoadoutOneMainHand:
@@ -381,6 +379,8 @@ void AWeapon::ServerOnEquip_Implementation(AActor* InEquippingActor, EEquipmentS
 			AbilitySystemInterface->GetAbilitySystemComponent()->GiveAbility(Ability);
 		}
 	}
+
+	Super::ServerOnEquip_Implementation(InEquippingActor, EquipmentSlot);
 }
 
 void AWeapon::MulticastOnEquip_Implementation(AActor* InEquippingActor, EEquipmentSlot EquipmentSlot)

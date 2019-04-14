@@ -20,15 +20,6 @@
 #include <Reply.h>
 #include <WidgetBlueprintLibrary.h>
 
-
-// Console command for debugging inventory grid widgets
-static int32 DebugInventoryGrid = 0;
-FAutoConsoleVariableRef CVARDebugInventoryGrid(
-	TEXT("Dungeon.DebugInventoryGrid"),
-	DebugInventoryGrid,
-	TEXT("Debug inventory grid widget overlap calculations"),
-	ECVF_Cheat);
-
 UInventoryGridWidget::UInventoryGridWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -39,23 +30,29 @@ UInventoryGridWidget::UInventoryGridWidget(const FObjectInitializer& ObjectIniti
 bool UInventoryGridWidget::Initialize()
 {
 	bool Result = Super::Initialize();
-	InitializeGrid();
+	if (!ValidateWidgets())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UInventoryGridWidget::Initialize - Essential widgets missing from %s. Verify that widgets are correctly set."), *GetName());
+		Result = false;
+	}
+	else
+	{
+		InitializeGrid();
+	}
 	return Result;
 }
 
 void UInventoryGridWidget::BindToSource(AActor* Source)
 {
-	if (InventoryGrid)
-	{
-		InventoryGrid->ClearChildren();
-	}
+	if (!ValidateWidgets()) return;
+	
+	InventoryGrid->ClearChildren();
 
 	if (SourceInventoryComponent)
 	{
 		InventoryGridSize = SourceInventoryComponent->GetInventoryGridSize();
 		SourceInventoryComponent->OnItemAdded.RemoveDynamic(this, &UInventoryGridWidget::AddItem);
 		SourceInventoryComponent->OnItemRemoved.RemoveDynamic(this, &UInventoryGridWidget::RemoveItem);
-		SourceInventoryComponent->OnInventorySizeChanged.RemoveDynamic(this, &UInventoryGridWidget::UpdateInventoryGridSize);
 	}
 
 	SourceInventoryComponent = Cast<UInventoryComponent>(Source->GetComponentByClass(UInventoryComponent::StaticClass()));
@@ -64,52 +61,63 @@ void UInventoryGridWidget::BindToSource(AActor* Source)
 		InventoryGridSize = SourceInventoryComponent->GetInventoryGridSize();
 		SourceInventoryComponent->OnItemAdded.AddDynamic(this, &UInventoryGridWidget::AddItem);
 		SourceInventoryComponent->OnItemRemoved.AddDynamic(this, &UInventoryGridWidget::RemoveItem);
-		SourceInventoryComponent->OnInventorySizeChanged.AddDynamic(this, &UInventoryGridWidget::UpdateInventoryGridSize);
 	}
 
 	SourceEquipmentComponent = Cast<UEquipmentComponent>(Source->GetComponentByClass(UEquipmentComponent::StaticClass()));
 
 	InitializeGrid();
+
+	if (SourceInventoryComponent)
+	{
+		TArray<AItem*> AddedSourceItems;
+		TArray<FInventoryGridSlot> SourceInventoryGrid = SourceInventoryComponent->GetInventoryGrid();
+		for (FInventoryGridSlot& GridSlot : SourceInventoryGrid)
+		{
+			AItem* SlotItem = GridSlot.Item;
+			if (SlotItem && !AddedSourceItems.Contains(SlotItem))
+			{
+				AddItem(SlotItem, GridSlot.ItemOriginGridLocation);
+				AddedSourceItems.Add(SlotItem);
+			}
+		}
+	}
 }
 
 void UInventoryGridWidget::InitializeGrid()
 {
+	if (!ValidateWidgets()) return;
+
 	if (SlotWidgetClass == NULL)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("UInventoryGridWidget::InitializeGrid - No SlotWidgetClass set in %s. Verify that SlotWidgetClass is correctly set to a valid UInventoryGridSlotWidget blueprint subclass."), *GetName());
 		return;
 	}
 
-	if (InventoryGrid)
+	for (int GridRowIndex = 0; GridRowIndex < InventoryGridSize.Row; GridRowIndex++)
 	{
-		for (int GridRowIndex = 0; GridRowIndex < InventoryGridSize.Row; GridRowIndex++)
+		for (int GridColumIndex = 0; GridColumIndex < InventoryGridSize.Column; GridColumIndex++)
 		{
-			for (int GridColumIndex = 0; GridColumIndex < InventoryGridSize.Column; GridColumIndex++)
-			{
-				uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumIndex;
-				FString GridSlotString = FString("InventorySlot");
-				GridSlotString.AppendInt(GridSlotIndex);
-				FName GridSlotName = FName(*GridSlotString);
+			uint8 GridSlotIndex = (GridRowIndex * InventoryGridSize.Column) + GridColumIndex;
+			FString GridSlotString = FString("InventorySlot");
+			GridSlotString.AppendInt(GridSlotIndex);
+			FName GridSlotName = FName(*GridSlotString);
 
-				UInventoryGridSlotWidget* InventorySlot = Cast<UInventoryGridSlotWidget>(CreateWidget(GetOwningPlayer(), SlotWidgetClass, GridSlotName));
-				if (InventorySlot)
-				{
-					InventorySlots.Add(InventorySlot);
-					UGridSlot* GridSlot = InventoryGrid->AddChildToGrid(InventorySlot);
-					GridSlot->SetRow(GridRowIndex);
-					GridSlot->SetColumn(GridColumIndex);
-				}
+			UInventoryGridSlotWidget* InventorySlot = Cast<UInventoryGridSlotWidget>(CreateWidget(GetOwningPlayer(), SlotWidgetClass, GridSlotName));
+			if (InventorySlot)
+			{
+				InventorySlots.Add(InventorySlot);
+				UGridSlot* GridSlot = InventoryGrid->AddChildToGrid(InventorySlot);
+				GridSlot->SetRow(GridRowIndex);
+				GridSlot->SetColumn(GridColumIndex);
 			}
 		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("UInventoryGridWidget::InitializeGrid - No InventoryGrid widget found in %s. Verify that InventoryGrid is correctly set."), *GetName());
 	}
 }
 
 void UInventoryGridWidget::AddItem(AItem* Item, FInventoryGridPair OriginGridSlot)
 {
+	if (!ValidateWidgets()) return;
+
 	// Update the grid widget
 	FInventoryGridPair ItemSize = Item->GetGridSize();
 	uint8 ItemRowExtent = OriginGridSlot.Row + ItemSize.Row;
@@ -132,23 +140,19 @@ void UInventoryGridWidget::AddItem(AItem* Item, FInventoryGridPair OriginGridSlo
 	UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
 	if (GameInstance)
 	{
+		TSubclassOf<UDraggableItemWidget> DragAndDropItemWidgetClass = GameInstance->GetDragAndDropItemWidgetClass();
+		if (DragAndDropItemWidgetClass == NULL) return;
+
 		FString DragAndDropString = FString("Drag&Drop_");
 		DragAndDropString.Append(Item->GetItemName().ToString());
 		FName DragAndDropName = FName(*DragAndDropString);
 
-		UDraggableItemWidget* DraggableWidget = Cast<UDraggableItemWidget>(CreateWidget(GetOwningPlayer(), GameInstance->GetDragAndDropItemWidgetClass(), DragAndDropName));
+		UDraggableItemWidget* DraggableWidget = Cast<UDraggableItemWidget>(CreateWidget(GetOwningPlayer(), DragAndDropItemWidgetClass, DragAndDropName));
 		if (DraggableWidget)
 		{
 			DraggableWidget->InitializeDraggableItem(Item, OriginGridSlot);
-			if (DraggableItemsCanvas)
-			{
-				DraggableItemsCanvas->AddChild(DraggableWidget);
-				DraggableWidget->SetVisibility(ESlateVisibility::Visible);
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("UInventoryGridWidget::AddItem - No DraggableItemsCanvas widget found in %s. Verify that DraggableItemsCanvas is correctly set."), *GetName());
-			}
+			DraggableItemsCanvas->AddChild(DraggableWidget);
+			DraggableWidget->SetVisibility(ESlateVisibility::Visible);
 			DraggableItemWidgets.Add(TTuple<AItem*, UDraggableItemWidget*>(Item, DraggableWidget));
 		}
 	}
@@ -160,6 +164,8 @@ void UInventoryGridWidget::AddItem(AItem* Item, FInventoryGridPair OriginGridSlo
 
 void UInventoryGridWidget::RemoveItem(AItem* Item, FInventoryGridPair OriginGridSlot)
 {
+	if (!ValidateWidgets()) return;
+
 	// Update the grid widget
 	FInventoryGridPair ItemSize = Item->GetGridSize();
 	uint8 ItemRowExtent = OriginGridSlot.Row + ItemSize.Row;
@@ -178,21 +184,13 @@ void UInventoryGridWidget::RemoveItem(AItem* Item, FInventoryGridPair OriginGrid
 		}
 	}
 
-	// Just remove the widget from the canvas and widget map, garbage collection should automatically delete it, not able to safely do so manually
+	// Just remove the widget from the canvas and widget map, garbage collection should automatically delete it
 	UDraggableItemWidget** WidgetPtr = DraggableItemWidgets.Find(Item);
 	if (WidgetPtr)
 	{
 		UDraggableItemWidget* DraggableWidget = *WidgetPtr;
-		if (DraggableItemsCanvas)
-		{
-			DraggableItemsCanvas->RemoveChild(DraggableWidget);
-			DraggableWidget->SetVisibility(ESlateVisibility::Collapsed);
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("UInventoryGridWidget::RemoveItem - No DraggableItemsCanvas widget found in %s. Verify that DraggableItemsCanvas is correctly set."), *GetName());
-		}
-
+		DraggableItemsCanvas->RemoveChild(DraggableWidget);
+		DraggableWidget->SetVisibility(ESlateVisibility::Collapsed);
 		DraggableItemWidgets.Remove(Item);
 	}
 }
@@ -276,11 +274,6 @@ void UInventoryGridWidget::ClearGridHighlights()
 	bWereSlotsHighlightedLastFrame = false;
 }
 
-void UInventoryGridWidget::UpdateInventoryGridSize(uint8 Rows, uint8 Columns)
-{
-
-}
-
 void UInventoryGridWidget::ProcessItemDragAndDrop()
 {
 	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
@@ -340,8 +333,9 @@ void UInventoryGridWidget::NativeTick(const FGeometry& MyGeometry, float DeltaTi
 
 	if (bIsHovering)
 	{
+		UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
 		ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
-		if (Controller)
+		if (GameInstance && Controller)
 		{
 			UDraggableItemWidget* DraggedItemWidget = Controller->GetDraggedItem();
 			if (DraggedItemWidget) {
@@ -357,119 +351,82 @@ void UInventoryGridWidget::NativeTick(const FGeometry& MyGeometry, float DeltaTi
 
 					FVector2D MouseOffset = MouseViewportPosition - GridViewportPosition;
 
-					UDungeonGameInstance* GameInstance = Cast<UDungeonGameInstance>(GetGameInstance());
-					if (GameInstance)
+					// Calculate which grid slot is being hovered over and where the mouse is within that slot
+					float GridSlotSize = GameInstance->GetInventoryGridSlotSize();
+
+					int OverlappedSlotColumn = FMath::RoundToInt((MouseOffset.X / GridSlotSize) - 0.5f);
+					int OverlappedSlotRow = FMath::RoundToInt((MouseOffset.Y / GridSlotSize) - 0.5f);
+
+					float SlotOverlapPositionX = MouseOffset.X - (OverlappedSlotColumn * GridSlotSize);
+					float SlotOverlapPositionY = MouseOffset.Y - (OverlappedSlotRow * GridSlotSize);
+
+					int SlotIndex = (OverlappedSlotRow * InventoryGridSize.Column) + OverlappedSlotColumn;
+					if (SlotIndex >= 0 && SlotIndex < InventorySlots.Num())
 					{
-						// Calculate which grid slot is being hovered over and where the mouse is within that slot
-						float GridSlotSize = GameInstance->GetInventoryGridSlotSize();
+						// Calculate the origin slot of where this item should be inserted, based on the item size and mouse cursor position
+						FInventoryGridPair ItemSize = DraggedItem->GetGridSize();
 
-						int OverlappedSlotColumn = FMath::RoundToInt((MouseOffset.X / GridSlotSize) - 0.5f);
-						int OverlappedSlotRow = FMath::RoundToInt((MouseOffset.Y / GridSlotSize) - 0.5f);
+						int HoveringOriginColumn = 0;
+						int HoveringOriginRow = 0;
 
-						float SlotOverlapPositionX = MouseOffset.X - (OverlappedSlotColumn * GridSlotSize);
-						float SlotOverlapPositionY = MouseOffset.Y - (OverlappedSlotRow * GridSlotSize);
-
-						int SlotIndex = (OverlappedSlotRow * InventoryGridSize.Column) + OverlappedSlotColumn;
-						if (SlotIndex >= 0 && SlotIndex < InventorySlots.Num())
+						if (ItemSize.Column <= InventoryGridSize.Column && ItemSize.Row <= InventoryGridSize.Row)
 						{
-							if (DebugInventoryGrid)
+							if (ItemSize.Column % 2 == 0)
 							{
-								UInventoryGridSlotWidget* OverlappedSlotWidget = InventorySlots[SlotIndex];
-
-								TArray<FStringFormatArg> FormatArgs;
-
-								FormatArgs.Add(FStringFormatArg(OverlappedSlotColumn));
-								FormatArgs.Add(FStringFormatArg(OverlappedSlotRow));
-								FormatArgs.Add(FStringFormatArg(FMath::RoundToInt(SlotOverlapPositionX)));
-								FormatArgs.Add(FStringFormatArg(FMath::RoundToInt(SlotOverlapPositionY)));
-								FormatArgs.Add(OverlappedSlotWidget->GetName());
-
-								FString DebugString = FString::Format(TEXT("Overlapping slot ({0}, {1}) at ({2}, {3}), which is {4}"), FormatArgs);
-
-								UKismetSystemLibrary::PrintString(GetWorld(), DebugString, true, true, FLinearColor::Red, DeltaTime);
+								HoveringOriginColumn = OverlappedSlotColumn - (ItemSize.Column / 2);
+								if (SlotOverlapPositionX > (GridSlotSize / 2) && SlotOverlapPositionX <= GridSlotSize)
+								{
+									HoveringOriginColumn += 1;
+								}
+							}
+							else
+							{
+								HoveringOriginColumn = OverlappedSlotColumn - ((ItemSize.Column - 1) / 2);
+							}
+							if (HoveringOriginColumn < 0)
+							{
+								HoveringOriginColumn = 0;
 							}
 
-							// Calculate the origin slot of where this item should be inserted, based on the item size and mouse cursor position
-							FInventoryGridPair ItemSize = DraggedItem->GetGridSize();
-
-							int HoveringOriginColumn = 0;
-							int HoveringOriginRow = 0;
-
-							if (ItemSize.Column <= InventoryGridSize.Column && ItemSize.Row <= InventoryGridSize.Row)
+							if (ItemSize.Row % 2 == 0)
 							{
-								if (ItemSize.Column % 2 == 0)
+								HoveringOriginRow = OverlappedSlotRow - (ItemSize.Row / 2);
+								if (SlotOverlapPositionY > (GridSlotSize / 2) && SlotOverlapPositionY <= GridSlotSize)
 								{
-									HoveringOriginColumn = OverlappedSlotColumn - (ItemSize.Column / 2);
-									if (SlotOverlapPositionX > (GridSlotSize / 2) && SlotOverlapPositionX <= GridSlotSize)
-									{
-										HoveringOriginColumn += 1;
-									}
+									HoveringOriginRow += 1;
 								}
-								else
-								{
-									HoveringOriginColumn = OverlappedSlotColumn - ((ItemSize.Column - 1) / 2);
-								}
-								if (HoveringOriginColumn < 0)
-								{
-									HoveringOriginColumn = 0;
-								}
+							}
+							else
+							{
+								HoveringOriginRow = OverlappedSlotRow - ((ItemSize.Row - 1) / 2);
+							}
+							if (HoveringOriginRow < 0)
+							{
+								HoveringOriginRow = 0;
+							}
 
+							SelectionOrigin.Column = HoveringOriginColumn;
+							SelectionOrigin.Row = HoveringOriginRow;
 
-								if (ItemSize.Row % 2 == 0)
-								{
-									HoveringOriginRow = OverlappedSlotRow - (ItemSize.Row / 2);
-									if (SlotOverlapPositionY > (GridSlotSize / 2) && SlotOverlapPositionY <= GridSlotSize)
-									{
-										HoveringOriginRow += 1;
-									}
-								}
-								else
-								{
-									HoveringOriginRow = OverlappedSlotRow - ((ItemSize.Row - 1) / 2);
-								}
-								if (HoveringOriginRow < 0)
-								{
-									HoveringOriginRow = 0;
-								}
+							// Adjust the insertion origin location if the item won't fit at the current origin slot (for example, trying to insert at the bottom or far right end of the grid)
+							int InsertionColumnExtent = SelectionOrigin.Column + ItemSize.Column;
+							if (InsertionColumnExtent > InventoryGridSize.Column)
+							{
+								int ColumnOffset = InventoryGridSize.Column - InsertionColumnExtent;
+								SelectionOrigin.Column += ColumnOffset;
+							}
 
-								SelectionOrigin.Column = HoveringOriginColumn;
-								SelectionOrigin.Row = HoveringOriginRow;
+							int InsertionRowExtent = SelectionOrigin.Row + ItemSize.Row;
+							if (InsertionRowExtent > InventoryGridSize.Row)
+							{
+								int RowOffset = InventoryGridSize.Row - InsertionRowExtent;
+								SelectionOrigin.Row += RowOffset;
+							}
 
-								// Adjust the insertion origin location if the item won't fit at the current origin slot (for example, trying to insert at the bottom or far right end of the grid)
-								int InsertionColumnExtent = SelectionOrigin.Column + ItemSize.Column;
-								if (InsertionColumnExtent > InventoryGridSize.Column)
-								{
-									int ColumnOffset = InventoryGridSize.Column - InsertionColumnExtent;
-									SelectionOrigin.Column += ColumnOffset;
-								}
-
-								int InsertionRowExtent = SelectionOrigin.Row + ItemSize.Row;
-								if (InsertionRowExtent > InventoryGridSize.Row)
-								{
-									int RowOffset = InventoryGridSize.Row - InsertionRowExtent;
-									SelectionOrigin.Row += RowOffset;
-								}
-
-								SlotIndex = (SelectionOrigin.Row * InventoryGridSize.Column) + SelectionOrigin.Column;
-								if (SlotIndex >= 0 && SlotIndex < InventorySlots.Num())
-								{
-									if (DebugInventoryGrid)
-									{
-										UInventoryGridSlotWidget* OverlappedSlotWidget = InventorySlots[SlotIndex];
-
-										TArray<FStringFormatArg> FormatArgs;
-
-										FormatArgs.Add(FStringFormatArg(SelectionOrigin.Column));
-										FormatArgs.Add(FStringFormatArg(SelectionOrigin.Row));
-										FormatArgs.Add(OverlappedSlotWidget->GetName());
-
-										FString DebugString = FString::Format(TEXT("Item would be inserted at ({0}, {1}), which is slot {2}"), FormatArgs);
-
-										UKismetSystemLibrary::PrintString(GetWorld(), DebugString, true, true, FLinearColor::Red, DeltaTime);
-									}
-
-									bIsSelectionValid = ValidateGridSelection(DraggedItem);
-								}
+							SlotIndex = (SelectionOrigin.Row * InventoryGridSize.Column) + SelectionOrigin.Column;
+							if (SlotIndex >= 0 && SlotIndex < InventorySlots.Num())
+							{
+								bIsSelectionValid = ValidateGridSelection(DraggedItem);
 							}
 						}
 					}
@@ -494,71 +451,69 @@ void UInventoryGridWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 FReply UInventoryGridWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	ADungeonPlayerController* Controller = Cast<ADungeonPlayerController>(GetOwningPlayer());
-	if (Controller)
+	if (Controller && SourceInventoryComponent)
 	{
-		UDraggableItemWidget* SelectedItem = Controller->GetSelectedItem();
-
-		if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+		UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
+		if (SelectedItemWidget)
 		{
-			if (SelectedItem)
+			if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 			{
-				Controller->SetClickedItem(SelectedItem);
-				return UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton).NativeReply;
+				return ClickSelectedItem(InMouseEvent, Controller, SelectedItemWidget);
 			}
-		}
-		else if (InMouseEvent.GetEffectingButton() == EKeys::MiddleMouseButton)
-		{
-			if (SourceInventoryComponent)
+			else if (InMouseEvent.GetEffectingButton() == EKeys::MiddleMouseButton)
 			{
-				UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
-				if (SelectedItemWidget)
-				{
-					// Drop the item
-					AItem* ItemToDrop = SelectedItemWidget->GetItem();
-					if (ItemToDrop)
-					{
-						SourceInventoryComponent->ServerRequestDropItem(ItemToDrop);
-						UGameplayStatics::PlaySound2D(GetWorld(), ItemToDrop->GetInteractionSound());
-						Controller->SetSelectedItem(nullptr);
-						ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
-						if (HUD)
-						{
-							HUD->HideTooltip();
-						}
-					}
-				}
+				DropSelectedItem(Controller, SelectedItemWidget);
 			}
-		}
-		else if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
-		{
-			if (SourceInventoryComponent)
+			else if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
 			{
-				UDraggableItemWidget* SelectedItemWidget = Controller->GetSelectedItem();
-				if (SelectedItemWidget)
-				{
-					// If the item is an equippable, try to equip it
-					AEquippable* Equippable = Cast<AEquippable>(SelectedItemWidget->GetItem());
-					if (Equippable)
-					{
-						SourceInventoryComponent->ServerRequestRemoveItemFromInventory(Equippable);
-						if (SourceEquipmentComponent)
-						{
-							SourceEquipmentComponent->ServerEquipItem(Equippable, true);
-						}
-						UGameplayStatics::PlaySound2D(GetWorld(), Equippable->GetInteractionSound());
-						Controller->SetSelectedItem(nullptr);
-						ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
-						if (HUD)
-						{
-							HUD->HideTooltip();
-						}
-					}
-				}
+				UseSelectedItem(Controller, SelectedItemWidget);
 			}
 		}
 	}
-
 	return FReply::Handled();
+}
+
+FReply UInventoryGridWidget::ClickSelectedItem(const FPointerEvent& InMouseEvent, ADungeonPlayerController* Controller, UDraggableItemWidget* SelectedItemWidget)
+{
+	Controller->SetClickedItem(SelectedItemWidget);
+	return UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton).NativeReply;
+}
+
+void UInventoryGridWidget::UseSelectedItem(ADungeonPlayerController* Controller, UDraggableItemWidget* SelectedItemWidget)
+{
+	// If the item is an equippable, try to equip it
+	AEquippable* Equippable = Cast<AEquippable>(SelectedItemWidget->GetItem());
+	if (Equippable)
+	{
+		SourceInventoryComponent->ServerRequestRemoveItemFromInventory(Equippable);
+		if (SourceEquipmentComponent)
+		{
+			SourceEquipmentComponent->ServerEquipItem(Equippable, true);
+		}
+		UGameplayStatics::PlaySound2D(GetWorld(), Equippable->GetInteractionSound());
+		Controller->SetSelectedItem(nullptr);
+		ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
+		if (HUD)
+		{
+			HUD->HideTooltip();
+		}
+	}
+}
+
+void UInventoryGridWidget::DropSelectedItem(ADungeonPlayerController* Controller, UDraggableItemWidget* SelectedItemWidget)
+{
+	AItem* ItemToDrop = SelectedItemWidget->GetItem();
+	if (ItemToDrop)
+	{
+		SourceInventoryComponent->ServerRequestDropItem(ItemToDrop);
+		UGameplayStatics::PlaySound2D(GetWorld(), ItemToDrop->GetInteractionSound());
+		Controller->SetSelectedItem(nullptr);
+		ADungeonHUD* HUD = Cast<ADungeonHUD>(Controller->GetHUD());
+		if (HUD)
+		{
+			HUD->HideTooltip();
+		}
+	}
 }
 
 FReply UInventoryGridWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
@@ -591,3 +546,14 @@ void UInventoryGridWidget::NativeOnDragDetected(const FGeometry& InGeometry, con
 		}
 	}
 }
+
+bool UInventoryGridWidget::ValidateWidgets()
+{
+	bool Result = false;
+	if (InventoryGrid && DraggableItemsCanvas)
+	{
+		Result = true;
+	}
+	return Result;
+}
+

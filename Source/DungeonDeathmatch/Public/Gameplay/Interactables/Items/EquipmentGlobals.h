@@ -24,9 +24,7 @@ enum class EEquipmentSlot : uint8
 	WeaponLoadoutOneMainHand	UMETA(DisplayName = "Weapon Loadout One - Main Hand"),
 	WeaponLoadoutOneOffHand		UMETA(DisplayName = "Weapon Loadout One - Off Hand"),
 	WeaponLoadoutTwoMainHand	UMETA(DisplayName = "Weapon Loadout Two - Main Hand"),
-	WeaponLoadoutTwoOffHand		UMETA(DisplayName = "Weapon Loadout Two - Off Hand"),
-
-	NUM_EQUIPMENT_SLOTS			UMETA(Hidden)
+	WeaponLoadoutTwoOffHand		UMETA(DisplayName = "Weapon Loadout Two - Off Hand")
 };
 
 /** Used to determine what equipment slot a piece of armor can go into when equipping an item. */
@@ -41,9 +39,7 @@ enum class EArmorSlot : uint8
 	Finger			UMETA(DisplayName = "Finger"),
 	Waist			UMETA(DisplayName = "Waist"),
 	Legs			UMETA(DisplayName = "Legs"),
-	Feet			UMETA(DisplayName = "Feet"),
-
-	NUM_ARMOR_SLOTS UMETA(Hidden)
+	Feet			UMETA(DisplayName = "Feet")
 };
 
 /** Used to determine what equipment slot a weapon can go into when equipping an item. */
@@ -52,7 +48,7 @@ enum class EWeaponHand : uint8
 {
 	OneHand		UMETA(DisplayName = "One Hand"),
 	TwoHand		UMETA(DisplayName = "Two Hand"),
-	OffHand		UMETA(DisplayName = "Off Hand"),
+	OffHand		UMETA(DisplayName = "Off Hand")
 };
 
 /** Used on tooltips and for applying class specific effects on attack. */
@@ -141,6 +137,6 @@ class DUNGEONDEATHMATCH_API UDungeonEquipmentLibrary : public UBlueprintFunction
 
 public:
 
-	UFUNCTION(BlueprintCallable , Category = "Equipment\|Weapons")
+	UFUNCTION(BlueprintCallable , Category = "Equipment|Weapons")
 	static ELoadoutType GetLoadoutType(const FWeaponLoadout Loadout);
 };

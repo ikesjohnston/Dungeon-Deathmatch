@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+
 #include "DragAndDropItemWidget.generated.h"
 
 class AItem;
@@ -18,7 +19,6 @@ class DUNGEONDEATHMATCH_API UDragAndDropItemWidget : public UUserWidget
 	GENERATED_BODY()
 	
 protected:
-	/** The image widget for the item being dragged */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Widgets", meta = (BindWidget))
 	UImage* ItemImage;
 
@@ -27,14 +27,10 @@ public:
 
 	virtual bool Initialize() override;
 
-	/**
-	 * Starts rendering an item image and performing position updates to follow the cursor
-	 */
+	/** Starts rendering an item image and performing position updates to follow the cursor */
 	void StartDragAndDropOperation(AItem* Item);
 
-	/**
-	 * Hides the widget and halts position updates
-	 */
+	/** Hides the widget and halts position updates */
 	void StopDragAndDropOperation();
 
 protected:

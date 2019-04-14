@@ -75,6 +75,12 @@ void ADungeonCharacter::BeginPlay()
 	InitializeAbilities();
 
 	UseControllerDesiredRotation(true);
+
+	UEquipmentComponent* EquipmentComponent = Cast<UEquipmentComponent>(GetComponentByClass(UEquipmentComponent::StaticClass()));
+	if (HasAuthority() && EquipmentComponent)
+	{
+		//EquipmentComponent->ServerEquipStartingItems();
+	}
 }
 
 void ADungeonCharacter::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)

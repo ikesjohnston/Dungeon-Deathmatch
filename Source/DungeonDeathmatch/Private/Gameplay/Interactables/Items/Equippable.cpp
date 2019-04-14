@@ -5,7 +5,7 @@
 AEquippable::AEquippable(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-
+	bReplicates = true;
 }
 
 AEquippable::~AEquippable()

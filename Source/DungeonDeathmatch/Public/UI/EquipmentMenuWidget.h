@@ -17,24 +17,18 @@ class DUNGEONDEATHMATCH_API UEquipmentMenuWidget : public UUserWidget
 	GENERATED_BODY()
 	
 protected:
-	/* The blueprint UEquipmentSlotWidget subclass to populate the menu with for each equipment slot*/
+	/** The blueprint UEquipmentSlotWidget subclass to populate the menu with for each equipment slot*/
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	TSubclassOf<UEquipmentSlotWidget> SlotWidgetClass;
 
-	/* Mapping of equipment slots and thier respective slot widgets.  */
+	/** Mapping of equipment slots and thier respective slot widgets.  */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	TMap<EEquipmentSlot, UEquipmentSlotWidget*> EquipmentSlots;
 
-	/* Mapping of equipped items and their respective draggable widgets.  */
+	/** Mapping of equipped items and their respective draggable widgets.  */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	TMap<AEquippable*, UDraggableItemWidget*> DraggableItemWidgets;
 
 public:
 	UEquipmentMenuWidget(const FObjectInitializer& ObjectInitializer);
-
-	virtual bool Initialize() override;
-
-	bool TryEquipItem(AEquippable* Equippable);
-
-	void UnequipItem(AEquippable* Equippable);
 };

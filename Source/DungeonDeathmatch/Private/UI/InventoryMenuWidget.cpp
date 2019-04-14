@@ -17,7 +17,6 @@ bool UInventoryMenuWidget::Initialize()
 {
 	bool Result = Super::Initialize();
 
-	// Map equipment slots
 	EquipmentSlots.Add(EEquipmentSlot::Head, EquipmentSlotHead);
 	EquipmentSlots.Add(EEquipmentSlot::Neck, EquipmentSlotNeck);
 	EquipmentSlots.Add(EEquipmentSlot::Shoulders, EquipmentSlotShoulders);
